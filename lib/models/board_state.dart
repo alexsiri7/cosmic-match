@@ -108,6 +108,18 @@ class BoardState {
     }
   }
 
+  /// Clears matched tiles, preserving positions in [preserved] (bonus tiles).
+  void clearMatchesPreserving(
+      List<Match> matches, Set<(int, int)> preserved) {
+    for (final match in matches) {
+      for (final (r, c) in match.positions) {
+        if (!preserved.contains((r, c))) {
+          grid[r][c] = null;
+        }
+      }
+    }
+  }
+
   /// Applies gravity: tiles fall down to fill empty spaces per column.
   /// Returns a map of (newRow, col) → oldRow for tiles that moved,
   /// plus a list of (row, col) for newly created tiles at the top.

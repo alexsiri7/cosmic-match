@@ -5,6 +5,7 @@ import '../../models/board_state.dart';
 import '../../models/level_config.dart';
 import '../../models/match.dart';
 import '../../providers/game_state_provider.dart';
+import '../../utils/bonus_creator.dart';
 import '../../utils/match_detector.dart';
 import '../../utils/score_calculator.dart';
 import '../cosmic_match_game.dart';
@@ -94,6 +95,7 @@ class BoardComponent extends PositionComponent
           final tileSize = _cellSize - _padding;
           final component = TileComponent(
             tileType: tileData.type,
+            bonusType: tileData.bonusType,
             row: r,
             col: c,
             size: Vector2(tileSize, tileSize),
@@ -249,9 +251,20 @@ class BoardComponent extends PositionComponent
     // Track goal progress based on level goal type
     _updateGoalProgress(matches);
 
-    // Remove matched tile components
+    // Create bonus tiles for large/shaped matches (before clearing)
+    final preserved = BonusCreator.createBonusTiles(boardState, matches);
+
+    // Remove matched tile components (skip preserved bonus positions)
     for (final match in matches) {
       for (final (int r, int c) in match.positions) {
+        if (preserved.contains((r, c))) {
+          // Update the existing component to show bonus visual
+          final comp = _tileComponents[r][c];
+          if (comp != null) {
+            comp.bonusType = boardState.getTile(r, c)?.bonusType;
+          }
+          continue;
+        }
         final comp = _tileComponents[r][c];
         if (comp != null) {
           comp.removeFromParent();
@@ -260,8 +273,8 @@ class BoardComponent extends PositionComponent
       }
     }
 
-    // Clear in board data
-    boardState.clearMatches(matches);
+    // Clear in board data (preserving bonus tiles)
+    boardState.clearMatchesPreserving(matches, preserved);
 
     // Apply gravity
     final result = boardState.applyGravity();
