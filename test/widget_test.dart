@@ -7,5 +7,6 @@ void main() {
 
     expect(find.text('Cosmic Match'), findsOneWidget);
     expect(find.text('Play'), findsOneWidget);
+    expect(find.text('Settings'), findsOneWidget);
   });
 }
