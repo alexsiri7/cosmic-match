@@ -304,3 +304,31 @@
 - clearAllObstacles progress tracking deferred to US-017 when obstacle mechanics are implemented
 
 ---
+
+## 2026-04-14 — US-011: Win/lose detection & overlay screens
+
+**Status**: PASSED
+**Files changed**:
+- lib/utils/star_calculator.dart — Static star rating calculation (1-3 stars based on moves remaining ratio)
+- lib/screens/level_complete_overlay.dart — Victory overlay with stars, score, Next Level & Replay buttons
+- lib/screens/level_failed_overlay.dart — Defeat overlay with Replay & Quit buttons
+- lib/game/components/board_component.dart — Added _checkLevelEnd() after cascade, checks goalMet and isOutOfMoves
+- lib/game/cosmic_match_game.dart — Added levelEnded flag to lock board input
+- lib/screens/game_screen.dart — Registered levelComplete and levelFailed overlays
+- test/utils/star_calculator_test.dart — 7 unit tests for star calculation
+
+**Acceptance criteria verified**:
+- [x] Win detected when goal is met (regardless of remaining moves)
+- [x] Lose detected when moves reach 0 without meeting goal
+- [x] Level complete overlay shows: star rating (1-3 based on remaining moves), final score, 'Next Level' and 'Replay' buttons
+- [x] Level failed overlay shows: 'Replay' and 'Quit' buttons
+- [x] Star rating: 3 stars if >50% moves remain, 2 stars if >25%, 1 star otherwise
+- [x] Board input locked when level ends (levelEnded flag + _processing check)
+- [x] flutter analyze passes (no issues)
+
+**Learnings**:
+- HasGameReference<CosmicMatchGame> typed generic gives direct access to game.overlays and game.levelEnded without casting
+- Win/lose check must happen after cascade fully resolves (not after each step) to avoid premature detection
+- Overlays use Navigator for navigation (Replay replaces route, Next Level/Quit pops)
+
+---

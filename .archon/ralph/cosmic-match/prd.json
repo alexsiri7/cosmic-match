@@ -209,8 +209,8 @@
       "technicalNotes": "Create lib/screens/level_complete_overlay.dart and lib/screens/level_failed_overlay.dart as Flutter widgets. Register as Flame overlays. Check win/lose conditions after each move resolves (post-cascade). Star calculation in lib/utils/star_calculator.dart.",
       "dependsOn": ["US-010"],
       "priority": 11,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "Implemented in iteration 11. Files: lib/utils/star_calculator.dart, lib/screens/level_complete_overlay.dart, lib/screens/level_failed_overlay.dart, lib/game/components/board_component.dart, lib/game/cosmic_match_game.dart, lib/screens/game_screen.dart, test/utils/star_calculator_test.dart."
     },
     {
       "id": "US-012",
