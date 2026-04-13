@@ -266,8 +266,8 @@
       "technicalNotes": "Create lib/models/level_progress.dart with Hive TypeAdapter. Create lib/repositories/progress_repository.dart. Init Hive in main(): await Hive.initFlutter(); Hive.registerAdapter(LevelProgressAdapter()); Open boxes: 'progress' and 'settings'. Provide via Riverpod.",
       "dependsOn": ["US-011", "US-013"],
       "priority": 14,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "Implemented in iteration 14. Files: lib/models/level_progress.dart, lib/repositories/progress_repository.dart, lib/main.dart, lib/screens/level_select_screen.dart, lib/screens/level_complete_overlay.dart, lib/screens/home_screen.dart, test/repositories/progress_repository_test.dart."
     },
     {
       "id": "US-015",

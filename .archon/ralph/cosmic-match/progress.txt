@@ -1,5 +1,10 @@
 ## Codebase Patterns
 
+### Hive persistence pattern
+- **Where**: `lib/main.dart`, `lib/repositories/progress_repository.dart`
+- **Pattern**: Global `progressRepository` initialized in main() before runApp. Hive boxes opened once, ProgressRepository wraps them. Accessed directly via `import '../main.dart'` — no Riverpod needed for simple global state.
+- **Example**: `progressRepository.saveProgress(levelId, stars, score);`
+
 ### GameState level initialization pattern
 - **Where**: `lib/providers/game_state_provider.dart`
 - **Pattern**: GameState.initFromLevel(LevelConfig) sets moves, goal type, target, and resets score. CosmicMatchGame accepts optional LevelConfig and passes it to both GameState and BoardComponent.
@@ -376,5 +381,36 @@
 - GameScreen changed from StatelessWidget to StatefulWidget to support async level loading via LevelLoader
 - Galaxy colours and names stored as top-level constants for reuse by US-020
 - Progress data (starsByLevel, highestCompleted) defaults to empty/0 — US-014 will wire Hive
+
+---
+
+## 2026-04-14 — US-014: Local storage with Hive
+
+**Status**: PASSED
+**Files changed**:
+- lib/models/level_progress.dart — LevelProgress model with manual Hive TypeAdapter (no code gen)
+- lib/repositories/progress_repository.dart — ProgressRepository with saveProgress, getProgress, getAllProgress, getHighestUnlockedLevel, settings
+- lib/main.dart — Async main(), Hive.initFlutter(), register adapter, open boxes, create global progressRepository
+- lib/screens/level_select_screen.dart — Reads progress from progressRepository for stars and unlock state
+- lib/screens/level_complete_overlay.dart — Changed to StatefulWidget, saves progress in initState
+- lib/screens/home_screen.dart — Settings dialog reads/writes sound/music from Hive
+- test/repositories/progress_repository_test.dart — 13 unit tests for all repository methods
+- test/widget_test.dart — Updated to initialize Hive in setUp for global progressRepository
+
+**Acceptance criteria verified**:
+- [x] Hive initialised in main.dart before runApp
+- [x] LevelProgress model: levelId, stars (0-3), highScore, completed (bool)
+- [x] ProgressRepository with methods: saveProgress, getProgress, getAllProgress, getHighestUnlockedLevel
+- [x] Settings stored: soundEnabled (bool), musicEnabled (bool)
+- [x] Progress saved automatically on level completion
+- [x] Level select screen reads from Hive to show stars and unlock state
+- [x] Unit tests for ProgressRepository (13 tests)
+- [x] flutter test passes (94 tests, all green)
+
+**Learnings**:
+- Manual TypeAdapter avoids needing build_runner/hive_generator deps
+- Global progressRepository via late final is simpler than Riverpod for cross-cutting Hive access
+- LevelProgress doesn't extend HiveObject — use box.put() instead of obj.save()
+- getHighestUnlockedLevel returns the unlocked level number directly (completed + 1), so level select checks `<=` not `<= n + 1`
 
 ---
