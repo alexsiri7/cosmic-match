@@ -246,8 +246,8 @@
       "technicalNotes": "Create lib/screens/level_select_screen.dart. Use GridView.builder for level buttons. Read progress from Hive (or default state if no storage yet). Galaxy names: Lyra, Orion, Andromeda, Centaurus, Pegasus. Pass levelId to GameScreen via Navigator arguments.",
       "dependsOn": ["US-012", "US-009"],
       "priority": 13,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "Implemented in iteration 13. Files: lib/screens/level_select_screen.dart, lib/screens/game_screen.dart."
     },
     {
       "id": "US-014",

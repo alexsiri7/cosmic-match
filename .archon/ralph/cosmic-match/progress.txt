@@ -355,3 +355,26 @@
 - LevelSelectScreen is a placeholder — US-013 will flesh it out with galaxy grouping and progress
 
 ---
+
+## 2026-04-14 — US-013: Level select screen
+
+**Status**: PASSED
+**Files changed**:
+- lib/screens/level_select_screen.dart — Rewrote with galaxy-grouped layout, star ratings, lock/unlock logic, themed headers
+- lib/screens/game_screen.dart — Changed to StatefulWidget, accepts levelId, loads LevelConfig asynchronously via LevelLoader
+
+**Acceptance criteria verified**:
+- [x] Grid or scrollable list of level buttons (numbered 1-50) — GridView with 5 columns per galaxy section
+- [x] Levels grouped by galaxy (10 per galaxy), with galaxy name headers — 5 sections: Lyra, Orion, Andromeda, Centaurus, Pegasus
+- [x] Unlocked levels show star rating (0-3 stars) earned — Star icons below level number
+- [x] Locked levels shown as greyed out / locked icon — Dark background with lock icon
+- [x] Level 1 always unlocked; subsequent levels unlock on completion of previous — highestCompleted + 1 logic
+- [x] Tapping unlocked level navigates to game screen with that level loaded — GameScreen(levelId: levelNumber) loads LevelConfig
+- [x] flutter analyze passes (no issues)
+
+**Learnings**:
+- GameScreen changed from StatelessWidget to StatefulWidget to support async level loading via LevelLoader
+- Galaxy colours and names stored as top-level constants for reuse by US-020
+- Progress data (starsByLevel, highestCompleted) defaults to empty/0 — US-014 will wire Hive
+
+---
