@@ -35,6 +35,11 @@
 - **Pattern**: MatchDetector.findMatches(board) scans rows then columns for consecutive same-type runs, skipping nulls and obstacle tiles. Overlapping matches are merged via set intersection for L/T shapes.
 - **Example**: `final matches = MatchDetector.findMatches(board);`
 
+### Score & GameState pattern
+- **Where**: `lib/providers/game_state_provider.dart`, `lib/utils/score_calculator.dart`
+- **Pattern**: GameState is a ChangeNotifier shared between Flame (BoardComponent) and Flutter (GameHud overlay). Score calculation via static ScoreCalculator.calculateScore(matchSizes, cascadeDepth). HUD registered as Flame overlay in GameScreen's overlayBuilderMap.
+- **Example**: `gameState.addScore(ScoreCalculator.calculateScore(matchSizes, cascadeCount));`
+
 ### Swap animation pattern
 - **Where**: `lib/game/components/board_component.dart`
 - **Pattern**: Use Flame `MoveEffect.to()` with `EffectController(duration: 0.2)` for tile swap animation. Use `onComplete` callback on the second effect to handle post-swap logic.
@@ -209,5 +214,32 @@
 **Learnings**:
 - async/await with Future.delayed works well in Flame components for timed cascade steps
 - cascadeCount is public so future scoring (US-008) can read it for multiplier calculation
+
+---
+
+## 2026-04-14 — US-008: Score system & HUD
+
+**Status**: PASSED
+**Files changed**:
+- lib/utils/score_calculator.dart — Static score calculation: matchPoints (50/150/500) and calculateScore with cascade multiplier
+- lib/providers/game_state_provider.dart — GameState ChangeNotifier with score, addScore, reset
+- lib/screens/game_hud.dart — Flutter overlay widget with animated score count-up via AnimationController
+- lib/game/cosmic_match_game.dart — Added GameState instance, shows 'hud' overlay on load
+- lib/game/components/board_component.dart — Integrated ScoreCalculator in _clearAndApplyGravity, accepts GameState, cascadeCount starts at 1
+- lib/screens/game_screen.dart — Registered 'hud' overlay in GameWidget.overlayBuilderMap
+- test/utils/score_calculator_test.dart — 15 tests for ScoreCalculator and GameState
+
+**Acceptance criteria verified**:
+- [x] Score calculated: 3-match = 50pts, 4-match = 150pts, 5-match = 500pts
+- [x] Cascade multiplier: each chain step multiplies points by chain depth (x1, x2, x3...)
+- [x] HUD overlay shows current score at top of game screen
+- [x] Score animates/counts up when points are awarded
+- [x] HUD built as Flutter overlay widget (not Flame component) for crisp text rendering
+- [x] flutter analyze passes (no issues)
+
+**Learnings**:
+- Flame overlay builder passes `Object?` for game parameter — must cast explicitly (e.g. `game as CosmicMatchGame`)
+- ChangeNotifier (not Riverpod) is simplest bridge between Flame and Flutter overlays — game holds instance, overlay accesses via game reference
+- cascadeCount changed to start at 1 (not 0) so the first match multiplier is x1
 
 ---

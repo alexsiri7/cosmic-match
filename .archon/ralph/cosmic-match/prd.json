@@ -153,8 +153,8 @@
       "technicalNotes": "Create lib/providers/game_state_provider.dart with Riverpod StateNotifier for score, moves, goal progress. HUD as Flutter widget in lib/screens/game_hud.dart, rendered via Flame's overlayBuilder. Score calculation in lib/utils/score_calculator.dart.",
       "dependsOn": ["US-007", "US-004"],
       "priority": 8,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "Implemented in iteration 8. Files: lib/utils/score_calculator.dart, lib/providers/game_state_provider.dart, lib/screens/game_hud.dart, lib/game/cosmic_match_game.dart, lib/game/components/board_component.dart, lib/screens/game_screen.dart, test/utils/score_calculator_test.dart."
     },
     {
       "id": "US-009",
