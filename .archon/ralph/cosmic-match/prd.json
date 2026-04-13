@@ -227,8 +227,8 @@
       "technicalNotes": "Create lib/screens/home_screen.dart. Use Navigator.push for screen transitions. MaterialApp routes: / → HomeScreen, /levels → LevelSelectScreen, /game → GameScreen. Style with space theme colours (dark blues, purples, white text).",
       "dependsOn": ["US-001"],
       "priority": 12,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "Implemented in iteration 12. Files: lib/screens/home_screen.dart, lib/screens/level_select_screen.dart, test/widget_test.dart."
     },
     {
       "id": "US-013",

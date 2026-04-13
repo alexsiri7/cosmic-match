@@ -332,3 +332,26 @@
 - Overlays use Navigator for navigation (Replay replaces route, Next Level/Quit pops)
 
 ---
+
+## 2026-04-14 — US-012: Home screen & navigation
+
+**Status**: PASSED
+**Files changed**:
+- lib/screens/home_screen.dart — Redesigned with StarBackground (CustomPainter), Settings button, SettingsDialog with sound/music toggles
+- lib/screens/level_select_screen.dart — Placeholder level select with 50-item grid, only level 1 unlocked
+- test/widget_test.dart — Added Settings button assertion
+
+**Acceptance criteria verified**:
+- [x] Home screen with game title 'Cosmic Match', Play button, and Settings button
+- [x] Play button navigates to level select screen
+- [x] Settings button opens settings overlay (sound toggle placeholder)
+- [x] Space-themed background (dark with simple star pattern via CustomPainter)
+- [x] Navigation uses Flutter Navigator (not Flame overlays) for screen transitions
+- [x] flutter analyze passes (no issues)
+
+**Learnings**:
+- `activeColor` on SwitchListTile is deprecated — use `activeTrackColor` instead
+- StarBackground uses CustomPainter with fixed Random seed (42) for consistent star positions
+- LevelSelectScreen is a placeholder — US-013 will flesh it out with galaxy grouping and progress
+
+---
