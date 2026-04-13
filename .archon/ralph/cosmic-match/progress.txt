@@ -20,6 +20,11 @@
 - **Pattern**: Use `TapCallbacks` mixin on individual components (not `HasTappables` on game). Use `onTapUp` event handler.
 - **Example**: `class TileComponent extends PositionComponent with TapCallbacks`
 
+### Match detection pattern
+- **Where**: `lib/utils/match_detector.dart`
+- **Pattern**: MatchDetector.findMatches(board) scans rows then columns for consecutive same-type runs, skipping nulls and obstacle tiles. Overlapping matches are merged via set intersection for L/T shapes.
+- **Example**: `final matches = MatchDetector.findMatches(board);`
+
 ### Swap animation pattern
 - **Where**: `lib/game/components/board_component.dart`
 - **Pattern**: Use Flame `MoveEffect.to()` with `EffectController(duration: 0.2)` for tile swap animation. Use `onComplete` callback on the second effect to handle post-swap logic.
@@ -125,5 +130,28 @@
 **Learnings**:
 - Plain Dart classes work fine — no need for freezed since models are mutable (tiles move/change)
 - BoardState.randomFill accepts optional Random param for deterministic testing
+
+---
+
+## 2026-04-14 — US-005: Match detection algorithm
+
+**Status**: PASSED
+**Files changed**:
+- lib/models/match.dart — Match class with positions list and size getter
+- lib/utils/match_detector.dart — MatchDetector with findMatches(), horizontal/vertical scanning, L/T-shape merge
+- test/utils/match_detector_test.dart — 16 unit tests for all match scenarios
+
+**Acceptance criteria verified**:
+- [x] findMatches(BoardState) returns list of Match objects (each with list of positions and match size)
+- [x] Detects horizontal matches of 3, 4, and 5+ tiles
+- [x] Detects vertical matches of 3, 4, and 5+ tiles
+- [x] Detects L-shaped and T-shaped matches (overlapping horizontal + vertical)
+- [x] Does not match obstacle tiles or empty cells
+- [x] Unit tests cover: 3-match, 4-match, 5-match, L-shape, T-shape, no-match, edge cases
+- [x] flutter test passes (33 tests, all green)
+
+**Learnings**:
+- Obstacle tiles are skipped by checking `obstacleType != null` — they break runs even if same TileType
+- Merging overlapping matches via set intersection handles all L/T/+ shapes generically
 
 ---

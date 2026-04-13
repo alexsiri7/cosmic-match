@@ -96,8 +96,8 @@
       "technicalNotes": "Create lib/utils/match_detector.dart. Scan each row left-to-right and each column top-to-bottom, tracking consecutive same-type runs. Return Match objects with positions and size. For L/T detection, merge overlapping matches that share a tile. Match class in lib/models/match.dart.",
       "dependsOn": ["US-002"],
       "priority": 5,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "Implemented in iteration 5. Files: lib/models/match.dart, lib/utils/match_detector.dart, test/utils/match_detector_test.dart."
     },
     {
       "id": "US-006",
