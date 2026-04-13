@@ -38,6 +38,66 @@ class BoardState {
     return grid[row][col] == null;
   }
 
+  /// Swaps the tiles at [r1, c1] and [r2, c2] in the grid data.
+  void swapTiles(int r1, int c1, int r2, int c2) {
+    final temp = grid[r1][c1];
+    grid[r1][c1] = grid[r2][c2];
+    grid[r2][c2] = temp;
+
+    // Update row/col on the swapped TileData objects
+    grid[r1][c1]?.row = r1;
+    grid[r1][c1]?.col = c1;
+    grid[r2][c2]?.row = r2;
+    grid[r2][c2]?.col = c2;
+  }
+
+  /// Checks if the tile at [row], [col] is part of a 3+ match (horizontal or vertical).
+  bool hasMatchAt(int row, int col) {
+    final tile = getTile(row, col);
+    if (tile == null) return false;
+    final type = tile.type;
+
+    // Check horizontal
+    int hCount = 1;
+    // Count left
+    for (int c = col - 1; c >= 0; c--) {
+      if (getTile(row, c)?.type == type) {
+        hCount++;
+      } else {
+        break;
+      }
+    }
+    // Count right
+    for (int c = col + 1; c < cols; c++) {
+      if (getTile(row, c)?.type == type) {
+        hCount++;
+      } else {
+        break;
+      }
+    }
+    if (hCount >= 3) return true;
+
+    // Check vertical
+    int vCount = 1;
+    // Count up
+    for (int r = row - 1; r >= 0; r--) {
+      if (getTile(r, col)?.type == type) {
+        vCount++;
+      } else {
+        break;
+      }
+    }
+    // Count down
+    for (int r = row + 1; r < rows; r++) {
+      if (getTile(r, col)?.type == type) {
+        vCount++;
+      } else {
+        break;
+      }
+    }
+    return vCount >= 3;
+  }
+
   /// Fills all empty cells with random base tile types.
   void randomFill([Random? random]) {
     final rng = random ?? Random();

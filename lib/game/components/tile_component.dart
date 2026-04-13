@@ -1,14 +1,19 @@
 import 'dart:ui';
 
 import 'package:flame/components.dart';
+import 'package:flame/events.dart';
 
 import '../../models/tile_type.dart';
 
 /// Visual representation of a single tile on the board.
-class TileComponent extends PositionComponent {
+class TileComponent extends PositionComponent with TapCallbacks {
   TileType tileType;
   int row;
   int col;
+  bool isSelected = false;
+
+  /// Callback invoked when this tile is tapped.
+  void Function(TileComponent)? onTileTapped;
 
   TileComponent({
     required this.tileType,
@@ -16,6 +21,7 @@ class TileComponent extends PositionComponent {
     required this.col,
     required super.size,
     required super.position,
+    this.onTileTapped,
   });
 
   static Color colorForType(TileType type) {
@@ -36,6 +42,11 @@ class TileComponent extends PositionComponent {
   }
 
   @override
+  void onTapUp(TapUpEvent event) {
+    onTileTapped?.call(this);
+  }
+
+  @override
   void render(Canvas canvas) {
     final paint = Paint()..color = colorForType(tileType);
     final rect = Rect.fromLTWH(0, 0, size.x, size.y);
@@ -44,5 +55,17 @@ class TileComponent extends PositionComponent {
       RRect.fromRectAndRadius(rect, Radius.circular(radius * 0.4)),
       paint,
     );
+
+    // Selection highlight: bright white border
+    if (isSelected) {
+      final highlightPaint = Paint()
+        ..color = const Color(0xFFFFFFFF)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 3.0;
+      canvas.drawRRect(
+        RRect.fromRectAndRadius(rect, Radius.circular(radius * 0.4)),
+        highlightPaint,
+      );
+    }
   }
 }
