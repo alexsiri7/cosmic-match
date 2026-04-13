@@ -3,12 +3,15 @@ import 'package:flame/effects.dart';
 
 import '../../models/board_state.dart';
 import '../../models/match.dart';
+import '../../providers/game_state_provider.dart';
 import '../../utils/match_detector.dart';
+import '../../utils/score_calculator.dart';
 import 'tile_component.dart';
 
 /// Renders the 8x8 game board as a grid of TileComponents.
 class BoardComponent extends PositionComponent with HasGameReference {
   final BoardState boardState;
+  final GameState gameState;
   final List<List<TileComponent?>> _tileComponents = [];
 
   static const double _padding = 4.0;
@@ -25,7 +28,7 @@ class BoardComponent extends PositionComponent with HasGameReference {
   /// Current cell size (updated on resize).
   double _cellSize = 40.0;
 
-  BoardComponent({required this.boardState});
+  BoardComponent({required this.boardState, required this.gameState});
 
   @override
   Future<void> onLoad() async {
@@ -193,7 +196,7 @@ class BoardComponent extends PositionComponent with HasGameReference {
 
   /// Starts the cascade chain: clear → gravity → detect → repeat until stable.
   Future<void> _startCascade(List<Match> matches) async {
-    cascadeCount = 0;
+    cascadeCount = 1;
 
     var currentMatches = matches;
     while (currentMatches.isNotEmpty) {
@@ -213,6 +216,11 @@ class BoardComponent extends PositionComponent with HasGameReference {
 
   /// Clears matched tiles, applies gravity, and updates visual components.
   void _clearAndApplyGravity(List<Match> matches) {
+    // Calculate and add score
+    final matchSizes = matches.map((m) => m.size).toList();
+    final points = ScoreCalculator.calculateScore(matchSizes, cascadeCount);
+    gameState.addScore(points);
+
     // Remove matched tile components
     for (final match in matches) {
       for (final (int r, int c) in match.positions) {
