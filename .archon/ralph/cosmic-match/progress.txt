@@ -39,3 +39,27 @@
 - Package name is com.cosmicmatch.cosmic_match (org.project_name convention)
 
 ---
+
+## 2026-04-14 — US-002: Tile model & grid data structure
+
+**Status**: PASSED
+**Files changed**:
+- lib/models/tile_type.dart — TileType (6 base), BonusTileType (3), ObstacleTileType (3) enums
+- lib/models/tile_data.dart — TileData class with type, bonusType, obstacleType, row, col
+- lib/models/board_state.dart — BoardState with 8x8 grid, getTile, setTile, isEmpty, randomFill
+- test/models/board_state_test.dart — 16 unit tests for all models
+
+**Acceptance criteria verified**:
+- [x] TileType enum with 6 base types: planetRed, planetBlue, star, nebula, moon, comet
+- [x] BonusTileType enum with: pulsar, blackHole, supernova
+- [x] ObstacleTileType enum with: asteroid, iceComet, darkMatter
+- [x] TileData class with properties: type, bonusType (nullable), obstacleType (nullable), row, col
+- [x] BoardState class with 8x8 grid, methods for get/set tile, isEmpty, randomFill
+- [x] Unit tests for BoardState: grid initialization, tile placement, random fill produces valid tiles
+- [x] flutter test passes (17 tests, all green)
+
+**Learnings**:
+- Plain Dart classes work fine — no need for freezed since models are mutable (tiles move/change)
+- BoardState.randomFill accepts optional Random param for deterministic testing
+
+---

@@ -39,8 +39,8 @@
       "technicalNotes": "Create lib/models/tile_type.dart for enums, lib/models/tile_data.dart for TileData, lib/models/board_state.dart for grid logic. Use freezed or plain Dart classes. BoardState.randomFill() should use Random to fill empty cells with base tile types only.",
       "dependsOn": ["US-001"],
       "priority": 2,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "Implemented in iteration 2. Files: lib/models/tile_type.dart, lib/models/tile_data.dart, lib/models/board_state.dart, test/models/board_state_test.dart."
     },
     {
       "id": "US-003",
