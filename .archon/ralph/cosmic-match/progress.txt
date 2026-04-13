@@ -1,5 +1,10 @@
 ## Codebase Patterns
 
+### Bonus tile creation pattern
+- **Where**: `lib/utils/bonus_creator.dart`, `lib/game/components/board_component.dart:_clearAndApplyGravity()`
+- **Pattern**: BonusCreator.createBonusTiles() returns a set of preserved positions. Board clears with clearMatchesPreserving() to keep bonus tiles alive. TileComponent.bonusType drives animated rendering.
+- **Example**: `final preserved = BonusCreator.createBonusTiles(boardState, matches); boardState.clearMatchesPreserving(matches, preserved);`
+
 ### Hive persistence pattern
 - **Where**: `lib/main.dart`, `lib/repositories/progress_repository.dart`
 - **Pattern**: Global `progressRepository` initialized in main() before runApp. Hive boxes opened once, ProgressRepository wraps them. Accessed directly via `import '../main.dart'` — no Riverpod needed for simple global state.
@@ -412,5 +417,33 @@
 - Global progressRepository via late final is simpler than Riverpod for cross-cutting Hive access
 - LevelProgress doesn't extend HiveObject — use box.put() instead of obj.save()
 - getHighestUnlockedLevel returns the unlocked level number directly (completed + 1), so level select checks `<=` not `<= n + 1`
+
+---
+
+## 2026-04-14 — US-015: Bonus tile creation
+
+**Status**: PASSED
+**Files changed**:
+- lib/utils/bonus_creator.dart — New utility: classifies matches (line vs L/T), determines bonus type and position
+- lib/game/components/tile_component.dart — Added bonusType field, animated rendering for pulsar/blackHole/supernova
+- lib/game/components/board_component.dart — Integrated BonusCreator in _clearAndApplyGravity, preserves bonus tiles during clear
+- lib/models/board_state.dart — Added clearMatchesPreserving() method
+- test/utils/bonus_creator_test.dart — 17 unit tests for classification, positioning, and board integration
+
+**Acceptance criteria verified**:
+- [x] 4-in-a-row match creates a Pulsar tile at the match position
+- [x] L-shaped or T-shaped match creates a Black Hole tile at the intersection
+- [x] 5-in-a-row match creates a Supernova tile at the match position
+- [x] Bonus tile replaces one of the matched tiles (remains on board after clear)
+- [x] Bonus tiles visually distinct: Pulsar (pulsing glow), Black Hole (dark swirl), Supernova (bright burst)
+- [x] Unit tests for bonus tile creation logic per match pattern (17 tests)
+- [x] flutter test passes (111 tests, all green)
+
+**Learnings**:
+- Match shape classification via geometry (all same row/col → line, else → L/T) avoids needing to track pre-merge runs
+- _findIntersection checks for positions with neighbours in both row and column directions within the match
+- clearMatchesPreserving allows bonus tiles to survive the clear step while other matched tiles are removed
+
+---
 
 ---

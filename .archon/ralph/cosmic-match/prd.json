@@ -285,8 +285,8 @@
       "technicalNotes": "Extend match_detector.dart to classify match size/shape. Add bonus tile creation in the clear step: if match.size == 4 → pulsar, L/T → blackHole, 5+ → supernova. Set TileData.bonusType on the remaining tile. Update TileComponent rendering for bonus visual indicators.",
       "dependsOn": ["US-005"],
       "priority": 15,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "Implemented in iteration 15. Files: lib/utils/bonus_creator.dart, lib/game/components/tile_component.dart, lib/game/components/board_component.dart, lib/models/board_state.dart, test/utils/bonus_creator_test.dart."
     },
     {
       "id": "US-016",
