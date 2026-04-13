@@ -1,5 +1,15 @@
 ## Codebase Patterns
 
+### GameState level initialization pattern
+- **Where**: `lib/providers/game_state_provider.dart`
+- **Pattern**: GameState.initFromLevel(LevelConfig) sets moves, goal type, target, and resets score. CosmicMatchGame accepts optional LevelConfig and passes it to both GameState and BoardComponent.
+- **Example**: `gameState.initFromLevel(levelConfig);`
+
+### Goal progress tracking in BoardComponent
+- **Where**: `lib/game/components/board_component.dart:_updateGoalProgress()`
+- **Pattern**: After clearing matches, _updateGoalProgress() checks levelConfig.goalType and updates gameState accordingly. clearCount counts tiles of target type, reachScore is automatic via score, clearAllObstacles deferred to US-017.
+- **Example**: `_updateGoalProgress(matches);` called inside `_clearAndApplyGravity()`
+
 ### Flutter project structure
 - **Where**: project root
 - **Pattern**: Flutter project at repo root (not nested), standard `flutter create` layout
@@ -267,5 +277,30 @@
 **Learnings**:
 - LevelLoader.parseLevel() is useful for tests since rootBundle isn't available in unit test context
 - ObstaclePlacement uses List<List<int>> for positions (row, col pairs) — matches the JSON format naturally
+
+---
+
+## 2026-04-14 — US-010: Move counter & goal tracking
+
+**Status**: PASSED
+**Files changed**:
+- lib/providers/game_state_provider.dart — Extended with movesRemaining, goalProgress, goalTarget, goalType, targetTileType, initFromLevel(), useMove(), addGoalProgress(), goalMet, isOutOfMoves
+- lib/game/components/board_component.dart — Added levelConfig field, useMove() call after valid swap, _updateGoalProgress() for tracking cleared tiles per goal type
+- lib/screens/game_hud.dart — Redesigned to show moves, animated score, and goal progress in a Row + goal chip layout
+- lib/game/cosmic_match_game.dart — Accepts optional LevelConfig, calls gameState.initFromLevel()
+- test/utils/score_calculator_test.dart — Added 8 tests for GameState moves/goals/reset
+
+**Acceptance criteria verified**:
+- [x] Move counter decrements by 1 after each valid swap (not invalid swaps)
+- [x] Move counter displayed in HUD
+- [x] Goal progress tracked based on level's goalType (tiles cleared of target type, score reached, obstacles cleared)
+- [x] Goal progress displayed in HUD with target vs current
+- [x] Moves and goal state managed in game state provider
+- [x] flutter analyze passes (no issues)
+
+**Learnings**:
+- GameState.initFromLevel() is cleaner than passing individual fields — single source of truth from LevelConfig
+- Goal progress for reachScore type doesn't need explicit tracking — goalMet getter checks score directly
+- clearAllObstacles progress tracking deferred to US-017 when obstacle mechanics are implemented
 
 ---

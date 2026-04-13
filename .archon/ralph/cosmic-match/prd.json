@@ -190,8 +190,8 @@
       "technicalNotes": "Extend game_state_provider.dart to track movesRemaining and goalProgress. Decrement moves in the swap handler after a valid match. Update goal progress in the match clearing logic based on LevelConfig.goalType. Update game_hud.dart to show moves and goal.",
       "dependsOn": ["US-009", "US-008"],
       "priority": 10,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "Implemented in iteration 10. Files: lib/providers/game_state_provider.dart, lib/game/components/board_component.dart, lib/screens/game_hud.dart, lib/game/cosmic_match_game.dart, test/utils/score_calculator_test.dart."
     },
     {
       "id": "US-011",
