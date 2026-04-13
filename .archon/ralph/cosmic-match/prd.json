@@ -77,8 +77,8 @@
       "technicalNotes": "Add TapCallbacks mixin to TileComponent. Track selectedTile in BoardComponent. Use Flame's MoveEffect or manual position lerp in update(dt) for swap animation. After swap completes, call match detection — if no matches, reverse the swap. Adjacency check: Manhattan distance == 1.",
       "dependsOn": ["US-003"],
       "priority": 4,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "Implemented in iteration 4. Files: lib/game/components/tile_component.dart, lib/game/components/board_component.dart, lib/models/board_state.dart."
     },
     {
       "id": "US-005",

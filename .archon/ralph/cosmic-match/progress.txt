@@ -15,6 +15,16 @@
 - **Pattern**: Use `HasGameReference` mixin (not deprecated `HasGameRef`). Use `onGameResize` for responsive layout.
 - **Example**: `class BoardComponent extends PositionComponent with HasGameReference`
 
+### Tap handling in Flame
+- **Where**: `lib/game/components/tile_component.dart`
+- **Pattern**: Use `TapCallbacks` mixin on individual components (not `HasTappables` on game). Use `onTapUp` event handler.
+- **Example**: `class TileComponent extends PositionComponent with TapCallbacks`
+
+### Swap animation pattern
+- **Where**: `lib/game/components/board_component.dart`
+- **Pattern**: Use Flame `MoveEffect.to()` with `EffectController(duration: 0.2)` for tile swap animation. Use `onComplete` callback on the second effect to handle post-swap logic.
+- **Example**: `tileA.add(MoveEffect.to(posB, EffectController(duration: 0.2)))`
+
 ---
 
 ## 2026-04-14 — US-001: Project scaffolding & dependencies
@@ -67,6 +77,30 @@
 **Learnings**:
 - `HasGameRef` is deprecated in current Flame — use `HasGameReference` instead
 - Flame `onGameResize` is called with the full screen size, use it for responsive layout
+
+---
+
+## 2026-04-14 — US-004: Tile selection & swap input
+
+**Status**: PASSED
+**Files changed**:
+- lib/game/components/tile_component.dart — Added TapCallbacks mixin, selection highlight (white border), onTileTapped callback
+- lib/game/components/board_component.dart — Selection tracking, adjacency check (Manhattan distance == 1), swap animation with MoveEffect, invalid swap reversal animation
+- lib/models/board_state.dart — Added swapTiles() and hasMatchAt() methods for grid data swap and basic match validation
+
+**Acceptance criteria verified**:
+- [x] Tapping a tile highlights it with a visual indicator (white border)
+- [x] Tapping an adjacent tile triggers a swap
+- [x] Tapping a non-adjacent tile changes the selection to the new tile
+- [x] Tapping the same tile deselects it
+- [x] Swap animates tiles moving to each other's positions (smooth lerp over ~200ms via MoveEffect)
+- [x] After swap, if no match is found, tiles snap back to original positions (invalid swap)
+- [x] flutter analyze passes
+
+**Learnings**:
+- Flame's MoveEffect.to() with onComplete callback works well for sequencing swap → validate → reverse logic
+- BoardState.hasMatchAt() provides lightweight match check for swap validation without full match detector (US-005)
+- _processing flag pattern prevents taps during animation — will be reused for cascades (US-007)
 
 ---
 
