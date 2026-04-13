@@ -243,3 +243,29 @@
 - cascadeCount changed to start at 1 (not 0) so the first match multiplier is x1
 
 ---
+
+## 2026-04-14 — US-009: Level data model & loader
+
+**Status**: PASSED
+**Files changed**:
+- lib/models/level_config.dart — LevelConfig class, GoalType enum, ObstaclePlacement class with JSON serialization
+- lib/utils/level_loader.dart — LevelLoader with loadLevel() and parseLevel()
+- assets/levels/level_01.json — clearCount level (Lyra galaxy, 30 moves)
+- assets/levels/level_02.json — reachScore level (Lyra galaxy, 25 moves)
+- assets/levels/level_03.json — clearAllObstacles level with asteroid obstacles (Lyra galaxy, 20 moves)
+- test/models/level_config_test.dart — 10 unit tests for parsing, roundtrip, and edge cases
+
+**Acceptance criteria verified**:
+- [x] LevelConfig class with: id, galaxyIndex, goalType, targetTileType (nullable), targetCount, moveLimit, obstacles list, gridLayout (nullable)
+- [x] GoalType enum: clearCount, reachScore, clearAllObstacles
+- [x] JSON-based level definitions loaded from assets/levels/
+- [x] LevelLoader reads and parses level JSON files
+- [x] Unit tests for LevelConfig parsing from JSON (10 tests)
+- [x] At least 3 test level configs created for development
+- [x] flutter test passes (66 tests, all green)
+
+**Learnings**:
+- LevelLoader.parseLevel() is useful for tests since rootBundle isn't available in unit test context
+- ObstaclePlacement uses List<List<int>> for positions (row, col pairs) — matches the JSON format naturally
+
+---
