@@ -10,6 +10,11 @@
 - **Pattern**: Flutter SDK at `/tmp/flutter-sdk/bin`, use `export PATH="/tmp/flutter-sdk/bin:$PATH"` before commands
 - **Example**: `flutter analyze`, `flutter test`
 
+### Flame component patterns
+- **Where**: `lib/game/components/`
+- **Pattern**: Use `HasGameReference` mixin (not deprecated `HasGameRef`). Use `onGameResize` for responsive layout.
+- **Example**: `class BoardComponent extends PositionComponent with HasGameReference`
+
 ---
 
 ## 2026-04-14 — US-001: Project scaffolding & dependencies
@@ -37,6 +42,31 @@
 - Flutter SDK not pre-installed, cloned to /tmp/flutter-sdk from stable branch
 - `flutter create` places project in subdirectory — moved contents to repo root
 - Package name is com.cosmicmatch.cosmic_match (org.project_name convention)
+
+---
+
+## 2026-04-14 — US-003: Game board rendering
+
+**Status**: PASSED
+**Files changed**:
+- lib/game/components/tile_component.dart — TileComponent with color-per-type rendering (rounded rects)
+- lib/game/components/board_component.dart — BoardComponent with 8x8 grid layout, responsive sizing
+- lib/game/cosmic_match_game.dart — Initializes BoardState, randomFill, adds BoardComponent
+- lib/screens/game_screen.dart — GameScreen wrapping GameWidget
+- lib/screens/home_screen.dart — Play button navigates to GameScreen
+
+**Acceptance criteria verified**:
+- [x] BoardComponent (extends PositionComponent) renders 8x8 grid of tile components
+- [x] Each TileComponent renders as a coloured shape with distinct colour per tile type
+- [x] Grid cells are evenly spaced and centred on screen in portrait orientation
+- [x] Grid resizes appropriately for different screen sizes
+- [x] Board initialises with random tiles via BoardState.randomFill()
+- [x] Game screen shows the rendered board via GameWidget
+- [x] flutter analyze passes
+
+**Learnings**:
+- `HasGameRef` is deprecated in current Flame — use `HasGameReference` instead
+- Flame `onGameResize` is called with the full screen size, use it for responsive layout
 
 ---
 
