@@ -1,4 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:cosmic_match/models/level_config.dart';
+import 'package:cosmic_match/models/tile_type.dart';
 import 'package:cosmic_match/providers/game_state_provider.dart';
 import 'package:cosmic_match/utils/score_calculator.dart';
 
@@ -83,6 +85,141 @@ void main() {
       expect(notifyCount, 1);
       state.addScore(200);
       expect(notifyCount, 2);
+    });
+
+    test('initFromLevel sets moves and goal from LevelConfig', () {
+      final state = GameState();
+      final config = LevelConfig(
+        id: 1,
+        galaxyIndex: 0,
+        goalType: GoalType.clearCount,
+        targetTileType: TileType.star,
+        targetCount: 20,
+        moveLimit: 25,
+      );
+      state.initFromLevel(config);
+      expect(state.movesRemaining, 25);
+      expect(state.moveLimit, 25);
+      expect(state.goalTarget, 20);
+      expect(state.goalType, GoalType.clearCount);
+      expect(state.targetTileType, TileType.star);
+      expect(state.score, 0);
+      expect(state.goalProgress, 0);
+    });
+
+    test('useMove decrements movesRemaining', () {
+      final state = GameState();
+      final config = LevelConfig(
+        id: 1,
+        galaxyIndex: 0,
+        goalType: GoalType.clearCount,
+        targetCount: 10,
+        moveLimit: 5,
+      );
+      state.initFromLevel(config);
+      state.useMove();
+      expect(state.movesRemaining, 4);
+      state.useMove();
+      expect(state.movesRemaining, 3);
+    });
+
+    test('useMove does not go below 0', () {
+      final state = GameState();
+      final config = LevelConfig(
+        id: 1,
+        galaxyIndex: 0,
+        goalType: GoalType.clearCount,
+        targetCount: 10,
+        moveLimit: 1,
+      );
+      state.initFromLevel(config);
+      state.useMove();
+      expect(state.movesRemaining, 0);
+      state.useMove();
+      expect(state.movesRemaining, 0);
+    });
+
+    test('addGoalProgress accumulates', () {
+      final state = GameState();
+      final config = LevelConfig(
+        id: 1,
+        galaxyIndex: 0,
+        goalType: GoalType.clearCount,
+        targetCount: 20,
+        moveLimit: 10,
+      );
+      state.initFromLevel(config);
+      state.addGoalProgress(5);
+      expect(state.goalProgress, 5);
+      state.addGoalProgress(3);
+      expect(state.goalProgress, 8);
+    });
+
+    test('goalMet returns true for clearCount when progress >= target', () {
+      final state = GameState();
+      final config = LevelConfig(
+        id: 1,
+        galaxyIndex: 0,
+        goalType: GoalType.clearCount,
+        targetCount: 10,
+        moveLimit: 5,
+      );
+      state.initFromLevel(config);
+      expect(state.goalMet, false);
+      state.addGoalProgress(10);
+      expect(state.goalMet, true);
+    });
+
+    test('goalMet returns true for reachScore when score >= target', () {
+      final state = GameState();
+      final config = LevelConfig(
+        id: 1,
+        galaxyIndex: 0,
+        goalType: GoalType.reachScore,
+        targetCount: 500,
+        moveLimit: 10,
+      );
+      state.initFromLevel(config);
+      expect(state.goalMet, false);
+      state.addScore(500);
+      expect(state.goalMet, true);
+    });
+
+    test('isOutOfMoves returns true when moves reach 0', () {
+      final state = GameState();
+      final config = LevelConfig(
+        id: 1,
+        galaxyIndex: 0,
+        goalType: GoalType.clearCount,
+        targetCount: 10,
+        moveLimit: 1,
+      );
+      state.initFromLevel(config);
+      expect(state.isOutOfMoves, false);
+      state.useMove();
+      expect(state.isOutOfMoves, true);
+    });
+
+    test('reset clears all state including moves and goals', () {
+      final state = GameState();
+      final config = LevelConfig(
+        id: 1,
+        galaxyIndex: 0,
+        goalType: GoalType.clearCount,
+        targetTileType: TileType.star,
+        targetCount: 20,
+        moveLimit: 25,
+      );
+      state.initFromLevel(config);
+      state.addScore(100);
+      state.useMove();
+      state.addGoalProgress(5);
+      state.reset();
+      expect(state.score, 0);
+      expect(state.movesRemaining, 0);
+      expect(state.goalProgress, 0);
+      expect(state.goalTarget, 0);
+      expect(state.targetTileType, null);
     });
   });
 }

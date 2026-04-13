@@ -2,6 +2,7 @@ import 'package:flame/components.dart';
 import 'package:flame/effects.dart';
 
 import '../../models/board_state.dart';
+import '../../models/level_config.dart';
 import '../../models/match.dart';
 import '../../providers/game_state_provider.dart';
 import '../../utils/match_detector.dart';
@@ -12,6 +13,7 @@ import 'tile_component.dart';
 class BoardComponent extends PositionComponent with HasGameReference {
   final BoardState boardState;
   final GameState gameState;
+  final LevelConfig? levelConfig;
   final List<List<TileComponent?>> _tileComponents = [];
 
   static const double _padding = 4.0;
@@ -28,7 +30,11 @@ class BoardComponent extends PositionComponent with HasGameReference {
   /// Current cell size (updated on resize).
   double _cellSize = 40.0;
 
-  BoardComponent({required this.boardState, required this.gameState});
+  BoardComponent({
+    required this.boardState,
+    required this.gameState,
+    this.levelConfig,
+  });
 
   @override
   Future<void> onLoad() async {
@@ -186,10 +192,11 @@ class BoardComponent extends PositionComponent with HasGameReference {
     final matches = MatchDetector.findMatches(boardState);
 
     if (matches.isEmpty) {
-      // Invalid swap — reverse
+      // Invalid swap — reverse (no move consumed)
       _reverseSwap(tileA, tileB, originalPosA, originalPosB);
     } else {
-      // Valid swap — start cascade chain
+      // Valid swap — consume a move and start cascade chain
+      gameState.useMove();
       _startCascade(matches);
     }
   }
@@ -220,6 +227,9 @@ class BoardComponent extends PositionComponent with HasGameReference {
     final matchSizes = matches.map((m) => m.size).toList();
     final points = ScoreCalculator.calculateScore(matchSizes, cascadeCount);
     gameState.addScore(points);
+
+    // Track goal progress based on level goal type
+    _updateGoalProgress(matches);
 
     // Remove matched tile components
     for (final match in matches) {
@@ -282,6 +292,42 @@ class BoardComponent extends PositionComponent with HasGameReference {
         _tileComponents[r][c] = comp;
         add(comp);
       }
+    }
+  }
+
+  /// Updates goal progress based on the level's goal type and cleared matches.
+  void _updateGoalProgress(List<Match> matches) {
+    if (levelConfig == null) return;
+
+    switch (levelConfig!.goalType) {
+      case GoalType.clearCount:
+        // Count tiles cleared that match the target tile type
+        final targetType = gameState.targetTileType;
+        if (targetType == null) {
+          // No specific target — count all cleared tiles
+          int total = 0;
+          for (final match in matches) {
+            total += match.size;
+          }
+          gameState.addGoalProgress(total);
+        } else {
+          int count = 0;
+          for (final match in matches) {
+            for (final (int r, int c) in match.positions) {
+              final tile = boardState.getTile(r, c);
+              if (tile != null && tile.type == targetType) {
+                count++;
+              }
+            }
+          }
+          gameState.addGoalProgress(count);
+        }
+      case GoalType.reachScore:
+        // Score-based goal — tracked automatically via gameState.score
+        break;
+      case GoalType.clearAllObstacles:
+        // Obstacle clearing will be tracked when obstacle mechanics are implemented (US-017)
+        break;
     }
   }
 
