@@ -1,0 +1,41 @@
+## Codebase Patterns
+
+### Flutter project structure
+- **Where**: project root
+- **Pattern**: Flutter project at repo root (not nested), standard `flutter create` layout
+- **Example**: `lib/main.dart` → `CosmicMatchApp`, `lib/game/cosmic_match_game.dart` → `CosmicMatchGame extends FlameGame`
+
+### Validation commands
+- **Where**: CLI
+- **Pattern**: Flutter SDK at `/tmp/flutter-sdk/bin`, use `export PATH="/tmp/flutter-sdk/bin:$PATH"` before commands
+- **Example**: `flutter analyze`, `flutter test`
+
+---
+
+## 2026-04-14 — US-001: Project scaffolding & dependencies
+
+**Status**: PASSED
+**Files changed**:
+- pubspec.yaml — Added flame, flame_audio, flutter_riverpod, hive, hive_flutter deps; registered asset dirs
+- lib/main.dart — CosmicMatchApp with MaterialApp rendering HomeScreen
+- lib/game/cosmic_match_game.dart — CosmicMatchGame extending FlameGame
+- lib/screens/home_screen.dart — Placeholder home screen with title and Play button
+- android/app/build.gradle.kts — Set minSdk = 26
+- assets/images/, assets/audio/, assets/levels/ — Created with .gitkeep
+- test/widget_test.dart — Updated smoke test for new app structure
+
+**Acceptance criteria verified**:
+- [x] Flutter project created with com.cosmicmatch package name
+- [x] pubspec.yaml includes flame, flame_audio, riverpod, flutter_riverpod, hive, hive_flutter
+- [x] Folder structure created: lib/game/, lib/models/, lib/screens/, lib/providers/, lib/utils/, assets/images/, assets/audio/, assets/levels/
+- [x] Main entry point renders MaterialApp with placeholder home screen
+- [x] Minimum Android SDK set to API 26
+- [x] flutter analyze passes with no errors
+- [x] flutter test passes
+
+**Learnings**:
+- Flutter SDK not pre-installed, cloned to /tmp/flutter-sdk from stable branch
+- `flutter create` places project in subdirectory — moved contents to repo root
+- Package name is com.cosmicmatch.cosmic_match (org.project_name convention)
+
+---

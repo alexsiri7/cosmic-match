@@ -20,8 +20,8 @@
       "technicalNotes": "Use `flutter create cosmic_match --org com.cosmicmatch`. Add to pubspec.yaml: flame ^1.x, flame_audio, flutter_riverpod, hive_flutter. Set minSdkVersion 26 in android/app/build.gradle. Create GameWidget wrapper in lib/game/cosmic_match_game.dart extending FlameGame.",
       "dependsOn": [],
       "priority": 1,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "Implemented in iteration 1. Files: pubspec.yaml, lib/main.dart, lib/game/cosmic_match_game.dart, lib/screens/home_screen.dart, android/app/build.gradle.kts, assets/, test/widget_test.dart."
     },
     {
       "id": "US-002",
