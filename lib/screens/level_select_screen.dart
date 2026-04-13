@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+
+import '../main.dart';
 import 'game_screen.dart';
 
 /// Galaxy chapter names — 10 levels each.
@@ -24,10 +26,13 @@ class LevelSelectScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Default progress: no levels completed, no stars.
-    // US-014 will replace this with Hive-backed data.
+    // Read progress from Hive via the global repository.
+    final allProgress = progressRepository.getAllProgress();
     final Map<int, int> starsByLevel = {};
-    final int highestCompleted = 0; // 0 means only level 1 is unlocked
+    for (final entry in allProgress.entries) {
+      starsByLevel[entry.key] = entry.value.stars;
+    }
+    final int highestUnlocked = progressRepository.getHighestUnlockedLevel();
 
     return Scaffold(
       backgroundColor: const Color(0xFF0A0E21),
@@ -45,7 +50,7 @@ class LevelSelectScreen extends StatelessWidget {
             galaxyName: _galaxyNames[galaxyIndex],
             galaxyColor: _galaxyColors[galaxyIndex],
             starsByLevel: starsByLevel,
-            highestCompleted: highestCompleted,
+            highestCompleted: highestUnlocked,
           );
         },
       ),
@@ -120,7 +125,7 @@ class _GalaxySection extends StatelessWidget {
           itemBuilder: (context, index) {
             final levelNumber = startLevel + index;
             // Level 1 always unlocked; others unlock when previous is completed.
-            final isUnlocked = levelNumber <= highestCompleted + 1;
+            final isUnlocked = levelNumber <= highestCompleted;
             final stars = starsByLevel[levelNumber] ?? 0;
 
             return _LevelButton(

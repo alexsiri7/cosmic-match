@@ -1,5 +1,7 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
+
+import '../main.dart';
 import 'level_select_screen.dart';
 
 class HomeScreen extends StatelessWidget {
@@ -108,8 +110,8 @@ class SettingsDialog extends StatefulWidget {
 }
 
 class _SettingsDialogState extends State<SettingsDialog> {
-  bool _soundEnabled = true;
-  bool _musicEnabled = true;
+  late bool _soundEnabled = progressRepository.soundEnabled;
+  late bool _musicEnabled = progressRepository.musicEnabled;
 
   @override
   Widget build(BuildContext context) {
@@ -128,6 +130,7 @@ class _SettingsDialogState extends State<SettingsDialog> {
             activeTrackColor: const Color(0xFF6C63FF),
             onChanged: (value) {
               setState(() => _soundEnabled = value);
+              progressRepository.soundEnabled = value;
             },
           ),
           SwitchListTile(
@@ -136,6 +139,7 @@ class _SettingsDialogState extends State<SettingsDialog> {
             activeTrackColor: const Color(0xFF6C63FF),
             onChanged: (value) {
               setState(() => _musicEnabled = value);
+              progressRepository.musicEnabled = value;
             },
           ),
         ],

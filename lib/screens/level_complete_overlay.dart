@@ -1,18 +1,38 @@
 import 'package:flutter/material.dart';
 
 import '../game/cosmic_match_game.dart';
+import '../main.dart';
 import '../utils/star_calculator.dart';
 
 /// Overlay shown when the player wins a level.
-class LevelCompleteOverlay extends StatelessWidget {
+class LevelCompleteOverlay extends StatefulWidget {
   final CosmicMatchGame game;
 
   const LevelCompleteOverlay({super.key, required this.game});
 
   @override
+  State<LevelCompleteOverlay> createState() => _LevelCompleteOverlayState();
+}
+
+class _LevelCompleteOverlayState extends State<LevelCompleteOverlay> {
+  late final int stars;
+
+  @override
+  void initState() {
+    super.initState();
+    final gs = widget.game.gameState;
+    stars = StarCalculator.calculateStars(gs.movesRemaining, gs.moveLimit);
+
+    // Save progress to Hive
+    final levelId = widget.game.levelConfig?.id;
+    if (levelId != null) {
+      progressRepository.saveProgress(levelId, stars, gs.score);
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final gs = game.gameState;
-    final stars = StarCalculator.calculateStars(gs.movesRemaining, gs.moveLimit);
+    final gs = widget.game.gameState;
 
     return ColoredBox(
       color: Colors.black54,

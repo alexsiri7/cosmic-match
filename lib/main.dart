@@ -1,7 +1,30 @@
 import 'package:flutter/material.dart';
+import 'package:hive_flutter/hive_flutter.dart';
+
+import 'package:cosmic_match/models/level_progress.dart';
+import 'package:cosmic_match/repositories/progress_repository.dart';
 import 'package:cosmic_match/screens/home_screen.dart';
 
-void main() {
+late final ProgressRepository progressRepository;
+
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  await Hive.initFlutter();
+  Hive.registerAdapter(LevelProgressAdapter());
+
+  final progressBox = await Hive.openBox<LevelProgress>(
+    ProgressRepository.progressBoxName,
+  );
+  final settingsBox = await Hive.openBox<dynamic>(
+    ProgressRepository.settingsBoxName,
+  );
+
+  progressRepository = ProgressRepository(
+    progressBox: progressBox,
+    settingsBox: settingsBox,
+  );
+
   runApp(const CosmicMatchApp());
 }
 
