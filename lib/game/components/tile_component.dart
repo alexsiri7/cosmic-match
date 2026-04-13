@@ -1,0 +1,48 @@
+import 'dart:ui';
+
+import 'package:flame/components.dart';
+
+import '../../models/tile_type.dart';
+
+/// Visual representation of a single tile on the board.
+class TileComponent extends PositionComponent {
+  TileType tileType;
+  int row;
+  int col;
+
+  TileComponent({
+    required this.tileType,
+    required this.row,
+    required this.col,
+    required super.size,
+    required super.position,
+  });
+
+  static Color colorForType(TileType type) {
+    switch (type) {
+      case TileType.planetRed:
+        return const Color(0xFFE53935);
+      case TileType.planetBlue:
+        return const Color(0xFF1E88E5);
+      case TileType.star:
+        return const Color(0xFFFFD600);
+      case TileType.nebula:
+        return const Color(0xFFAB47BC);
+      case TileType.moon:
+        return const Color(0xFFBDBDBD);
+      case TileType.comet:
+        return const Color(0xFF00E5FF);
+    }
+  }
+
+  @override
+  void render(Canvas canvas) {
+    final paint = Paint()..color = colorForType(tileType);
+    final rect = Rect.fromLTWH(0, 0, size.x, size.y);
+    final radius = size.x / 2;
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(rect, Radius.circular(radius * 0.4)),
+      paint,
+    );
+  }
+}
