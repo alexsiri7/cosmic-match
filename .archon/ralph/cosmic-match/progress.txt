@@ -20,6 +20,11 @@
 - **Pattern**: Use `TapCallbacks` mixin on individual components (not `HasTappables` on game). Use `onTapUp` event handler.
 - **Example**: `class TileComponent extends PositionComponent with TapCallbacks`
 
+### Cascade pattern
+- **Where**: `lib/game/components/board_component.dart:195-211`
+- **Pattern**: `_startCascade()` async loop: clear → gravity → 300ms delay → detect → repeat. `cascadeCount` tracks chain depth. `_processing` stays true throughout.
+- **Example**: `await _startCascade(matches);`
+
 ### Gravity pattern
 - **Where**: `lib/models/board_state.dart`
 - **Pattern**: `applyGravity()` returns `GravityResult` with `movedTiles` (map of new pos → old row) and `newTiles` (list of spawned positions). BoardComponent uses this to animate falls and spawn new TileComponents.
@@ -183,5 +188,26 @@
 - GravityResult data object allows BoardComponent to animate only tiles that actually moved
 - New tiles start at negative row positions (above board) for the fall-in animation
 - Using MatchDetector.findMatches() in swap completion replaces the simpler hasMatchAt() check
+
+---
+
+## 2026-04-14 — US-007: Cascade chain reactions
+
+**Status**: PASSED
+**Files changed**:
+- lib/game/components/board_component.dart — Added _startCascade() async cascade loop, cascadeCount field, renamed _clearAndGravity → _clearAndApplyGravity with proper Match typing
+
+**Acceptance criteria verified**:
+- [x] After gravity fills the board, match detection runs again
+- [x] If new matches are found, they are cleared and gravity re-applied (loop)
+- [x] Cascade continues until no new matches exist
+- [x] Each cascade step has a brief delay for visual clarity (~300ms)
+- [x] Cascade combo counter tracks chain length (cascadeCount field)
+- [x] Board is locked from input during cascade resolution (_processing stays true)
+- [x] flutter analyze passes (no issues)
+
+**Learnings**:
+- async/await with Future.delayed works well in Flame components for timed cascade steps
+- cascadeCount is public so future scoring (US-008) can read it for multiplier calculation
 
 ---

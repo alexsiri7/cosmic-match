@@ -135,8 +135,8 @@
       "technicalNotes": "Implement game loop in BoardComponent: swap → detect → clear → gravity → detect → ... until stable. Use async/await with Future.delayed for cascade timing. Set a `processing` flag to ignore taps during cascade. Track cascadeCount for scoring multiplier.",
       "dependsOn": ["US-006"],
       "priority": 7,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "Implemented in iteration 7. Files: lib/game/components/board_component.dart."
     },
     {
       "id": "US-008",
