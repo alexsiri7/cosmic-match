@@ -2,6 +2,7 @@ import 'package:flame/components.dart';
 import 'package:flame/effects.dart';
 
 import '../../models/board_state.dart';
+import '../../utils/match_detector.dart';
 import 'tile_component.dart';
 
 /// Renders the 8x8 game board as a grid of TileComponents.
@@ -174,16 +175,84 @@ class BoardComponent extends PositionComponent with HasGameReference {
     tileB.row = rowA;
     tileB.col = colA;
 
-    // Check for matches at both swapped positions
-    final hasMatch =
-        boardState.hasMatchAt(rowA, colA) || boardState.hasMatchAt(rowB, colB);
+    // Check for matches
+    final matches = MatchDetector.findMatches(boardState);
 
-    if (!hasMatch) {
+    if (matches.isEmpty) {
       // Invalid swap — reverse
       _reverseSwap(tileA, tileB, originalPosA, originalPosB);
     } else {
-      _processing = false;
+      // Valid swap — clear matches and apply gravity
+      _clearAndGravity(matches);
     }
+  }
+
+  /// Clears matched tiles, applies gravity, and updates visual components.
+  void _clearAndGravity(List<dynamic> matches) {
+    // Remove matched tile components
+    for (final match in matches) {
+      for (final (int r, int c) in match.positions) {
+        final comp = _tileComponents[r][c];
+        if (comp != null) {
+          comp.removeFromParent();
+          _tileComponents[r][c] = null;
+        }
+      }
+    }
+
+    // Clear in board data
+    boardState.clearMatches(matches.cast());
+
+    // Apply gravity
+    final result = boardState.applyGravity();
+
+    // Animate existing tiles falling to new positions
+    for (final entry in result.movedTiles.entries) {
+      final (newRow, col) = entry.key;
+      final oldRow = entry.value;
+      final comp = _tileComponents[oldRow][col];
+      if (comp != null) {
+        _tileComponents[oldRow][col] = null;
+        _tileComponents[newRow][col] = comp;
+        comp.row = newRow;
+        comp.col = col;
+        comp.add(
+          MoveEffect.to(
+            _tilePosition(newRow, col),
+            EffectController(duration: 0.2),
+          ),
+        );
+      }
+    }
+
+    // Create new tile components for spawned tiles (animate from above)
+    for (final (int r, int c) in result.newTiles) {
+      final tileData = boardState.getTile(r, c);
+      if (tileData != null) {
+        final tileSize = _cellSize - _padding;
+        // Start above the board
+        final startPos = _tilePosition(-1 - r, c);
+        final targetPos = _tilePosition(r, c);
+        final comp = TileComponent(
+          tileType: tileData.type,
+          row: r,
+          col: c,
+          size: Vector2(tileSize, tileSize),
+          position: startPos,
+          onTileTapped: _onTileTapped,
+        );
+        comp.add(
+          MoveEffect.to(
+            targetPos,
+            EffectController(duration: 0.3),
+          ),
+        );
+        _tileComponents[r][c] = comp;
+        add(comp);
+      }
+    }
+
+    _processing = false;
   }
 
   void _reverseSwap(

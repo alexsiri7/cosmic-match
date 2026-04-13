@@ -1,5 +1,6 @@
 import 'dart:math';
 
+import 'match.dart';
 import 'tile_data.dart';
 import 'tile_type.dart';
 
@@ -98,6 +99,65 @@ class BoardState {
     return vCount >= 3;
   }
 
+  /// Clears all tiles at the positions in the given matches (sets to null).
+  void clearMatches(List<Match> matches) {
+    for (final match in matches) {
+      for (final (r, c) in match.positions) {
+        grid[r][c] = null;
+      }
+    }
+  }
+
+  /// Applies gravity: tiles fall down to fill empty spaces per column.
+  /// Returns a map of (newRow, col) → oldRow for tiles that moved,
+  /// plus a list of (row, col) for newly created tiles at the top.
+  GravityResult applyGravity([Random? random]) {
+    final rng = random ?? Random();
+    final baseTypes = TileType.values;
+    final movedTiles = <(int, int), int>{}; // (newRow, col) → oldRow
+    final newTiles = <(int, int)>[]; // positions of newly spawned tiles
+
+    for (int c = 0; c < cols; c++) {
+      // Collect non-null tiles from bottom to top
+      final existing = <TileData>[];
+      for (int r = rows - 1; r >= 0; r--) {
+        if (grid[r][c] != null) {
+          existing.add(grid[r][c]!);
+        }
+      }
+
+      // Clear the column
+      for (int r = 0; r < rows; r++) {
+        grid[r][c] = null;
+      }
+
+      // Place existing tiles at the bottom
+      int writeRow = rows - 1;
+      for (final tile in existing) {
+        final oldRow = tile.row;
+        tile.row = writeRow;
+        tile.col = c;
+        grid[writeRow][c] = tile;
+        if (writeRow != oldRow) {
+          movedTiles[(writeRow, c)] = oldRow;
+        }
+        writeRow--;
+      }
+
+      // Fill remaining empty cells at the top with new random tiles
+      for (int r = writeRow; r >= 0; r--) {
+        grid[r][c] = TileData(
+          type: baseTypes[rng.nextInt(baseTypes.length)],
+          row: r,
+          col: c,
+        );
+        newTiles.add((r, c));
+      }
+    }
+
+    return GravityResult(movedTiles: movedTiles, newTiles: newTiles);
+  }
+
   /// Fills all empty cells with random base tile types.
   void randomFill([Random? random]) {
     final rng = random ?? Random();
@@ -114,4 +174,15 @@ class BoardState {
       }
     }
   }
+}
+
+/// Result of applying gravity to the board.
+class GravityResult {
+  /// Map of (newRow, col) → oldRow for tiles that moved down.
+  final Map<(int, int), int> movedTiles;
+
+  /// Positions of newly spawned tiles at the top.
+  final List<(int, int)> newTiles;
+
+  GravityResult({required this.movedTiles, required this.newTiles});
 }
