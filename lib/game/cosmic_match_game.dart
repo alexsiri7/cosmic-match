@@ -12,6 +12,9 @@ class CosmicMatchGame extends FlameGame {
   final GameState gameState = GameState();
   final LevelConfig? levelConfig;
 
+  /// True when the level has ended (win or lose) — locks board input.
+  bool levelEnded = false;
+
   CosmicMatchGame({this.levelConfig});
 
   @override

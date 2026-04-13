@@ -7,10 +7,12 @@ import '../../models/match.dart';
 import '../../providers/game_state_provider.dart';
 import '../../utils/match_detector.dart';
 import '../../utils/score_calculator.dart';
+import '../cosmic_match_game.dart';
 import 'tile_component.dart';
 
 /// Renders the 8x8 game board as a grid of TileComponents.
-class BoardComponent extends PositionComponent with HasGameReference {
+class BoardComponent extends PositionComponent
+    with HasGameReference<CosmicMatchGame> {
   final BoardState boardState;
   final GameState gameState;
   final LevelConfig? levelConfig;
@@ -109,7 +111,7 @@ class BoardComponent extends PositionComponent with HasGameReference {
   }
 
   void _onTileTapped(TileComponent tapped) {
-    if (_processing) return;
+    if (_processing || game.levelEnded) return;
 
     if (_selectedTile == null) {
       // No selection — select this tile
@@ -219,6 +221,22 @@ class BoardComponent extends PositionComponent with HasGameReference {
     }
 
     _processing = false;
+
+    // Check win/lose conditions after cascade resolves
+    _checkLevelEnd();
+  }
+
+  /// Checks if the level is won or lost and shows the appropriate overlay.
+  void _checkLevelEnd() {
+    if (game.levelEnded) return;
+
+    if (gameState.goalMet) {
+      game.levelEnded = true;
+      game.overlays.add('levelComplete');
+    } else if (gameState.isOutOfMoves) {
+      game.levelEnded = true;
+      game.overlays.add('levelFailed');
+    }
   }
 
   /// Clears matched tiles, applies gravity, and updates visual components.
