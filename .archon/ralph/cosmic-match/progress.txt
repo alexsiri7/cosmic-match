@@ -20,6 +20,11 @@
 - **Pattern**: Use `TapCallbacks` mixin on individual components (not `HasTappables` on game). Use `onTapUp` event handler.
 - **Example**: `class TileComponent extends PositionComponent with TapCallbacks`
 
+### Gravity pattern
+- **Where**: `lib/models/board_state.dart`
+- **Pattern**: `applyGravity()` returns `GravityResult` with `movedTiles` (map of new pos → old row) and `newTiles` (list of spawned positions). BoardComponent uses this to animate falls and spawn new TileComponents.
+- **Example**: `final result = boardState.applyGravity(); for (final entry in result.movedTiles.entries) { ... }`
+
 ### Match detection pattern
 - **Where**: `lib/utils/match_detector.dart`
 - **Pattern**: MatchDetector.findMatches(board) scans rows then columns for consecutive same-type runs, skipping nulls and obstacle tiles. Overlapping matches are merged via set intersection for L/T shapes.
@@ -153,5 +158,30 @@
 **Learnings**:
 - Obstacle tiles are skipped by checking `obstacleType != null` — they break runs even if same TileType
 - Merging overlapping matches via set intersection handles all L/T/+ shapes generically
+
+---
+
+## 2026-04-14 — US-006: Tile clearing & gravity
+
+**Status**: PASSED
+**Files changed**:
+- lib/models/board_state.dart — Added clearMatches(), applyGravity(), GravityResult class
+- lib/game/components/board_component.dart — Integrated MatchDetector after swap, _clearAndGravity() method with animations
+- test/models/gravity_test.dart — 7 unit tests for clearing and gravity logic
+
+**Acceptance criteria verified**:
+- [x] Matched tiles are removed from the board (set to null in BoardState)
+- [x] After clearing, tiles above empty spaces fall down (gravity, column-based)
+- [x] Empty spaces at the top of columns are filled with new random tiles
+- [x] Gravity applies per-column, preserving tile order
+- [x] Visual: tiles animate downward to their new positions (MoveEffect, 0.2s)
+- [x] New tiles animate falling in from above the board (MoveEffect, 0.3s)
+- [x] Unit tests for gravity logic: single gap, multiple gaps, full column clear
+- [x] flutter test passes (41 tests, all green)
+
+**Learnings**:
+- GravityResult data object allows BoardComponent to animate only tiles that actually moved
+- New tiles start at negative row positions (above board) for the fall-in animation
+- Using MatchDetector.findMatches() in swap completion replaces the simpler hasMatchAt() check
 
 ---

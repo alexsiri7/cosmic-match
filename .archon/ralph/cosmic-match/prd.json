@@ -116,8 +116,8 @@
       "technicalNotes": "Add clearMatches(matches) and applyGravity() methods to BoardState. Gravity: iterate each column bottom-to-top, shift non-null tiles down, fill top with randomFill(). In BoardComponent, animate tile position changes with MoveEffect. Trigger gravity after match clear, then re-render.",
       "dependsOn": ["US-005", "US-003"],
       "priority": 6,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "Implemented in iteration 6. Files: lib/models/board_state.dart, lib/game/components/board_component.dart, test/models/gravity_test.dart."
     },
     {
       "id": "US-007",
