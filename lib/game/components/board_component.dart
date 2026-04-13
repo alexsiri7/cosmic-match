@@ -2,6 +2,7 @@ import 'package:flame/components.dart';
 import 'package:flame/effects.dart';
 
 import '../../models/board_state.dart';
+import '../../models/match.dart';
 import '../../utils/match_detector.dart';
 import 'tile_component.dart';
 
@@ -15,8 +16,11 @@ class BoardComponent extends PositionComponent with HasGameReference {
   /// Currently selected tile (null if none).
   TileComponent? _selectedTile;
 
-  /// True while a swap animation is in progress — ignores taps.
+  /// True while a swap/cascade is in progress — ignores taps.
   bool _processing = false;
+
+  /// Tracks the current cascade chain depth (0 = initial match, 1+ = cascades).
+  int cascadeCount = 0;
 
   /// Current cell size (updated on resize).
   double _cellSize = 40.0;
@@ -182,13 +186,33 @@ class BoardComponent extends PositionComponent with HasGameReference {
       // Invalid swap — reverse
       _reverseSwap(tileA, tileB, originalPosA, originalPosB);
     } else {
-      // Valid swap — clear matches and apply gravity
-      _clearAndGravity(matches);
+      // Valid swap — start cascade chain
+      _startCascade(matches);
     }
   }
 
+  /// Starts the cascade chain: clear → gravity → detect → repeat until stable.
+  Future<void> _startCascade(List<Match> matches) async {
+    cascadeCount = 0;
+
+    var currentMatches = matches;
+    while (currentMatches.isNotEmpty) {
+      _clearAndApplyGravity(currentMatches);
+
+      // Wait for gravity/fall animations to complete
+      await Future<void>.delayed(const Duration(milliseconds: 300));
+
+      cascadeCount++;
+
+      // Check for new matches after gravity
+      currentMatches = MatchDetector.findMatches(boardState);
+    }
+
+    _processing = false;
+  }
+
   /// Clears matched tiles, applies gravity, and updates visual components.
-  void _clearAndGravity(List<dynamic> matches) {
+  void _clearAndApplyGravity(List<Match> matches) {
     // Remove matched tile components
     for (final match in matches) {
       for (final (int r, int c) in match.positions) {
@@ -201,7 +225,7 @@ class BoardComponent extends PositionComponent with HasGameReference {
     }
 
     // Clear in board data
-    boardState.clearMatches(matches.cast());
+    boardState.clearMatches(matches);
 
     // Apply gravity
     final result = boardState.applyGravity();
@@ -251,8 +275,6 @@ class BoardComponent extends PositionComponent with HasGameReference {
         add(comp);
       }
     }
-
-    _processing = false;
   }
 
   void _reverseSwap(
