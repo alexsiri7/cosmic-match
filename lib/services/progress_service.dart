@@ -1,4 +1,4 @@
-import 'package:crc32/crc32.dart';
+import 'package:archive/archive.dart';
 import 'package:flutter/foundation.dart';
 import 'package:hive/hive.dart';
 import '../models/level_progress.dart';
@@ -35,6 +35,6 @@ class ProgressService {
     final storedCrc = raw['crc'] as int?;
     if (storedCrc == null) return false;
     final data = Map<String, dynamic>.from(raw)..remove('crc');
-    return Crc32.compute(LevelProgress.canonicalize(data).codeUnits) == storedCrc;
+    return getCrc32(LevelProgress.canonicalize(data).codeUnits) == storedCrc;
   }
 }
