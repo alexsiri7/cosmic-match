@@ -57,7 +57,7 @@ lower-priority passes, preventing double-counting.
 ### CRC32 Persistence Contract (`lib/models/level_progress.dart`, `lib/services/progress_service.dart`)
 
 `LevelProgress.toMap()` must always include a `crc` field computed over all other fields
-using `_canonicalize()` (key-sorted representation). `ProgressService._isValid()` rejects
+using `canonicalize()` (key-sorted representation). `ProgressService._isValid()` rejects
 any map missing or mismatching the CRC and resets to `LevelProgress.initial()`.
 
 When adding new fields to `LevelProgress`:

@@ -136,7 +136,7 @@ Casual mobile gamers who want something to play in short bursts — commuters, p
 | M2 — Levels | Level goals, move counter, win/lose states, level select |
 | M3 — Polish | Animations, sound effects, full tile art, bonus tiles |
 | M4 — Content | 50 levels, 5 galaxy chapters, obstacle tiles |
-| M5 — Ship | Play Store listing, icon, screenshots, privacy policy |
+| M5 — Ship | Play Store listing, icon, screenshots. Privacy policy: see `PRIVACY.md` — must be published to a public URL before Play Store submission. Consent dialog required before adding any analytics or ad SDK. |
 
 ---
 

@@ -157,8 +157,7 @@ class PatternDetector {
         if (hRun != null && vRun != null) {
           final allPositions = <TilePosition>{...hRun, ...vRun};
           // Must have at least 5 unique tiles for an L/T shape
-          if (allPositions.length >= 5 &&
-              allPositions.every((p) => !claimed.contains(p.key))) {
+          if (allPositions.length >= 5) {
             final positionsList = allPositions.toList();
             for (final p in positionsList) {
               claimed.add(p.key);
