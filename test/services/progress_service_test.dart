@@ -2,18 +2,13 @@ import 'package:archive/archive.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:cosmic_match/models/level_progress.dart';
 
-/// Mirror of ProgressService._isValid / _canonicalize for test-level validation.
+/// Mirror of ProgressService._isValid for test-level validation.
 /// Keeps tests independent of Hive while still exercising the same CRC logic.
 bool _isValid(Map raw) {
   final storedCrc = raw['crc'] as int?;
   if (storedCrc == null) return false;
   final data = Map<String, dynamic>.from(raw)..remove('crc');
-  return getCrc32(_canonicalize(data).codeUnits) == storedCrc;
-}
-
-String _canonicalize(Map<String, dynamic> data) {
-  final keys = data.keys.toList()..sort();
-  return keys.map((k) => '$k:${data[k]}').join(',');
+  return getCrc32(LevelProgress.canonicalize(data).codeUnits) == storedCrc;
 }
 
 void main() {
