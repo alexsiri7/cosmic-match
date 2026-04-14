@@ -50,6 +50,16 @@ void main() {
       final crc2 = progress.toMap()['crc'] as int;
       expect(crc1, equals(crc2));
     });
+
+    test('CRC value is stable for known input (regression)', () {
+      // Pins the concrete CRC output for a known canonical string.
+      // Canonical form (keys alphabetical): "bestScore:100,level:1,starsEarned:2"
+      // This catches any future package swap or algorithm change that would
+      // silently invalidate persisted save data.
+      const expectedCrc = 2900003034;
+      final progress = LevelProgress(level: 1, starsEarned: 2, bestScore: 100);
+      expect(progress.toMap()['crc'], equals(expectedCrc));
+    });
   });
 
   group('ProgressService CRC validation', () {
