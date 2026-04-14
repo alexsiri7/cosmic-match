@@ -26,8 +26,7 @@ class LevelProgress {
     return data;
   }
 
-  /// Note: CRC is not validated here; callers must call ProgressService._isValid
-  /// before invoking fromMap to ensure data integrity.
+  /// CRC integrity is validated by [ProgressService] before this is called.
   factory LevelProgress.fromMap(Map raw) {
     return LevelProgress(
       level: raw['level'] as int,
