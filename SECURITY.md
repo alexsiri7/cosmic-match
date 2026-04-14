@@ -386,7 +386,7 @@ Add the following steps to your release job in `.github/workflows/release.yml`:
 
 | Secret | Value |
 |--------|-------|
-| `KEYSTORE_BASE64` | Output of `base64 -w 0 cosmic-match-release.jks` |
+| `KEYSTORE_BASE64` | **Linux:** `base64 -w 0 cosmic-match-release.jks` <br> **macOS:** `base64 cosmic-match-release.jks \| tr -d '\n'` |
 | `KEYSTORE_PASSWORD` | Store password |
 | `KEY_ALIAS` | `cosmic-match` |
 | `KEY_PASSWORD` | Key password |
@@ -422,7 +422,7 @@ Complete all items before shipping any backend-connected release:
 | # | Checkpoint | Status |
 |---|---|---|
 | 1 | Production keystore generated and stored securely (not in repo) | [ ] |
-| 1a | `android/key.properties.example` committed; `key.properties` is gitignored | [ ] |
+| 1a | `android/key.properties.example` committed to the repository | [ ] |
 | 2 | `key.properties` created and gitignored | [ ] |
 | 3 | `network_security_config.xml` created with cleartext blocked | [ ] |
 | 4 | Auth provider selected and integrated (Firebase or Supabase) | [ ] |
