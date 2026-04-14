@@ -1,0 +1,433 @@
+{
+  "project": "CosmicMatch",
+  "branchName": "ralph/cosmic-match",
+  "prdFile": "prd.md",
+  "description": "Space-themed match-3 mobile game with Flutter and Flame engine — 50 levels, bonus tiles, obstacle mechanics",
+  "userStories": [
+    {
+      "id": "US-001",
+      "title": "Project scaffolding & dependencies",
+      "description": "As a developer, I want a Flutter project with Flame engine and all dependencies configured so that I can start building the game",
+      "acceptanceCriteria": [
+        "Flutter project created with `flutter create` (package name: com.cosmicmatch.app)",
+        "pubspec.yaml includes flame, flame_audio, riverpod, flutter_riverpod, hive, hive_flutter dependencies",
+        "Folder structure created: lib/game/, lib/models/, lib/screens/, lib/providers/, lib/utils/, assets/images/, assets/audio/, assets/levels/",
+        "Main entry point renders a MaterialApp with a placeholder home screen",
+        "Minimum Android SDK set to API 26 (Android 8)",
+        "`flutter analyze` passes with no errors",
+        "App builds and runs with `flutter run`"
+      ],
+      "technicalNotes": "Use `flutter create cosmic_match --org com.cosmicmatch`. Add to pubspec.yaml: flame ^1.x, flame_audio, flutter_riverpod, hive_flutter. Set minSdkVersion 26 in android/app/build.gradle. Create GameWidget wrapper in lib/game/cosmic_match_game.dart extending FlameGame.",
+      "dependsOn": [],
+      "priority": 1,
+      "passes": true,
+      "notes": "Implemented in iteration 1. Files: pubspec.yaml, lib/main.dart, lib/game/cosmic_match_game.dart, lib/screens/home_screen.dart, android/app/build.gradle.kts, assets/, test/widget_test.dart."
+    },
+    {
+      "id": "US-002",
+      "title": "Tile model & grid data structure",
+      "description": "As a developer, I want tile type enums and a grid data model so that the game board state can be represented and manipulated",
+      "acceptanceCriteria": [
+        "TileType enum with 6 base types: planetRed, planetBlue, star, nebula, moon, comet",
+        "BonusTileType enum with: pulsar, blackHole, supernova",
+        "ObstacleTileType enum with: asteroid, iceComet, darkMatter",
+        "TileData class with properties: type, bonusType (nullable), obstacleType (nullable), row, col",
+        "BoardState class with 8x8 grid (List<List<TileData?>>), methods for get/set tile, isEmpty, randomFill",
+        "Unit tests for BoardState: grid initialization, tile placement, random fill produces valid tiles",
+        "`flutter test` passes"
+      ],
+      "technicalNotes": "Create lib/models/tile_type.dart for enums, lib/models/tile_data.dart for TileData, lib/models/board_state.dart for grid logic. Use freezed or plain Dart classes. BoardState.randomFill() should use Random to fill empty cells with base tile types only.",
+      "dependsOn": ["US-001"],
+      "priority": 2,
+      "passes": true,
+      "notes": "Implemented in iteration 2. Files: lib/models/tile_type.dart, lib/models/tile_data.dart, lib/models/board_state.dart, test/models/board_state_test.dart."
+    },
+    {
+      "id": "US-003",
+      "title": "Game board rendering",
+      "description": "As a player, I want to see a colourful 8x8 grid of space tiles so that I can visually interact with the game board",
+      "acceptanceCriteria": [
+        "BoardComponent (extends PositionComponent) renders 8x8 grid of tile components",
+        "Each TileComponent renders as a coloured shape (circle/square) with distinct colour per tile type",
+        "Grid cells are evenly spaced and centred on screen in portrait orientation",
+        "Grid resizes appropriately for different screen sizes",
+        "Board initialises with random tiles via BoardState.randomFill()",
+        "Game screen shows the rendered board via GameWidget",
+        "`flutter analyze` passes"
+      ],
+      "technicalNotes": "Create lib/game/components/board_component.dart and lib/game/components/tile_component.dart. TileComponent extends PositionComponent, renders with Canvas paint (RectangleComponent or CircleComponent). Calculate cell size from screen width / 8 with padding. Use CosmicMatchGame.onGameResize for responsive sizing.",
+      "dependsOn": ["US-002"],
+      "priority": 3,
+      "passes": true,
+      "notes": "Implemented in iteration 3. Files: lib/game/components/board_component.dart, lib/game/components/tile_component.dart, lib/game/cosmic_match_game.dart, lib/screens/game_screen.dart, lib/screens/home_screen.dart."
+    },
+    {
+      "id": "US-004",
+      "title": "Tile selection & swap input",
+      "description": "As a player, I want to tap tiles to select and swap them so that I can make matches on the board",
+      "acceptanceCriteria": [
+        "Tapping a tile highlights it with a visual indicator (glow or border)",
+        "Tapping an adjacent tile (horizontal or vertical) triggers a swap",
+        "Tapping a non-adjacent tile changes the selection to the new tile",
+        "Tapping the same tile deselects it",
+        "Swap animates tiles moving to each other's positions (smooth lerp over ~200ms)",
+        "After swap, if no match is found, tiles snap back to original positions (invalid swap)",
+        "`flutter analyze` passes"
+      ],
+      "technicalNotes": "Add TapCallbacks mixin to TileComponent. Track selectedTile in BoardComponent. Use Flame's MoveEffect or manual position lerp in update(dt) for swap animation. After swap completes, call match detection — if no matches, reverse the swap. Adjacency check: Manhattan distance == 1.",
+      "dependsOn": ["US-003"],
+      "priority": 4,
+      "passes": true,
+      "notes": "Implemented in iteration 4. Files: lib/game/components/tile_component.dart, lib/game/components/board_component.dart, lib/models/board_state.dart."
+    },
+    {
+      "id": "US-005",
+      "title": "Match detection algorithm",
+      "description": "As a developer, I want an algorithm that detects 3+ tile matches in rows and columns so that matched tiles can be cleared",
+      "acceptanceCriteria": [
+        "findMatches(BoardState) returns list of Match objects (each with list of positions and match size)",
+        "Detects horizontal matches of 3, 4, and 5+ tiles",
+        "Detects vertical matches of 3, 4, and 5+ tiles",
+        "Detects L-shaped and T-shaped matches (overlapping horizontal + vertical)",
+        "Does not match obstacle tiles or empty cells",
+        "Unit tests cover: 3-match, 4-match, 5-match, L-shape, T-shape, no-match, edge cases",
+        "`flutter test` passes"
+      ],
+      "technicalNotes": "Create lib/utils/match_detector.dart. Scan each row left-to-right and each column top-to-bottom, tracking consecutive same-type runs. Return Match objects with positions and size. For L/T detection, merge overlapping matches that share a tile. Match class in lib/models/match.dart.",
+      "dependsOn": ["US-002"],
+      "priority": 5,
+      "passes": true,
+      "notes": "Implemented in iteration 5. Files: lib/models/match.dart, lib/utils/match_detector.dart, test/utils/match_detector_test.dart."
+    },
+    {
+      "id": "US-006",
+      "title": "Tile clearing & gravity",
+      "description": "As a player, I want matched tiles to be cleared and remaining tiles to fall down so that the board refills naturally",
+      "acceptanceCriteria": [
+        "Matched tiles are removed from the board (set to null in BoardState)",
+        "After clearing, tiles above empty spaces fall down (gravity, column-based)",
+        "Empty spaces at the top of columns are filled with new random tiles",
+        "Gravity applies per-column, preserving tile order",
+        "Visual: tiles animate downward to their new positions",
+        "New tiles animate falling in from above the board",
+        "Unit tests for gravity logic: single gap, multiple gaps, full column clear",
+        "`flutter test` passes"
+      ],
+      "technicalNotes": "Add clearMatches(matches) and applyGravity() methods to BoardState. Gravity: iterate each column bottom-to-top, shift non-null tiles down, fill top with randomFill(). In BoardComponent, animate tile position changes with MoveEffect. Trigger gravity after match clear, then re-render.",
+      "dependsOn": ["US-005", "US-003"],
+      "priority": 6,
+      "passes": true,
+      "notes": "Implemented in iteration 6. Files: lib/models/board_state.dart, lib/game/components/board_component.dart, test/models/gravity_test.dart."
+    },
+    {
+      "id": "US-007",
+      "title": "Cascade chain reactions",
+      "description": "As a player, I want falling tiles to trigger new matches automatically so that satisfying chain combos occur",
+      "acceptanceCriteria": [
+        "After gravity fills the board, match detection runs again",
+        "If new matches are found, they are cleared and gravity re-applied (loop)",
+        "Cascade continues until no new matches exist",
+        "Each cascade step has a brief delay for visual clarity (~300ms)",
+        "Cascade combo counter tracks chain length",
+        "Board is locked from input during cascade resolution",
+        "`flutter analyze` passes"
+      ],
+      "technicalNotes": "Implement game loop in BoardComponent: swap → detect → clear → gravity → detect → ... until stable. Use async/await with Future.delayed for cascade timing. Set a `processing` flag to ignore taps during cascade. Track cascadeCount for scoring multiplier.",
+      "dependsOn": ["US-006"],
+      "priority": 7,
+      "passes": true,
+      "notes": "Implemented in iteration 7. Files: lib/game/components/board_component.dart."
+    },
+    {
+      "id": "US-008",
+      "title": "Score system & HUD",
+      "description": "As a player, I want to see my score update as I make matches so that I feel rewarded for good plays",
+      "acceptanceCriteria": [
+        "Score calculated: 3-match = 50pts, 4-match = 150pts, 5-match = 500pts",
+        "Cascade multiplier: each chain step multiplies points by chain depth (x1, x2, x3...)",
+        "HUD overlay shows current score at top of game screen",
+        "Score animates/counts up when points are awarded",
+        "HUD built as Flutter overlay widget (not Flame component) for crisp text rendering",
+        "`flutter analyze` passes"
+      ],
+      "technicalNotes": "Create lib/providers/game_state_provider.dart with Riverpod StateNotifier for score, moves, goal progress. HUD as Flutter widget in lib/screens/game_hud.dart, rendered via Flame's overlayBuilder. Score calculation in lib/utils/score_calculator.dart.",
+      "dependsOn": ["US-007", "US-004"],
+      "priority": 8,
+      "passes": true,
+      "notes": "Implemented in iteration 8. Files: lib/utils/score_calculator.dart, lib/providers/game_state_provider.dart, lib/screens/game_hud.dart, lib/game/cosmic_match_game.dart, lib/game/components/board_component.dart, lib/screens/game_screen.dart, test/utils/score_calculator_test.dart."
+    },
+    {
+      "id": "US-009",
+      "title": "Level data model & loader",
+      "description": "As a developer, I want a level configuration system so that each level can define unique goals, move limits, and obstacles",
+      "acceptanceCriteria": [
+        "LevelConfig class with: id, galaxyIndex, goalType (clearCount, reachScore, clearObstacles), targetTileType (nullable), targetCount, moveLimit, obstacles list, gridLayout (nullable)",
+        "GoalType enum: clearCount, reachScore, clearAllObstacles",
+        "JSON-based level definitions loaded from assets/levels/",
+        "LevelLoader reads and parses level JSON files",
+        "Unit tests for LevelConfig parsing from JSON",
+        "At least 3 test level configs created for development",
+        "`flutter test` passes"
+      ],
+      "technicalNotes": "Create lib/models/level_config.dart and lib/utils/level_loader.dart. JSON structure: {id, galaxy, goalType, target, moveLimit, obstacles: [{type, positions}], grid: [[int]]}. Use rootBundle.loadString to read from assets. Register assets/levels/ in pubspec.yaml.",
+      "dependsOn": ["US-002"],
+      "priority": 9,
+      "passes": true,
+      "notes": "Implemented in iteration 9. Files: lib/models/level_config.dart, lib/utils/level_loader.dart, assets/levels/level_01.json, assets/levels/level_02.json, assets/levels/level_03.json, test/models/level_config_test.dart."
+    },
+    {
+      "id": "US-010",
+      "title": "Move counter & goal tracking",
+      "description": "As a player, I want to see my remaining moves and progress toward the level goal so that I can strategise my plays",
+      "acceptanceCriteria": [
+        "Move counter decrements by 1 after each valid swap (not invalid swaps)",
+        "Move counter displayed in HUD",
+        "Goal progress tracked based on level's goalType (tiles cleared of target type, score reached, obstacles cleared)",
+        "Goal progress displayed in HUD with target vs current",
+        "Moves and goal state managed in game state provider",
+        "`flutter analyze` passes"
+      ],
+      "technicalNotes": "Extend game_state_provider.dart to track movesRemaining and goalProgress. Decrement moves in the swap handler after a valid match. Update goal progress in the match clearing logic based on LevelConfig.goalType. Update game_hud.dart to show moves and goal.",
+      "dependsOn": ["US-009", "US-008"],
+      "priority": 10,
+      "passes": true,
+      "notes": "Implemented in iteration 10. Files: lib/providers/game_state_provider.dart, lib/game/components/board_component.dart, lib/screens/game_hud.dart, lib/game/cosmic_match_game.dart, test/utils/score_calculator_test.dart."
+    },
+    {
+      "id": "US-011",
+      "title": "Win/lose detection & overlay screens",
+      "description": "As a player, I want to see a victory or defeat screen when a level ends so that I know my result and can continue or retry",
+      "acceptanceCriteria": [
+        "Win detected when goal is met (regardless of remaining moves)",
+        "Lose detected when moves reach 0 without meeting goal",
+        "Level complete overlay shows: star rating (1-3 based on remaining moves), final score, 'Next Level' and 'Replay' buttons",
+        "Level failed overlay shows: 'Replay' and 'Quit' buttons",
+        "Star rating: 3 stars if >50% moves remain, 2 stars if >25%, 1 star otherwise",
+        "Board input locked when level ends",
+        "`flutter analyze` passes"
+      ],
+      "technicalNotes": "Create lib/screens/level_complete_overlay.dart and lib/screens/level_failed_overlay.dart as Flutter widgets. Register as Flame overlays. Check win/lose conditions after each move resolves (post-cascade). Star calculation in lib/utils/star_calculator.dart.",
+      "dependsOn": ["US-010"],
+      "priority": 11,
+      "passes": true,
+      "notes": "Implemented in iteration 11. Files: lib/utils/star_calculator.dart, lib/screens/level_complete_overlay.dart, lib/screens/level_failed_overlay.dart, lib/game/components/board_component.dart, lib/game/cosmic_match_game.dart, lib/screens/game_screen.dart, test/utils/star_calculator_test.dart."
+    },
+    {
+      "id": "US-012",
+      "title": "Home screen & navigation",
+      "description": "As a player, I want a home screen with a Play button so that I have a clear entry point to the game",
+      "acceptanceCriteria": [
+        "Home screen with game title 'Cosmic Match', Play button, and Settings button",
+        "Play button navigates to level select screen",
+        "Settings button opens settings overlay (sound toggle placeholder)",
+        "Space-themed background (dark with simple star pattern)",
+        "Navigation uses Flutter Navigator (not Flame overlays) for screen transitions",
+        "`flutter analyze` passes"
+      ],
+      "technicalNotes": "Create lib/screens/home_screen.dart. Use Navigator.push for screen transitions. MaterialApp routes: / → HomeScreen, /levels → LevelSelectScreen, /game → GameScreen. Style with space theme colours (dark blues, purples, white text).",
+      "dependsOn": ["US-001"],
+      "priority": 12,
+      "passes": true,
+      "notes": "Implemented in iteration 12. Files: lib/screens/home_screen.dart, lib/screens/level_select_screen.dart, test/widget_test.dart."
+    },
+    {
+      "id": "US-013",
+      "title": "Level select screen",
+      "description": "As a player, I want a galaxy-themed level select screen so that I can choose which level to play and see my progress",
+      "acceptanceCriteria": [
+        "Grid or scrollable list of level buttons (numbered 1-50)",
+        "Levels grouped by galaxy (10 per galaxy), with galaxy name headers",
+        "Unlocked levels show star rating (0-3 stars) earned",
+        "Locked levels shown as greyed out / locked icon",
+        "Level 1 always unlocked; subsequent levels unlock on completion of previous",
+        "Tapping unlocked level navigates to game screen with that level loaded",
+        "`flutter analyze` passes"
+      ],
+      "technicalNotes": "Create lib/screens/level_select_screen.dart. Use GridView.builder for level buttons. Read progress from Hive (or default state if no storage yet). Galaxy names: Lyra, Orion, Andromeda, Centaurus, Pegasus. Pass levelId to GameScreen via Navigator arguments.",
+      "dependsOn": ["US-012", "US-009"],
+      "priority": 13,
+      "passes": true,
+      "notes": "Implemented in iteration 13. Files: lib/screens/level_select_screen.dart, lib/screens/game_screen.dart."
+    },
+    {
+      "id": "US-014",
+      "title": "Local storage with Hive",
+      "description": "As a player, I want my level progress and settings saved locally so that I can resume where I left off",
+      "acceptanceCriteria": [
+        "Hive initialised in main.dart before runApp",
+        "LevelProgress model: levelId, stars (0-3), highScore, completed (bool)",
+        "ProgressRepository with methods: saveProgress, getProgress, getAllProgress, getHighestUnlockedLevel",
+        "Settings stored: soundEnabled (bool), musicEnabled (bool)",
+        "Progress saved automatically on level completion",
+        "Level select screen reads from Hive to show stars and unlock state",
+        "Unit tests for ProgressRepository",
+        "`flutter test` passes"
+      ],
+      "technicalNotes": "Create lib/models/level_progress.dart with Hive TypeAdapter. Create lib/repositories/progress_repository.dart. Init Hive in main(): await Hive.initFlutter(); Hive.registerAdapter(LevelProgressAdapter()); Open boxes: 'progress' and 'settings'. Provide via Riverpod.",
+      "dependsOn": ["US-011", "US-013"],
+      "priority": 14,
+      "passes": true,
+      "notes": "Implemented in iteration 14. Files: lib/models/level_progress.dart, lib/repositories/progress_repository.dart, lib/main.dart, lib/screens/level_select_screen.dart, lib/screens/level_complete_overlay.dart, lib/screens/home_screen.dart, test/repositories/progress_repository_test.dart."
+    },
+    {
+      "id": "US-015",
+      "title": "Bonus tile creation",
+      "description": "As a player, I want special bonus tiles to be created from large matches so that I have powerful strategic options",
+      "acceptanceCriteria": [
+        "4-in-a-row match creates a Pulsar tile at the match position",
+        "L-shaped or T-shaped match creates a Black Hole tile at the intersection",
+        "5-in-a-row match creates a Supernova tile at the match position",
+        "Bonus tile replaces one of the matched tiles (remains on board after clear)",
+        "Bonus tiles visually distinct: Pulsar (pulsing glow), Black Hole (dark swirl), Supernova (bright burst)",
+        "Unit tests for bonus tile creation logic per match pattern",
+        "`flutter test` passes"
+      ],
+      "technicalNotes": "Extend match_detector.dart to classify match size/shape. Add bonus tile creation in the clear step: if match.size == 4 → pulsar, L/T → blackHole, 5+ → supernova. Set TileData.bonusType on the remaining tile. Update TileComponent rendering for bonus visual indicators.",
+      "dependsOn": ["US-005"],
+      "priority": 15,
+      "passes": true,
+      "notes": "Implemented in iteration 15. Files: lib/utils/bonus_creator.dart, lib/game/components/tile_component.dart, lib/game/components/board_component.dart, lib/models/board_state.dart, test/utils/bonus_creator_test.dart."
+    },
+    {
+      "id": "US-016",
+      "title": "Bonus tile activation effects",
+      "description": "As a player, I want bonus tiles to trigger powerful clearing effects when matched so that big combos feel rewarding",
+      "acceptanceCriteria": [
+        "Pulsar: when matched, clears entire row it's in",
+        "Black Hole: when matched, clears 3x3 area centred on it",
+        "Supernova: when matched, clears all tiles of one randomly chosen type on the board",
+        "Bonus activation happens before gravity (cleared tiles fall together)",
+        "Bonus-cleared tiles contribute to score and goal progress",
+        "Chain: bonus activation can trigger other bonus tiles",
+        "Unit tests for each bonus activation effect",
+        "`flutter test` passes"
+      ],
+      "technicalNotes": "Create lib/utils/bonus_activator.dart. Called during the clear step when a matched tile has bonusType set. Pulsar: clear all tiles in tile.row. BlackHole: clear tiles in [row-1..row+1][col-1..col+1]. Supernova: pick random type, clear all tiles of that type. Handle chain activations recursively.",
+      "dependsOn": ["US-015", "US-006"],
+      "priority": 16,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-017",
+      "title": "Obstacle tiles",
+      "description": "As a player, I want obstacle tiles that add challenge so that later levels feel progressively harder",
+      "acceptanceCriteria": [
+        "Asteroid (level 5+): placed on board per level config; cleared when a match occurs adjacent to it; not swappable",
+        "Ice Comet (level 15+): frozen tile that requires 2 adjacent matches to clear (first match cracks, second clears)",
+        "Dark Matter (level 30+): immovable blocker, cannot be cleared, cannot be swapped — must play around it",
+        "Obstacles rendered with distinct visuals (rock texture, ice overlay, dark void)",
+        "Obstacle placement defined in level JSON config",
+        "Goal type 'clearAllObstacles' works with clearable obstacles",
+        "Unit tests for each obstacle mechanic",
+        "`flutter test` passes"
+      ],
+      "technicalNotes": "Extend TileData with obstacleType and obstacleHealth (for IceComet: starts at 2). In match clearing: check adjacent cells for obstacles, decrement health, clear at 0. DarkMatter: skip in swap and match logic. Update level_config.dart to include obstacle positions. Update TileComponent for obstacle rendering.",
+      "dependsOn": ["US-006", "US-009"],
+      "priority": 17,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-018",
+      "title": "Animations & visual effects",
+      "description": "As a player, I want satisfying visual feedback for matches and cascades so that the game feels polished and fun",
+      "acceptanceCriteria": [
+        "Match clear: tiles pop/burst with particle effect",
+        "Cascade: sequential glow effect as chain reactions resolve",
+        "Tile swap: smooth position lerp (~200ms)",
+        "Invalid swap: tiles move halfway and snap back",
+        "New tiles: fall in from above with slight bounce",
+        "Idle: subtle floating animation on tiles",
+        "Bonus tile activation: screen-appropriate flash/effect per type",
+        "`flutter analyze` passes"
+      ],
+      "technicalNotes": "Use Flame's built-in effects: MoveEffect, ScaleEffect, OpacityEffect, ColorEffect. Create lib/game/effects/ directory for custom particle effects. Use ParticleSystemComponent for match burst particles. Sequence effects with SequenceEffect. Keep effects performant — limit particle count.",
+      "dependsOn": ["US-006", "US-004"],
+      "priority": 18,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-019",
+      "title": "Audio system",
+      "description": "As a player, I want ambient music and match sound effects so that the game has an immersive space atmosphere",
+      "acceptanceCriteria": [
+        "Ambient space background music loops during gameplay",
+        "Match SFX: distinct sounds for 3-match, 4-match, 5+-match",
+        "Cascade SFX: rising pitch or intensity with chain depth",
+        "UI SFX: button tap, level complete fanfare, level failed sound",
+        "Sound and music independently toggleable in settings",
+        "Game fully playable with all audio muted (no audio-dependent gameplay)",
+        "Audio assets are placeholder/royalty-free sounds",
+        "`flutter analyze` passes"
+      ],
+      "technicalNotes": "Use flame_audio package. Create lib/utils/audio_manager.dart as singleton. Preload audio in game init. Read sound/music settings from Hive settings box. Place audio files in assets/audio/. Use FlameAudio.bgm for background music, FlameAudio.play for SFX.",
+      "dependsOn": ["US-008"],
+      "priority": 19,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-020",
+      "title": "Galaxy chapters & backgrounds",
+      "description": "As a player, I want each galaxy chapter to have a unique visual theme so that progression feels varied and rewarding",
+      "acceptanceCriteria": [
+        "5 galaxy chapters: Lyra, Orion, Andromeda, Centaurus, Pegasus (10 levels each)",
+        "Each galaxy has a unique background image/colour palette",
+        "Background changes when playing a level in that galaxy",
+        "Level select screen shows galaxy sections with themed headers",
+        "Galaxy backgrounds are simple gradient or parallax star fields (not complex art)",
+        "`flutter analyze` passes"
+      ],
+      "technicalNotes": "Create lib/models/galaxy.dart with Galaxy enum and colour palettes. Background as ParallaxComponent or gradient paint in CosmicMatchGame. Map galaxy index from LevelConfig. Update level_select_screen.dart with galaxy-themed section headers. Store palette constants in lib/utils/theme_constants.dart.",
+      "dependsOn": ["US-013"],
+      "priority": 20,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-021",
+      "title": "Level content pack (50 levels)",
+      "description": "As a player, I want 50 designed levels across 5 galaxies so that there is meaningful content to play through",
+      "acceptanceCriteria": [
+        "50 level JSON configs in assets/levels/ (level_01.json through level_50.json)",
+        "Levels 1-10 (Lyra): basic match goals, no obstacles, generous move limits",
+        "Levels 5+: Asteroid obstacles introduced",
+        "Levels 11-20 (Orion): harder goals, tighter move limits",
+        "Levels 15+: Ice Comet obstacles introduced",
+        "Levels 21-30 (Andromeda): mix of goal types including clearAllObstacles",
+        "Levels 30+: Dark Matter obstacles introduced",
+        "Levels 31-50 (Centaurus, Pegasus): full difficulty, all obstacle types",
+        "Difficulty progression feels gradual and fair",
+        "All 50 levels load and are playable"
+      ],
+      "technicalNotes": "Create JSON files in assets/levels/. Use consistent schema from level_config.dart. Difficulty knobs: moveLimit (start 30, decrease to 15), targetCount (start 10, increase to 50), obstacle count and type. Test by loading all 50 and verifying parse. Consider a level generator script in tool/ if manual authoring is too slow.",
+      "dependsOn": ["US-017", "US-016", "US-020"],
+      "priority": 21,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-022",
+      "title": "App polish & Play Store prep",
+      "description": "As a developer, I want the app polished and ready for Play Store submission so that it can be published",
+      "acceptanceCriteria": [
+        "App icon: space-themed launcher icon (adaptive icon for Android)",
+        "Splash screen: brief branded splash on app launch",
+        "App name set to 'Cosmic Match' in AndroidManifest.xml",
+        "Release APK builds successfully: `flutter build apk --release`",
+        "App size under 50MB",
+        "GitHub Actions CI workflow: analyze, test, build APK on push",
+        "Privacy policy page (simple static page or text file)",
+        "Play Store metadata: title, short description, full description, category (Puzzle)",
+        "Screenshots captured for store listing (phone format)"
+      ],
+      "technicalNotes": "Use flutter_launcher_icons package for app icon generation. Add flutter_native_splash for splash screen. Create .github/workflows/ci.yml for GitHub Actions. Create store/ directory for Play Store assets. ProGuard/R8 enabled for release build. Sign with upload key for Play Store.",
+      "dependsOn": ["US-021", "US-019", "US-018"],
+      "priority": 22,
+      "passes": false,
+      "notes": ""
+    }
+  ]
+}

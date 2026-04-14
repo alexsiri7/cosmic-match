@@ -1,0 +1,9 @@
+{
+  "id": 1,
+  "galaxyIndex": 0,
+  "goalType": "clearCount",
+  "targetTileType": "planetRed",
+  "targetCount": 10,
+  "moveLimit": 30,
+  "obstacles": []
+}

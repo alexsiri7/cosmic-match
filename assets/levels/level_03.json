@@ -1,0 +1,13 @@
+{
+  "id": 3,
+  "galaxyIndex": 0,
+  "goalType": "clearAllObstacles",
+  "targetCount": 3,
+  "moveLimit": 20,
+  "obstacles": [
+    {
+      "type": "asteroid",
+      "positions": [[2, 3], [4, 5], [6, 1]]
+    }
+  ]
+}

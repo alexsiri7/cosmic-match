@@ -1,0 +1,8 @@
+{
+  "id": 2,
+  "galaxyIndex": 0,
+  "goalType": "reachScore",
+  "targetCount": 500,
+  "moveLimit": 25,
+  "obstacles": []
+}
