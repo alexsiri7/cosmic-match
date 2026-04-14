@@ -417,7 +417,9 @@ dart pub get --enforce-lockfile
 
 This verifies that resolved package hashes match the committed `pubspec.lock` exactly. If any hash mismatches (e.g., a package was tampered with on pub.dev), the build fails immediately.
 
-Note: `--enforce-lockfile` is a flag on `dart pub get`, not `flutter pub get`. Use `dart pub get --enforce-lockfile` directly in CI scripts.
+Note: Use `dart pub get --enforce-lockfile` in CI scripts rather than `flutter pub get`.
+This avoids requiring the full Flutter SDK in CI — `dart pub get` resolves the same
+packages with a smaller toolchain footprint.
 
 ### 11.5 Periodic Review
 
