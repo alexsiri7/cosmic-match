@@ -11,6 +11,11 @@ import '../../utils/score_calculator.dart';
 import '../cosmic_match_game.dart';
 import 'tile_component.dart';
 
+// State machine:
+//   idle → animating      (on valid tap when idle)
+//   animating → idle      (invalid swap: after reverse animation onComplete)
+//   animating → cascading (valid swap: after _startCascade entry)
+//   cascading → idle      (after cascade loop exits or depth cap hit)
 enum _GameInputState { idle, animating, cascading }
 
 /// Renders the 8x8 game board as a grid of TileComponents.
@@ -32,8 +37,8 @@ class BoardComponent extends PositionComponent
   /// Maximum cascade depth to prevent unbounded loops.
   static const int _maxCascadeDepth = 20;
 
-  /// Tracks the current cascade chain depth (0 = initial match, 1+ = cascades).
-  int cascadeCount = 0;
+  /// Tracks the current cascade chain depth (1 = initial match, 2+ = cascades).
+  int _cascadeCount = 0;
 
   /// Current cell size (updated on resize).
   double _cellSize = 40.0;
@@ -208,16 +213,16 @@ class BoardComponent extends PositionComponent
   /// Starts the cascade chain: clear → gravity → detect → repeat until stable.
   Future<void> _startCascade(List<Match> matches) async {
     _inputState = _GameInputState.cascading;
-    cascadeCount = 1;
+    _cascadeCount = 1;
 
     var currentMatches = matches;
-    while (currentMatches.isNotEmpty && cascadeCount <= _maxCascadeDepth) {
+    while (currentMatches.isNotEmpty && _cascadeCount <= _maxCascadeDepth) {
       _clearAndApplyGravity(currentMatches);
 
       // Wait for gravity/fall animations to complete
       await Future<void>.delayed(const Duration(milliseconds: 300));
 
-      cascadeCount++;
+      _cascadeCount++;
 
       // Check for new matches after gravity
       currentMatches = MatchDetector.findMatches(boardState);
@@ -246,7 +251,7 @@ class BoardComponent extends PositionComponent
   void _clearAndApplyGravity(List<Match> matches) {
     // Calculate and add score
     final matchSizes = matches.map((m) => m.size).toList();
-    final points = ScoreCalculator.calculateScore(matchSizes, cascadeCount);
+    final points = ScoreCalculator.calculateScore(matchSizes, _cascadeCount);
     gameState.addScore(points);
 
     // Track goal progress based on level goal type
@@ -328,7 +333,7 @@ class BoardComponent extends PositionComponent
 
     switch (levelConfig!.goalType) {
       case GoalType.clearCount:
-        // Count tiles cleared that match the target tile type
+        // Count cleared tiles: all if no target type, or only matching type
         final targetType = gameState.targetTileType;
         if (targetType == null) {
           // No specific target — count all cleared tiles

@@ -31,13 +31,14 @@ class GameState extends ChangeNotifier {
     switch (_goalType) {
       case GoalType.clearCount:
       case GoalType.clearAllObstacles:
+        if (_goalTarget <= 0) return false; // guard: zero/uninitialised target never "met"
         return _goalProgress >= _goalTarget;
       case GoalType.reachScore:
         return _score >= _goalTarget;
     }
   }
 
-  /// Whether the player has lost (no moves remaining and goal not met).
+  /// Whether the player has no moves remaining.
   bool get isOutOfMoves => _movesRemaining <= 0;
 
   /// Initialize state from a level config.
@@ -53,6 +54,7 @@ class GameState extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Adds [points] to the current score, clamped to [_maxScore].
   void addScore(int points) {
     _score = (_score + points).clamp(0, _maxScore);
     notifyListeners();

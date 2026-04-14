@@ -199,6 +199,52 @@ void main() {
       expect(state.goalMet, true);
     });
 
+    test('goalMet returns true for clearAllObstacles when progress >= target', () {
+      final state = GameState();
+      final config = LevelConfig(
+        id: 1,
+        galaxyIndex: 0,
+        goalType: GoalType.clearAllObstacles,
+        targetCount: 5,
+        moveLimit: 10,
+      );
+      state.initFromLevel(config);
+      expect(state.goalMet, false);
+      state.addGoalProgress(5);
+      expect(state.goalMet, true);
+    });
+
+    test('goalMet is false when goalTarget is 0 (clearCount goal)', () {
+      // reset() leaves _goalTarget = 0 and _goalType = clearCount
+      final state = GameState();
+      expect(state.goalMet, false);
+    });
+
+    test('addGoalProgress is a no-op when goalTarget is 0', () {
+      final state = GameState();
+      state.addGoalProgress(5);
+      expect(state.goalProgress, 0);
+      expect(state.goalMet, false);
+    });
+
+    test('score accumulation over 20 cascade levels is capped at max score', () {
+      final state = GameState();
+      // Simulate 20 cascade levels each adding max per-call score (99999 each)
+      // Without clamping, total would be 1,999,980 — far over the 999,999 cap
+      for (int i = 1; i <= 20; i++) {
+        state.addScore(99999);
+      }
+      expect(state.score, 999999);
+    });
+
+    test('score accumulation over 21 cascade levels is still capped', () {
+      final state = GameState();
+      for (int i = 1; i <= 21; i++) {
+        state.addScore(99999);
+      }
+      expect(state.score, 999999);
+    });
+
     test('isOutOfMoves returns true when moves reach 0', () {
       final state = GameState();
       final config = LevelConfig(
