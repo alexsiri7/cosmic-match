@@ -1,0 +1,8 @@
+# android/key.properties.example
+# Copy this file to android/key.properties and fill in real values.
+# NEVER commit key.properties to the repository — it is gitignored.
+# The storeFile path must be absolute or relative to android/app/.
+storePassword=YOUR_STORE_PASSWORD_HERE
+keyPassword=YOUR_KEY_PASSWORD_HERE
+keyAlias=cosmic-match
+storeFile=/path/to/cosmic-match-release.jks
