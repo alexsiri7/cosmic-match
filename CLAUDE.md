@@ -19,6 +19,10 @@ flutter build appbundle --release
 
 # Generate Hive adapters (run after adding new Hive types)
 dart run build_runner build --delete-conflicting-outputs
+
+# Dependency changes — always recommit pubspec.lock after running pub get/upgrade
+# (see SECURITY.md §11.1 for full lockfile policy)
+flutter pub get
 ```
 
 ## Project Layout
