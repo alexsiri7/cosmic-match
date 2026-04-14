@@ -56,7 +56,7 @@ void main() {
 
     test('negative points are ignored — score does not decrease', () {
       score.add(500);
-      score.add(-100); // should be a no-op in release mode
+      score.add(-100); // no-op: guard is if (points <= 0) return
       expect(score.value, 500);
     });
 

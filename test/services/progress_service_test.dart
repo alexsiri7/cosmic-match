@@ -1,4 +1,4 @@
-import 'package:crc32/crc32.dart';
+import 'package:archive/archive.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:cosmic_match/models/level_progress.dart';
 
@@ -8,7 +8,7 @@ bool _isValid(Map raw) {
   final storedCrc = raw['crc'] as int?;
   if (storedCrc == null) return false;
   final data = Map<String, dynamic>.from(raw)..remove('crc');
-  return Crc32.compute(_canonicalize(data).codeUnits) == storedCrc;
+  return getCrc32(_canonicalize(data).codeUnits) == storedCrc;
 }
 
 String _canonicalize(Map<String, dynamic> data) {
@@ -49,6 +49,16 @@ void main() {
       final crc1 = progress.toMap()['crc'] as int;
       final crc2 = progress.toMap()['crc'] as int;
       expect(crc1, equals(crc2));
+    });
+
+    test('CRC value is stable for known input (regression)', () {
+      // Pins the concrete CRC output for a known canonical string.
+      // Canonical form (keys alphabetical): "bestScore:100,level:1,starsEarned:2"
+      // This catches any future package swap or algorithm change that would
+      // silently invalidate persisted save data.
+      const expectedCrc = 2900003034;
+      final progress = LevelProgress(level: 1, starsEarned: 2, bestScore: 100);
+      expect(progress.toMap()['crc'], equals(expectedCrc));
     });
   });
 

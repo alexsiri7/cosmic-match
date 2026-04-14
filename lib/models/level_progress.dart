@@ -1,4 +1,4 @@
-import 'package:crc32/crc32.dart';
+import 'package:archive/archive.dart';
 
 class LevelProgress {
   final int level;
@@ -22,7 +22,7 @@ class LevelProgress {
     };
     // CRC is computed over a canonicalized (key-sorted) representation to
     // ensure stability regardless of map insertion order or future field additions.
-    data['crc'] = Crc32.compute(canonicalize(data).codeUnits);
+    data['crc'] = getCrc32(canonicalize(data).codeUnits);
     return data;
   }
 
