@@ -36,6 +36,19 @@ will become more meaningful when leaderboards are added (see §2).
 
 **Note**: If leaderboards are added (post-V1), SEC-008 risk level rises to MEDIUM. Server-side score validation will be required at that point — see §2.
 
+### 1.2 Android Platform Security Controls (SEC-005)
+
+The following declarative controls are configured in the `android/` scaffold:
+
+| Control | File | Value |
+|---------|------|-------|
+| Cleartext HTTP blocked | `android/app/src/main/AndroidManifest.xml` | `android:usesCleartextTraffic="false"` |
+| Network security config | `android/app/src/main/res/xml/network_security_config.xml` | `cleartextTrafficPermitted="false"`, system CA trust-anchors |
+| Backup disabled | `android/app/src/main/AndroidManifest.xml` | `android:allowBackup="false"` |
+| Minimum SDK | `android/app/build.gradle.kts` | `minSdk = 26` (Android 8.0+) |
+
+INTERNET permission is scoped to `debug/` and `profile/` manifests only; it is absent from the main manifest and therefore excluded from release APKs.
+
 ---
 
 ## 2. Scope of This Document
@@ -92,11 +105,11 @@ Choose **Supabase Auth** if:
 
 ### 4.1 Background
 
-Android 9+ (API 28+) blocks cleartext HTTP by default. Since `minSdk = 26` (Android 8), the app spans both behaviours. A `network_security_config.xml` must be created when any network calls are added.
+Android 9+ (API 28+) blocks cleartext HTTP by default. Since `minSdk = 26` (Android 8), the app spans both behaviours. `network_security_config.xml` is implemented as part of SEC-005 — cleartext traffic is blocked and only system CAs are trusted. When network calls are added (post-V1), extend §4.2 with domain-config certificate pinning.
 
-### 4.2 Network Security Config Template
+### 4.2 Network Security Config (Implemented — extend when adding backend)
 
-Create `android/app/src/main/res/xml/network_security_config.xml`:
+`android/app/src/main/res/xml/network_security_config.xml` is already in place:
 
 ```xml
 <?xml version="1.0" encoding="utf-8"?>
@@ -346,7 +359,7 @@ Complete all items before shipping any backend-connected release:
 |---|---|---|
 | 1 | Production keystore generated and stored securely (not in repo) | [ ] |
 | 2 | `key.properties` created and gitignored | [ ] |
-| 3 | `network_security_config.xml` created with cleartext blocked | [ ] |
+| 3 | `network_security_config.xml` created with cleartext blocked | [x] Done in SEC-005 |
 | 4 | Auth provider selected and integrated (Firebase or Supabase) | [ ] |
 | 5 | Auth tokens stored via `flutter_secure_storage` | [ ] |
 | 6 | Rate limiting configured on all API endpoints | [ ] |
