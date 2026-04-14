@@ -30,5 +30,4 @@ class Match3Game extends FlameGame<GridWorld> with RiverpodGameMixin {
     }
     _phase = next;
   }
-
 }
