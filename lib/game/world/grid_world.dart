@@ -22,16 +22,13 @@ class GridWorld extends World {
     _initGrid();
   }
 
+  // Ensure no matches on spawn; bounded to prevent infinite loop on unlucky seeds.
+  // After 200 attempts, accepts as-is — first game cycle will clear any matches.
   void _initGrid() {
-    var attempts = 0;
-    const maxAttempts = 200;
-    do {
-      grid = List.generate(
-          cols, (_) => List.generate(rows, (_) => _randomTile()));
-      attempts++;
-      // Ensure no matches on spawn; bounded to prevent infinite loop on unlucky seeds
-    } while (detector.detectAll(grid).isNotEmpty && attempts < maxAttempts);
-    // After maxAttempts, accept as-is; first game cycle will clear any matches
+    for (int i = 0; i < 200; i++) {
+      grid = List.generate(cols, (_) => List.generate(rows, (_) => _randomTile()));
+      if (detector.detectAll(grid).isEmpty) break;
+    }
   }
 
   /// Returns a random tile type using a proper RNG instance.
