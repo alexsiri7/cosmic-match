@@ -56,7 +56,7 @@ void main() {
 
     test('negative points are ignored — score does not decrease', () {
       score.add(500);
-      score.add(-100); // should be a no-op in release mode
+      score.add(-100); // negative inputs are silently ignored in all build modes
       expect(score.value, 500);
     });
 

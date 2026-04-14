@@ -2,18 +2,15 @@ import 'package:archive/archive.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:cosmic_match/models/level_progress.dart';
 
-/// Mirror of ProgressService._isValid / _canonicalize for test-level validation.
+/// Mirror of ProgressService._isValid for test-level validation.
 /// Keeps tests independent of Hive while still exercising the same CRC logic.
+/// Delegates to LevelProgress.canonicalize — the single source of truth — so
+/// any format change in production is immediately caught by these tests.
 bool _isValid(Map raw) {
-  final storedCrc = raw['crc'] as int?;
+  final storedCrc = (raw['crc'] as num?)?.toInt();
   if (storedCrc == null) return false;
   final data = Map<String, dynamic>.from(raw)..remove('crc');
-  return getCrc32(_canonicalize(data).codeUnits) == storedCrc;
-}
-
-String _canonicalize(Map<String, dynamic> data) {
-  final keys = data.keys.toList()..sort();
-  return keys.map((k) => '$k:${data[k]}').join(',');
+  return getCrc32(LevelProgress.canonicalize(data).codeUnits) == storedCrc;
 }
 
 void main() {
@@ -49,6 +46,21 @@ void main() {
       final crc1 = progress.toMap()['crc'] as int;
       final crc2 = progress.toMap()['crc'] as int;
       expect(crc1, equals(crc2));
+    });
+  });
+
+  group('getCrc32 golden-value regression', () {
+    // These pinned values guard against behavioral differences if the `archive`
+    // package is upgraded or replaced. If this test fails after a library change,
+    // investigate for CRC algorithm compatibility breaks before proceeding.
+    test('getCrc32 produces expected value for zero-state canonical string', () {
+      const input = 'bestScore:0,level:1,starsEarned:0';
+      expect(getCrc32(input.codeUnits), equals(2317268385));
+    });
+
+    test('getCrc32 produces expected value for non-zero canonical string', () {
+      const input = 'bestScore:5000,level:1,starsEarned:3';
+      expect(getCrc32(input.codeUnits), equals(2077400741));
     });
   });
 

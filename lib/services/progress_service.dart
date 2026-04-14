@@ -32,7 +32,7 @@ class ProgressService {
   }
 
   bool _isValid(Map raw) {
-    final storedCrc = raw['crc'] as int?;
+    final storedCrc = (raw['crc'] as num?)?.toInt();
     if (storedCrc == null) return false;
     final data = Map<String, dynamic>.from(raw)..remove('crc');
     return getCrc32(LevelProgress.canonicalize(data).codeUnits) == storedCrc;

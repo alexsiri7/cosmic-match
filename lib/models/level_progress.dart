@@ -28,11 +28,14 @@ class LevelProgress {
 
   /// Note: CRC is not validated here; callers must call ProgressService._isValid
   /// before invoking fromMap to ensure data integrity.
+  ///
+  /// Uses `num?.toInt()` casts to handle the `double`/`int` ambiguity that can
+  /// occur when Hive deserialises integers on certain platforms (e.g. Android).
   factory LevelProgress.fromMap(Map raw) {
     return LevelProgress(
-      level: raw['level'] as int,
-      starsEarned: raw['starsEarned'] as int,
-      bestScore: raw['bestScore'] as int,
+      level:       (raw['level']       as num?)?.toInt() ?? 0,
+      starsEarned: (raw['starsEarned'] as num?)?.toInt() ?? 0,
+      bestScore:   (raw['bestScore']   as num?)?.toInt() ?? 0,
     );
   }
 
