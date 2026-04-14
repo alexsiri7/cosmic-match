@@ -38,6 +38,21 @@ Grid _buildLShape(int startX, int y, TileType type) {
   return grid;
 }
 
+/// Build a T-shape: 3 horizontal at (startX, y) + 3 vertical at (startX+1, y) going down.
+/// The center of the horizontal arm intersects the top of the vertical arm.
+Grid _buildTShape(int startX, int y, TileType type) {
+  final grid = _emptyGrid();
+  // horizontal arm (3 tiles)
+  for (int dx = 0; dx < 3; dx++) {
+    grid[startX + dx][y] = type;
+  }
+  // vertical arm downward from center (shares tile at startX+1, y)
+  for (int dy = 1; dy < 3; dy++) {
+    grid[startX + 1][y + dy] = type;
+  }
+  return grid;
+}
+
 void main() {
   group('PatternDetector', () {
     late PatternDetector detector;
@@ -99,6 +114,55 @@ void main() {
     test('no double-counting — tiles claimed by higher priority are skipped', () {
       // Place 5-in-a-row; no leftover 3-in-a-row from the same tiles
       final grid = _buildHorizontalRun(0, 0, 5, TileType.white);
+      final results = detector.detectAll(grid);
+      expect(results, hasLength(1));
+      expect(results[0].bonusTile, BonusTileType.supernova);
+    });
+
+    test('detects 4-in-a-row vertical → Pulsar', () {
+      final grid = _buildVerticalRun(0, 0, 4, TileType.red);
+      final results = detector.detectAll(grid);
+      expect(results, hasLength(1));
+      expect(results[0].tiles, hasLength(4));
+      expect(results[0].bonusTile, BonusTileType.pulsar);
+    });
+
+    test('detects 5-in-a-row vertical → Supernova', () {
+      final grid = _buildVerticalRun(0, 0, 5, TileType.blue);
+      final results = detector.detectAll(grid);
+      expect(results, hasLength(1));
+      expect(results[0].tiles, hasLength(5));
+      expect(results[0].bonusTile, BonusTileType.supernova);
+    });
+
+    test('detects T-shape → Black Hole', () {
+      final grid = _buildTShape(0, 0, TileType.green);
+      final results = detector.detectAll(grid);
+      expect(results.any((r) => r.bonusTile == BonusTileType.blackHole), isTrue);
+    });
+
+    test('null gap in row prevents horizontal match', () {
+      final grid = _emptyGrid();
+      grid[0][0] = TileType.red;
+      grid[1][0] = TileType.red;
+      // gap at [2][0]
+      grid[3][0] = TileType.red;
+      final results = detector.detectAll(grid);
+      expect(results, isEmpty);
+    });
+
+    test('null gap in column prevents vertical match', () {
+      final grid = _emptyGrid();
+      grid[0][0] = TileType.red;
+      grid[0][1] = TileType.red;
+      // gap at [0][2]
+      grid[0][3] = TileType.red;
+      final results = detector.detectAll(grid);
+      expect(results, isEmpty);
+    });
+
+    test('vertical 5-in-a-row takes priority over vertical 4-in-a-row', () {
+      final grid = _buildVerticalRun(0, 0, 5, TileType.orange);
       final results = detector.detectAll(grid);
       expect(results, hasLength(1));
       expect(results[0].bonusTile, BonusTileType.supernova);

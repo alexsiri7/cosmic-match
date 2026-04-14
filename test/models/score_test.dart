@@ -53,5 +53,17 @@ void main() {
       score.add(200);
       expect(score.value, 200);
     });
+
+    test('negative points are ignored — score does not decrease', () {
+      score.add(500);
+      score.add(-100); // should be a no-op in release mode
+      expect(score.value, 500);
+    });
+
+    test('zero points leave score unchanged', () {
+      score.add(300);
+      score.add(0);
+      expect(score.value, 300);
+    });
   });
 }

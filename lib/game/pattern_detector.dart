@@ -134,7 +134,10 @@ class PatternDetector {
   }
 
   /// Detect L and T shaped matches → BonusTileType.blackHole.
-  /// An L/T is a 3-in-a-row horizontal + 3-in-a-row vertical sharing a corner/center tile.
+  /// An L/T is formed when a horizontal run of 3+ and a vertical run of 3+
+  /// of the same tile type share at least one tile, producing 5+ unique positions.
+  /// Note: runs of 4 or more in an arm are consumed here (Pass 2) before
+  /// the 4-in-a-row Pulsar pass (Pass 3).
   List<MatchResult> _scanLT(Grid grid, Set<String> claimed) {
     final results = <MatchResult>[];
     final cols = grid.length;
@@ -159,9 +162,9 @@ class PatternDetector {
             final allPositions = <TilePosition>{...hRun, ...vRun};
             // Must have at least 5 unique tiles for an L/T shape
             if (allPositions.length >= 5) {
-              final allClaimed =
+              final noneAlreadyClaimed =
                   allPositions.every((p) => !claimed.contains(p.key));
-              if (allClaimed) {
+              if (noneAlreadyClaimed) {
                 final positionsList = allPositions.toList();
                 for (final p in positionsList) {
                   claimed.add(p.key);

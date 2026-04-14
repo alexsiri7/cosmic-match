@@ -20,15 +20,26 @@ class LevelProgress {
       'starsEarned': starsEarned,
       'bestScore': bestScore,
     };
-    data['crc'] = Crc32.compute(data.toString().codeUnits);
+    // CRC is computed over a canonicalized (key-sorted) representation to
+    // ensure stability regardless of map insertion order or future field additions.
+    data['crc'] = Crc32.compute(_canonicalize(data).codeUnits);
     return data;
   }
 
+  /// Note: CRC is not validated here; callers must call ProgressService._isValid
+  /// before invoking fromMap to ensure data integrity.
   factory LevelProgress.fromMap(Map raw) {
     return LevelProgress(
       level: raw['level'] as int,
       starsEarned: raw['starsEarned'] as int,
       bestScore: raw['bestScore'] as int,
     );
+  }
+
+  /// Canonicalize a map to a stable string by sorting keys.
+  /// Matches ProgressService._canonicalize — both must use the same algorithm.
+  static String _canonicalize(Map<String, dynamic> data) {
+    final keys = data.keys.toList()..sort();
+    return keys.map((k) => '$k:${data[k]}').join(',');
   }
 }

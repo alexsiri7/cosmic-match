@@ -1,5 +1,20 @@
+import 'package:crc32/crc32.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:cosmic_match/models/level_progress.dart';
+
+/// Mirror of ProgressService._isValid / _canonicalize for test-level validation.
+/// Keeps tests independent of Hive while still exercising the same CRC logic.
+bool _isValid(Map raw) {
+  final storedCrc = raw['crc'] as int?;
+  if (storedCrc == null) return false;
+  final data = Map<String, dynamic>.from(raw)..remove('crc');
+  return Crc32.compute(_canonicalize(data).codeUnits) == storedCrc;
+}
+
+String _canonicalize(Map<String, dynamic> data) {
+  final keys = data.keys.toList()..sort();
+  return keys.map((k) => '$k:${data[k]}').join(',');
+}
 
 void main() {
   group('LevelProgress', () {
@@ -28,21 +43,12 @@ void main() {
       expect(restored.bestScore, original.bestScore);
     });
 
-    test('crc changes when data is tampered', () {
+    test('crc is stable across repeated toMap calls', () {
       final progress =
           LevelProgress(level: 1, starsEarned: 1, bestScore: 100);
-      final map = progress.toMap();
-      final originalCrc = map['crc'];
-
-      // Tamper with the data
-      map['bestScore'] = 999999;
-
-      // Recompute what the CRC should be for the tampered data
-      final tamperedData = Map.of(map)..remove('crc');
-      // The stored CRC should NOT match the tampered data
-      expect(originalCrc, isNot(equals(null)));
-      // Verifying the concept: original CRC was for original data
-      expect(map['bestScore'], isNot(equals(100)));
+      final crc1 = progress.toMap()['crc'] as int;
+      final crc2 = progress.toMap()['crc'] as int;
+      expect(crc1, equals(crc2));
     });
   });
 
@@ -51,33 +57,56 @@ void main() {
       final progress =
           LevelProgress(level: 1, starsEarned: 3, bestScore: 5000);
       final map = progress.toMap();
-
-      // Simulate what ProgressService._isValid does
-      final storedCrc = map['crc'] as int?;
-      expect(storedCrc, isNotNull);
-
-      final data = Map.of(map)..remove('crc');
-      // The CRC should be reproducible
-      expect(storedCrc, isA<int>());
+      expect(_isValid(map), isTrue);
     });
 
     test('missing crc key treated as tampered', () {
-      final map = {'level': 1, 'starsEarned': 0, 'bestScore': 0};
-      final storedCrc = map['crc'];
-      expect(storedCrc, isNull); // would cause reset to initial
+      final map = <String, dynamic>{
+        'level': 1,
+        'starsEarned': 0,
+        'bestScore': 0,
+      };
+      expect(_isValid(map), isFalse);
     });
 
-    test('tampered data with wrong crc is detected', () {
+    test('tampered bestScore is detected', () {
       final progress =
           LevelProgress(level: 1, starsEarned: 1, bestScore: 100);
       final map = progress.toMap();
-      final originalCrc = map['crc'] as int;
+      map['bestScore'] = 999999; // tamper — CRC unchanged
+      expect(_isValid(map), isFalse);
+    });
 
-      // Tamper with score
-      map['bestScore'] = 999999;
-      // CRC is still the original — mismatch
-      expect(map['crc'], equals(originalCrc));
-      // Data changed but CRC didn't → validation would fail
+    test('tampered starsEarned is detected', () {
+      final progress =
+          LevelProgress(level: 1, starsEarned: 1, bestScore: 100);
+      final map = progress.toMap();
+      map['starsEarned'] = 3; // tamper
+      expect(_isValid(map), isFalse);
+    });
+
+    test('wrong crc value is detected', () {
+      final progress =
+          LevelProgress(level: 1, starsEarned: 1, bestScore: 100);
+      final map = progress.toMap();
+      map['crc'] = 0; // corrupt CRC
+      expect(_isValid(map), isFalse);
+    });
+
+    test('CRC is order-independent (canonicalization)', () {
+      // Build maps with same data but different key insertion order
+      final progress =
+          LevelProgress(level: 2, starsEarned: 2, bestScore: 2000);
+      final canonical = progress.toMap();
+
+      // Reconstruct with different key order (simulates Hive deserialisation)
+      final reordered = <String, dynamic>{
+        'crc': canonical['crc'],
+        'bestScore': canonical['bestScore'],
+        'starsEarned': canonical['starsEarned'],
+        'level': canonical['level'],
+      };
+      expect(_isValid(reordered), isTrue);
     });
   });
 }

@@ -6,6 +6,7 @@ class Score {
 
   void add(int points) {
     assert(points >= 0, 'Points must be non-negative');
+    if (points <= 0) return; // release-mode guard; negative inputs are ignored
     _value = (_value + points).clamp(0, _max);
   }
 

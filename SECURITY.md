@@ -21,6 +21,21 @@ Cosmic Match V1 is a **fully offline** game. The current security surface is min
 
 The main `AndroidManifest.xml` declares no permissions. The `INTERNET` permission exists only in `android/app/src/debug/AndroidManifest.xml` for Flutter hot reload and debugging — it is **not** included in release builds.
 
+### 1.1 Client-Side Integrity Controls (SEC-008)
+
+Four mitigations are implemented in M1 to make trivial client-side manipulation harder.
+They do not stop a determined attacker on a rooted device, but raise the effort bar and
+will become more meaningful when leaderboards are added (see §2).
+
+| Control | Implementation | Limit |
+|---------|---------------|-------|
+| FSM Input Gate | `GridTile.onTapDown` drops all taps when `game.phase != idle` | Prevents tap injection during animations |
+| Score Clamp | `Score.add()` ignores non-positive inputs and clamps to 999,999,999 | Prevents integer overflow exploits |
+| Cascade Depth Limit | `CascadeController.maxDepth = 20`; `increment()` is a no-op once cap is reached | Prevents infinite cascade loops from bugs in gravity/refill logic |
+| CRC32 Save Integrity | `LevelProgress.toMap()` stores a CRC32 over canonicalized (key-sorted) fields; `ProgressService._isValid()` resets tampered data to `LevelProgress.initial()` | Deters hex-editor score edits; not cryptographically secure |
+
+**Note**: If leaderboards are added (post-V1), SEC-008 risk level rises to MEDIUM. Server-side score validation will be required at that point — see §2.
+
 ---
 
 ## 2. Scope of This Document

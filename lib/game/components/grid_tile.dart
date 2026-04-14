@@ -21,10 +21,12 @@ class GridTile extends RectangleComponent
   @override
   void onTapDown(TapDownEvent event) {
     // INPUT GATE — drop all taps except when idle
-    final game = findGame()! as Match3Game;
+    final game = findGame() as Match3Game?;
+    if (game == null) return; // component not yet properly mounted
     if (game.phase != GamePhase.idle) return;
 
-    // TODO M1: implement two-tap swap selection logic
+    // Stub: two-tap swap selection is out of M1 scope.
+    // M2 will implement first-tap highlight → second-tap swap.
     event.handled = true;
   }
 }

@@ -1,3 +1,4 @@
+import 'dart:math';
 import 'package:flame/components.dart';
 import '../../models/tile_type.dart';
 import '../../models/score.dart';
@@ -11,6 +12,7 @@ class GridWorld extends World {
   final Score score = Score();
   final CascadeController cascade = CascadeController();
   final PatternDetector detector = PatternDetector();
+  final _rng = Random();
 
   // Logical grid — null means empty (tile is falling)
   late List<List<TileType?>> grid;
@@ -21,18 +23,20 @@ class GridWorld extends World {
   }
 
   void _initGrid() {
-    grid = List.generate(
-        cols, (_) => List.generate(rows, (_) => _randomTile()));
-    // Ensure no matches on spawn
-    while (detector.detectAll(grid).isNotEmpty) {
+    var attempts = 0;
+    const maxAttempts = 200;
+    do {
       grid = List.generate(
           cols, (_) => List.generate(rows, (_) => _randomTile()));
-    }
+      attempts++;
+      // Ensure no matches on spawn; bounded to prevent infinite loop on unlucky seeds
+    } while (detector.detectAll(grid).isNotEmpty && attempts < maxAttempts);
+    // After maxAttempts, accept as-is; first game cycle will clear any matches
   }
 
+  /// Returns a random tile type using a proper RNG instance.
   TileType _randomTile() {
-    final values = TileType.values;
-    return values[DateTime.now().microsecond % values.length];
+    return TileType.values[_rng.nextInt(TileType.values.length)];
   }
 
   /// Apply gravity: tiles fall down to fill nulls.
