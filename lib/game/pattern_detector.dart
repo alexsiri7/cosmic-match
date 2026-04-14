@@ -56,20 +56,16 @@ class PatternDetector {
         final type = grid[x][y];
         if (type == null) continue;
 
-        bool valid = true;
         final positions = <TilePosition>[];
         for (int dx = 0; dx < length; dx++) {
           final pos = TilePosition(x + dx, y);
-          if (grid[x + dx][y] != type || claimed.contains(pos)) {
-            valid = false;
-            break;
-          }
+          if (grid[x + dx][y] != type || claimed.contains(pos)) break;
           positions.add(pos);
         }
 
         // Ensure it's exactly `length` — not part of a longer run
         // (longer runs are caught by higher-priority passes)
-        if (valid) {
+        if (positions.length == length) {
           final leftOk = x == 0 ||
               grid[x - 1][y] != type ||
               claimed.contains(TilePosition(x - 1, y));
@@ -94,18 +90,14 @@ class PatternDetector {
         final type = grid[x][y];
         if (type == null) continue;
 
-        bool valid = true;
         final positions = <TilePosition>[];
         for (int dy = 0; dy < length; dy++) {
           final pos = TilePosition(x, y + dy);
-          if (grid[x][y + dy] != type || claimed.contains(pos)) {
-            valid = false;
-            break;
-          }
+          if (grid[x][y + dy] != type || claimed.contains(pos)) break;
           positions.add(pos);
         }
 
-        if (valid) {
+        if (positions.length == length) {
           final topOk = y == 0 ||
               grid[x][y - 1] != type ||
               claimed.contains(TilePosition(x, y - 1));

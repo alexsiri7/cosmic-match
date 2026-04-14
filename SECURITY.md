@@ -318,6 +318,83 @@ Before publishing to the Play Store:
 
 Enrol in Google Play App Signing. This lets Google manage the app signing key while you use an upload key — reducing the risk of a lost keystore locking you out of updates.
 
+### 8.4 `build.gradle.kts` Signing Config (Kotlin DSL)
+
+Replace the debug signing placeholder in `android/app/build.gradle.kts` with the following. It reads `key.properties` for local development and falls back to environment variables for CI:
+
+```kotlin
+// android/app/build.gradle.kts (release signing config template)
+import java.util.Properties
+
+val keyPropertiesFile = rootProject.file("key.properties")
+val keyProperties = Properties().apply {
+    if (keyPropertiesFile.exists()) load(keyPropertiesFile.inputStream())
+}
+
+android {
+    signingConfigs {
+        create("release") {
+            storeFile = file(
+                keyProperties["storeFile"] as String?
+                    ?: System.getenv("KEYSTORE_PATH") ?: error("No storeFile")
+            )
+            storePassword = keyProperties["storePassword"] as String?
+                ?: System.getenv("KEYSTORE_PASSWORD") ?: error("No storePassword")
+            keyAlias = keyProperties["keyAlias"] as String?
+                ?: System.getenv("KEY_ALIAS") ?: error("No keyAlias")
+            keyPassword = keyProperties["keyPassword"] as String?
+                ?: System.getenv("KEY_PASSWORD") ?: error("No keyPassword")
+        }
+    }
+    buildTypes {
+        release {
+            signingConfig = signingConfigs.getByName("release")
+        }
+    }
+}
+```
+
+> ⚠️ Do **not** check in `key.properties` — it is gitignored. Copy `android/key.properties.example` and fill in real values for local builds.
+
+### 8.5 GitHub Actions CI/CD Signing Snippet
+
+Add the following steps to your release job in `.github/workflows/release.yml`:
+
+```yaml
+# .github/workflows/release.yml (signing steps only — add to your release job)
+- name: Decode keystore
+  run: |
+    echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode \
+      > $RUNNER_TEMP/cosmic-match-release.jks
+
+- name: Build release APK
+  env:
+    KEYSTORE_PATH: ${{ runner.temp }}/cosmic-match-release.jks
+    KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+    KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+    KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+  run: flutter build apk --release
+
+- name: Upload APK artifact
+  uses: actions/upload-artifact@v4
+  with:
+    name: release-apk
+    path: build/app/outputs/flutter-apk/app-release.apk
+```
+
+**Required GitHub Secrets:**
+
+| Secret | Value |
+|--------|-------|
+| `KEYSTORE_BASE64` | **Linux:** `base64 -w 0 cosmic-match-release.jks` <br> **macOS:** `base64 cosmic-match-release.jks \| tr -d '\n'` |
+| `KEYSTORE_PASSWORD` | Store password |
+| `KEY_ALIAS` | `cosmic-match` |
+| `KEY_PASSWORD` | Key password |
+
+### 8.6 Key Properties Example File
+
+A committed example file at `android/key.properties.example` documents the expected properties schema. Copy it to `android/key.properties` and fill in real values. The real `key.properties` is gitignored.
+
 ---
 
 ## 9. Data Privacy
@@ -345,6 +422,7 @@ Complete all items before shipping any backend-connected release:
 | # | Checkpoint | Status |
 |---|---|---|
 | 1 | Production keystore generated and stored securely (not in repo) | [ ] |
+| 1a | `android/key.properties.example` committed to the repository | [ ] |
 | 2 | `key.properties` created and gitignored | [ ] |
 | 3 | `network_security_config.xml` created with cleartext blocked | [ ] |
 | 4 | Auth provider selected and integrated (Firebase or Supabase) | [ ] |
