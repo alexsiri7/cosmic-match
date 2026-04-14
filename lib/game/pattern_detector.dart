@@ -1,0 +1,237 @@
+import '../models/tile_type.dart';
+
+typedef Grid = List<List<TileType?>>;
+
+class TilePosition {
+  final int x, y;
+  const TilePosition(this.x, this.y);
+
+  String get key => '$x,$y';
+
+  @override
+  bool operator ==(Object other) =>
+      other is TilePosition && other.x == x && other.y == y;
+
+  @override
+  int get hashCode => Object.hash(x, y);
+}
+
+class MatchResult {
+  final List<TilePosition> tiles;
+  final BonusTileType? bonusTile;
+  final TilePosition? bonusPosition;
+
+  const MatchResult({required this.tiles, this.bonusTile, this.bonusPosition});
+}
+
+class PatternDetector {
+  /// Evaluate in strict priority order — DO NOT reorder.
+  /// Priority: 5-in-a-row (Supernova) > L/T (Black Hole) > 4-in-a-row (Pulsar) > 3-in-a-row (basic)
+  List<MatchResult> detectAll(Grid grid) {
+    final results = <MatchResult>[];
+    final claimed = <String>{};
+
+    // Pass 1: 5-in-a-row (Supernova) — highest priority
+    results.addAll(_scanRuns(grid, 5, BonusTileType.supernova, claimed));
+    // Pass 2: L/T shapes (Black Hole)
+    results.addAll(_scanLT(grid, claimed));
+    // Pass 3: 4-in-a-row (Pulsar)
+    results.addAll(_scanRuns(grid, 4, BonusTileType.pulsar, claimed));
+    // Pass 4: 3-in-a-row (basic clear)
+    results.addAll(_scanRuns(grid, 3, null, claimed));
+
+    return results;
+  }
+
+  /// Scan rows and columns for runs of exactly `length` same-type tiles.
+  /// Tiles already in `claimed` are skipped. Matched tiles are added to `claimed`.
+  List<MatchResult> _scanRuns(
+      Grid grid, int length, BonusTileType? bonus, Set<String> claimed) {
+    final results = <MatchResult>[];
+    final cols = grid.length;
+    if (cols == 0) return results;
+    final rows = grid[0].length;
+
+    // Scan horizontal runs (along each row)
+    for (int y = 0; y < rows; y++) {
+      for (int x = 0; x <= cols - length; x++) {
+        final type = grid[x][y];
+        if (type == null) continue;
+
+        bool valid = true;
+        final positions = <TilePosition>[];
+        for (int dx = 0; dx < length; dx++) {
+          final pos = TilePosition(x + dx, y);
+          if (grid[x + dx][y] != type || claimed.contains(pos.key)) {
+            valid = false;
+            break;
+          }
+          positions.add(pos);
+        }
+
+        // Ensure it's exactly `length` — not part of a longer run
+        // (longer runs are caught by higher-priority passes)
+        if (valid) {
+          final leftOk = x == 0 ||
+              grid[x - 1][y] != type ||
+              claimed.contains(TilePosition(x - 1, y).key);
+          final rightOk = x + length >= cols ||
+              grid[x + length][y] != type ||
+              claimed.contains(TilePosition(x + length, y).key);
+          if (leftOk && rightOk) {
+            for (final p in positions) {
+              claimed.add(p.key);
+            }
+            results.add(MatchResult(
+              tiles: positions,
+              bonusTile: bonus,
+              bonusPosition: bonus != null ? positions[length ~/ 2] : null,
+            ));
+          }
+        }
+      }
+    }
+
+    // Scan vertical runs (along each column)
+    for (int x = 0; x < cols; x++) {
+      for (int y = 0; y <= rows - length; y++) {
+        final type = grid[x][y];
+        if (type == null) continue;
+
+        bool valid = true;
+        final positions = <TilePosition>[];
+        for (int dy = 0; dy < length; dy++) {
+          final pos = TilePosition(x, y + dy);
+          if (grid[x][y + dy] != type || claimed.contains(pos.key)) {
+            valid = false;
+            break;
+          }
+          positions.add(pos);
+        }
+
+        if (valid) {
+          final topOk = y == 0 ||
+              grid[x][y - 1] != type ||
+              claimed.contains(TilePosition(x, y - 1).key);
+          final bottomOk = y + length >= rows ||
+              grid[x][y + length] != type ||
+              claimed.contains(TilePosition(x, y + length).key);
+          if (topOk && bottomOk) {
+            for (final p in positions) {
+              claimed.add(p.key);
+            }
+            results.add(MatchResult(
+              tiles: positions,
+              bonusTile: bonus,
+              bonusPosition: bonus != null ? positions[length ~/ 2] : null,
+            ));
+          }
+        }
+      }
+    }
+
+    return results;
+  }
+
+  /// Detect L and T shaped matches → BonusTileType.blackHole.
+  /// An L/T is a 3-in-a-row horizontal + 3-in-a-row vertical sharing a corner/center tile.
+  List<MatchResult> _scanLT(Grid grid, Set<String> claimed) {
+    final results = <MatchResult>[];
+    final cols = grid.length;
+    if (cols == 0) return results;
+    final rows = grid[0].length;
+
+    // For each tile, check if it's the intersection of a horizontal and vertical 3-run
+    for (int x = 0; x < cols; x++) {
+      for (int y = 0; y < rows; y++) {
+        final type = grid[x][y];
+        if (type == null) continue;
+        if (claimed.contains(TilePosition(x, y).key)) continue;
+
+        // Find all horizontal 3-runs through (x, y)
+        final hRuns = _findRunsThrough(grid, x, y, type, true, claimed);
+        // Find all vertical 3-runs through (x, y)
+        final vRuns = _findRunsThrough(grid, x, y, type, false, claimed);
+
+        // Each combination of h-run and v-run forms an L or T
+        for (final hRun in hRuns) {
+          for (final vRun in vRuns) {
+            final allPositions = <TilePosition>{...hRun, ...vRun};
+            // Must have at least 5 unique tiles for an L/T shape
+            if (allPositions.length >= 5) {
+              final allClaimed =
+                  allPositions.every((p) => !claimed.contains(p.key));
+              if (allClaimed) {
+                final positionsList = allPositions.toList();
+                for (final p in positionsList) {
+                  claimed.add(p.key);
+                }
+                results.add(MatchResult(
+                  tiles: positionsList,
+                  bonusTile: BonusTileType.blackHole,
+                  bonusPosition: TilePosition(x, y),
+                ));
+              }
+            }
+          }
+        }
+      }
+    }
+
+    return results;
+  }
+
+  /// Find all 3+ runs along one axis that pass through (px, py).
+  List<List<TilePosition>> _findRunsThrough(
+      Grid grid, int px, int py, TileType type, bool horizontal,
+      Set<String> claimed) {
+    final cols = grid.length;
+    final rows = grid[0].length;
+    final results = <List<TilePosition>>[];
+
+    // Extend in both directions from (px, py)
+    final positions = <TilePosition>[TilePosition(px, py)];
+
+    if (horizontal) {
+      // Extend left
+      for (int x = px - 1; x >= 0; x--) {
+        if (grid[x][py] == type && !claimed.contains(TilePosition(x, py).key)) {
+          positions.insert(0, TilePosition(x, py));
+        } else {
+          break;
+        }
+      }
+      // Extend right
+      for (int x = px + 1; x < cols; x++) {
+        if (grid[x][py] == type && !claimed.contains(TilePosition(x, py).key)) {
+          positions.add(TilePosition(x, py));
+        } else {
+          break;
+        }
+      }
+    } else {
+      // Extend up
+      for (int y = py - 1; y >= 0; y--) {
+        if (grid[px][y] == type && !claimed.contains(TilePosition(px, y).key)) {
+          positions.insert(0, TilePosition(px, y));
+        } else {
+          break;
+        }
+      }
+      // Extend down
+      for (int y = py + 1; y < rows; y++) {
+        if (grid[px][y] == type && !claimed.contains(TilePosition(px, y).key)) {
+          positions.add(TilePosition(px, y));
+        } else {
+          break;
+        }
+      }
+    }
+
+    if (positions.length >= 3) {
+      results.add(positions);
+    }
+
+    return results;
+  }
+}
