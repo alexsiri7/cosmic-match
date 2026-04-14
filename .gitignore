@@ -1,0 +1,55 @@
+# Flutter
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+build/
+.metadata
+
+# Dart
+*.dart.snapshot
+
+# Android
+android/.gradle/
+android/captures/
+android/gradlew
+android/gradlew.bat
+android/local.properties
+android/GeneratedPluginRegistrant.java
+android/app/debug/
+android/app/profile/
+android/app/release/
+*.apk
+*.aab
+
+# Signing keys — CRITICAL: never commit these
+*.jks
+*.keystore
+key.properties
+
+# Environment files — CRITICAL: never commit these
+.env
+.env.*
+*.env
+
+# IDE
+.idea/
+.vscode/
+*.iml
+*.ipr
+*.iws
+.project
+.classpath
+.settings/
+
+# macOS
+.DS_Store
+*.swp
+*.swo
+
+# Coverage
+coverage/
+*.lcov
+
+# Miscellaneous
+*.log
