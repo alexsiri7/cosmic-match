@@ -170,12 +170,10 @@ class PatternDetector {
   List<TilePosition>? _findRunThrough(
       Grid grid, int px, int py, TileType type, bool horizontal,
       Set<TilePosition> claimed) {
-    final cols = grid.length;
-    final rows = grid[0].length;
-
     final positions = <TilePosition>[TilePosition(px, py)];
 
     if (horizontal) {
+      final cols = grid.length;
       for (int x = px - 1; x >= 0; x--) {
         final pos = TilePosition(x, py);
         if (grid[x][py] == type && !claimed.contains(pos)) {
@@ -193,6 +191,7 @@ class PatternDetector {
         }
       }
     } else {
+      final rows = grid[0].length;
       for (int y = py - 1; y >= 0; y--) {
         final pos = TilePosition(px, y);
         if (grid[px][y] == type && !claimed.contains(pos)) {
