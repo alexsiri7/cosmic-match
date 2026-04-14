@@ -359,3 +359,73 @@ Complete all items before shipping any backend-connected release:
 | 13 | TLS 1.2+ enforced for all API communication | [ ] |
 | 14 | Certificate pinning configured with backup pin | [ ] |
 | 15 | This document reviewed and updated for the chosen architecture | [ ] |
+
+---
+
+## 11. Dependency Pinning and Audit Strategy
+
+### 11.1 Why `pubspec.lock` Is Committed
+
+For application packages (as opposed to library packages), `pubspec.lock` must be committed to version control from the first dependency. The lockfile records exact resolved versions and cryptographic content hashes for every direct and transitive dependency. Without it:
+
+- Different environments silently resolve different transitive versions
+- Compromised packages on pub.dev can be injected as transitive dependencies
+- GitHub Dependency Graph and Dependabot cannot function
+
+### 11.2 Version Constraint Strategy
+
+| Constraint Style | Syntax | Usage |
+|---|---|---|
+| Caret (recommended) | `^1.4.0` means `>=1.4.0 <2.0.0` | All application dependencies |
+| Exact pin | `1.4.0` | Avoid — prevents security patch adoption |
+| Range | `>=1.0.0 <2.0.0` | Equivalent to caret; use caret instead |
+
+All dependencies in `pubspec.yaml` use caret constraints. This allows patch and minor security updates while preventing accidental major-version breakage.
+
+### 11.3 Automated Vulnerability Monitoring
+
+`.github/dependabot.yml` configures Dependabot to check pub.dev weekly:
+
+```yaml
+version: 2
+updates:
+  - package-ecosystem: "pub"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    labels:
+      - "dependencies"
+```
+
+When a CVE is found in any dependency:
+1. Dependabot opens a PR to bump the affected package
+2. Review the advisory, test the upgrade, and merge
+3. If the advisory is a false positive, suppress it in `pubspec.yaml`:
+
+```yaml
+ignored_advisories:
+  - GHSA-xxxx-xxxx-xxxx  # Brief reason why this is a false positive
+```
+
+### 11.4 CI Enforcement
+
+When a CI/CD pipeline is established (see SEC-003), add this step to the build job:
+
+```bash
+dart pub get --enforce-lockfile
+```
+
+This verifies that resolved package hashes match the committed `pubspec.lock` exactly. If any hash mismatches (e.g., a package was tampered with on pub.dev), the build fails immediately.
+
+Note: Use `dart pub get --enforce-lockfile` in CI scripts rather than `flutter pub get`.
+This avoids requiring the full Flutter SDK in CI — `dart pub get` resolves the same
+packages with a smaller toolchain footprint.
+
+### 11.5 Periodic Review
+
+| Action | Frequency | Command |
+|---|---|---|
+| Update all dependencies | Monthly | `flutter pub upgrade` |
+| Check for advisories | On every `pub get` | Automatic (shown in output) |
+| Review Dependabot PRs | Weekly | GitHub PR queue |
+| Audit transitive deps | Quarterly | Review `pubspec.lock` diff |
