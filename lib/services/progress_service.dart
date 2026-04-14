@@ -6,9 +6,20 @@ import '../models/level_progress.dart';
 class ProgressService {
   static const _boxName = 'progress';
 
+  final HiveAesCipher? _cipher;
+
+  /// Creates a [ProgressService].
+  ///
+  /// When [cipher] is provided the Hive box is opened with AES-256 encryption.
+  /// Pass `null` to open the box unencrypted (graceful degradation).
+  ///
+  /// Note: opening a previously-unencrypted box with a cipher will throw.
+  /// For V1 (no existing users) this is acceptable.
+  ProgressService({HiveAesCipher? cipher}) : _cipher = cipher;
+
   Future<LevelProgress> load(int level) async {
     try {
-      final box = await Hive.openBox(_boxName);
+      final box = await Hive.openBox(_boxName, encryptionCipher: _cipher);
       final raw = box.get('level_$level');
       if (raw == null || raw is! Map || !_isValid(raw)) {
         return LevelProgress.initial(level);
@@ -22,7 +33,7 @@ class ProgressService {
 
   Future<void> save(LevelProgress progress) async {
     try {
-      final box = await Hive.openBox(_boxName);
+      final box = await Hive.openBox(_boxName, encryptionCipher: _cipher);
       await box.put('level_${progress.level}', progress.toMap());
     } catch (e, stack) {
       debugPrint(
