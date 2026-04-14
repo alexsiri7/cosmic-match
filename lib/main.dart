@@ -12,8 +12,7 @@ Future<void> main() async {
   // AES-256 key in platform secure storage if not already present.
   // Returns null on platforms / emulators without secure storage (graceful degradation).
   // TODO(M2): capture cipher and pass to ProgressService via Riverpod provider.
-  // ignore: unused_local_variable
-  final cipher = await KeyService().getCipher();
+  await KeyService().getCipher();
   runApp(
     const ProviderScope(
       child: CosmicMatchApp(),
