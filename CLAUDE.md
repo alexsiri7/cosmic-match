@@ -4,7 +4,7 @@
 
 ```bash
 # Analyse
-dart analyze
+flutter analyze
 
 # Test
 flutter test
