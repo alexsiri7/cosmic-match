@@ -54,6 +54,20 @@ void main() {
         expect(ScoreCalculator.calculateScore([3, 4], 2), 400);
       });
     });
+
+    group('score clamping', () {
+      test('very large cascade depth does not exceed max per call', () {
+        // 500 points base * 1000 depth = 500,000 but clamped to 99,999
+        final result = ScoreCalculator.calculateScore([5], 1000);
+        expect(result, 99999);
+      });
+
+      test('moderate cascade depth is not clamped', () {
+        // 500 * 20 = 10,000 — under the cap
+        final result = ScoreCalculator.calculateScore([5], 20);
+        expect(result, 10000);
+      });
+    });
   });
 
   group('GameState', () {
@@ -198,6 +212,34 @@ void main() {
       expect(state.isOutOfMoves, false);
       state.useMove();
       expect(state.isOutOfMoves, true);
+    });
+
+    test('score is capped at 999999', () {
+      final state = GameState();
+      state.addScore(999998);
+      state.addScore(10); // would push to 1,000,008 without clamp
+      expect(state.score, 999999);
+    });
+
+    test('score does not go negative', () {
+      final state = GameState();
+      state.addScore(-100); // unusual but defensive
+      expect(state.score, 0);
+    });
+
+    test('goalProgress cannot exceed goalTarget', () {
+      final state = GameState();
+      final config = LevelConfig(
+        id: 1,
+        galaxyIndex: 0,
+        goalType: GoalType.clearCount,
+        targetCount: 10,
+        moveLimit: 20,
+      );
+      state.initFromLevel(config);
+      state.addGoalProgress(5);
+      state.addGoalProgress(10); // total would be 15, target is 10
+      expect(state.goalProgress, 10);
     });
 
     test('reset clears all state including moves and goals', () {

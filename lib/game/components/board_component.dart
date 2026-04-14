@@ -11,6 +11,8 @@ import '../../utils/score_calculator.dart';
 import '../cosmic_match_game.dart';
 import 'tile_component.dart';
 
+enum _GameInputState { idle, animating, cascading }
+
 /// Renders the 8x8 game board as a grid of TileComponents.
 class BoardComponent extends PositionComponent
     with HasGameReference<CosmicMatchGame> {
@@ -24,8 +26,11 @@ class BoardComponent extends PositionComponent
   /// Currently selected tile (null if none).
   TileComponent? _selectedTile;
 
-  /// True while a swap/cascade is in progress — ignores taps.
-  bool _processing = false;
+  /// Current input state — ignores taps while animating or cascading.
+  _GameInputState _inputState = _GameInputState.idle;
+
+  /// Maximum cascade depth to prevent unbounded loops.
+  static const int _maxCascadeDepth = 20;
 
   /// Tracks the current cascade chain depth (0 = initial match, 1+ = cascades).
   int cascadeCount = 0;
@@ -113,7 +118,7 @@ class BoardComponent extends PositionComponent
   }
 
   void _onTileTapped(TileComponent tapped) {
-    if (_processing || game.levelEnded) return;
+    if (_inputState != _GameInputState.idle || game.levelEnded) return;
 
     if (_selectedTile == null) {
       // No selection — select this tile
@@ -146,7 +151,7 @@ class BoardComponent extends PositionComponent
   }
 
   void _swapTiles(TileComponent tileA, TileComponent tileB) {
-    _processing = true;
+    _inputState = _GameInputState.animating;
     _deselectTile();
 
     final posA = tileA.position.clone();
@@ -207,10 +212,11 @@ class BoardComponent extends PositionComponent
 
   /// Starts the cascade chain: clear → gravity → detect → repeat until stable.
   Future<void> _startCascade(List<Match> matches) async {
+    _inputState = _GameInputState.cascading;
     cascadeCount = 1;
 
     var currentMatches = matches;
-    while (currentMatches.isNotEmpty) {
+    while (currentMatches.isNotEmpty && cascadeCount <= _maxCascadeDepth) {
       _clearAndApplyGravity(currentMatches);
 
       // Wait for gravity/fall animations to complete
@@ -222,7 +228,7 @@ class BoardComponent extends PositionComponent
       currentMatches = MatchDetector.findMatches(boardState);
     }
 
-    _processing = false;
+    _inputState = _GameInputState.idle;
 
     // Check win/lose conditions after cascade resolves
     _checkLevelEnd();
@@ -398,7 +404,7 @@ class BoardComponent extends PositionComponent
         originalPosB.clone(),
         EffectController(duration: 0.2),
         onComplete: () {
-          _processing = false;
+          _inputState = _GameInputState.idle;
         },
       ),
     );

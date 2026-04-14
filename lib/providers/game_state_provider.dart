@@ -15,6 +15,8 @@ class GameState extends ChangeNotifier {
   GoalType _goalType = GoalType.clearCount;
   TileType? _targetTileType;
 
+  static const int _maxScore = 999999;
+
   int get score => _score;
   int get displayedScore => _displayedScore;
   int get movesRemaining => _movesRemaining;
@@ -52,7 +54,7 @@ class GameState extends ChangeNotifier {
   }
 
   void addScore(int points) {
-    _score += points;
+    _score = (_score + points).clamp(0, _maxScore);
     notifyListeners();
   }
 
@@ -72,7 +74,7 @@ class GameState extends ChangeNotifier {
 
   /// Add to goal progress (e.g. tiles cleared of target type, obstacles cleared).
   void addGoalProgress(int amount) {
-    _goalProgress += amount;
+    _goalProgress = (_goalProgress + amount).clamp(0, _goalTarget);
     notifyListeners();
   }
 
