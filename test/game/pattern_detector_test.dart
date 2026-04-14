@@ -136,7 +136,7 @@ void main() {
     });
 
     test('detects T-shape → Black Hole', () {
-      final grid = _buildTShape(0, 0, TileType.green);
+      final grid = _buildTShape(0, 0, TileType.yellow);
       final results = detector.detectAll(grid);
       expect(results.any((r) => r.bonusTile == BonusTileType.blackHole), isTrue);
     });

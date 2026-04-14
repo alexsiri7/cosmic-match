@@ -1,4 +1,4 @@
-import 'package:crc32/crc32.dart';
+import 'package:archive/archive.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:cosmic_match/models/level_progress.dart';
 
@@ -8,7 +8,7 @@ bool _isValid(Map raw) {
   final storedCrc = raw['crc'] as int?;
   if (storedCrc == null) return false;
   final data = Map<String, dynamic>.from(raw)..remove('crc');
-  return Crc32.compute(_canonicalize(data).codeUnits) == storedCrc;
+  return getCrc32(_canonicalize(data).codeUnits) == storedCrc;
 }
 
 String _canonicalize(Map<String, dynamic> data) {
