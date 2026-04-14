@@ -1,0 +1,5 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- INTERNET permission for Flutter tooling (hot reload, DevTools).
+         Scoped to debug builds only — not included in release APK. -->
+    <uses-permission android:name="android.permission.INTERNET"/>
+</manifest>
