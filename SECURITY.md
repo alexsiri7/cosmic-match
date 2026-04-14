@@ -105,9 +105,12 @@ Choose **Supabase Auth** if:
 
 Android 9+ (API 28+) blocks cleartext HTTP by default. Since `minSdk = 26` (Android 8), the app spans both behaviours. A `network_security_config.xml` must be created when any network calls are added.
 
-### 4.2 Network Security Config Template
+### 4.2 Network Security Config
 
-Create `android/app/src/main/res/xml/network_security_config.xml`:
+`android/app/src/main/res/xml/network_security_config.xml` is in place and blocks all
+cleartext traffic. It is referenced in `android/app/src/main/AndroidManifest.xml` via
+`android:networkSecurityConfig`. When backend API calls are added, extend the config
+with certificate pinning (template below):
 
 ```xml
 <?xml version="1.0" encoding="utf-8"?>
@@ -301,13 +304,12 @@ Future<void> main() async {
 
 ### 8.1 Current State
 
-`android/app/build.gradle.kts` contains:
+Release signing is implemented via `android/app/build.gradle.kts`. When
+`android/key.properties` is present, the release build uses the configured keystore.
+When absent (local dev without a keystore), the release build falls back to debug signing.
 
-```kotlin
-// TODO: Add your own signing config for the release build.
-// Signing with the debug keys for now
-signingConfig = signingConfigs.getByName("debug")
-```
+See `android/key.properties.example` for the required file format, and §8.2 for keystore
+generation instructions.
 
 ### 8.2 Production Signing Requirements
 
@@ -331,35 +333,44 @@ Enrol in Google Play App Signing. This lets Google manage the app signing key wh
 
 ### 8.4 `build.gradle.kts` Signing Config (Kotlin DSL)
 
-Replace the debug signing placeholder in `android/app/build.gradle.kts` with the following. It reads `key.properties` for local development and falls back to environment variables for CI:
+The implemented config reads from `key.properties` only. The CI writes `key.properties`
+from secrets before running `flutter build` — **do not** add `System.getenv()` reads in
+Gradle, as those values can be captured in Gradle's configuration cache.
 
 ```kotlin
-// android/app/build.gradle.kts (release signing config template)
+// android/app/build.gradle.kts
 import java.util.Properties
+import java.io.FileInputStream
 
 val keyPropertiesFile = rootProject.file("key.properties")
-val keyProperties = Properties().apply {
-    if (keyPropertiesFile.exists()) load(keyPropertiesFile.inputStream())
+val keyProperties = Properties()
+if (keyPropertiesFile.exists()) {
+    keyProperties.load(FileInputStream(keyPropertiesFile))
 }
 
 android {
     signingConfigs {
         create("release") {
-            storeFile = file(
-                keyProperties["storeFile"] as String?
-                    ?: System.getenv("KEYSTORE_PATH") ?: error("No storeFile")
-            )
-            storePassword = keyProperties["storePassword"] as String?
-                ?: System.getenv("KEYSTORE_PASSWORD") ?: error("No storePassword")
-            keyAlias = keyProperties["keyAlias"] as String?
-                ?: System.getenv("KEY_ALIAS") ?: error("No keyAlias")
-            keyPassword = keyProperties["keyPassword"] as String?
-                ?: System.getenv("KEY_PASSWORD") ?: error("No keyPassword")
+            // Properties only set when key.properties exists.
+            // buildTypes.release falls back to debug signing when this block is empty.
+            if (keyPropertiesFile.exists()) {
+                keyAlias = keyProperties.getProperty("keyAlias")
+                    ?: error("keyAlias missing from android/key.properties — see key.properties.example")
+                keyPassword = keyProperties.getProperty("keyPassword")
+                    ?: error("keyPassword missing from android/key.properties")
+                storeFile = file(keyProperties.getProperty("storeFile")
+                    ?: error("storeFile missing from android/key.properties"))
+                storePassword = keyProperties.getProperty("storePassword")
+                    ?: error("storePassword missing from android/key.properties")
+            }
         }
     }
     buildTypes {
         release {
-            signingConfig = signingConfigs.getByName("release")
+            signingConfig = if (keyPropertiesFile.exists())
+                signingConfigs.getByName("release")
+            else
+                signingConfigs.getByName("debug")
         }
     }
 }
@@ -369,38 +380,47 @@ android {
 
 ### 8.5 GitHub Actions CI/CD Signing Snippet
 
-Add the following steps to your release job in `.github/workflows/release.yml`:
+The release job in `.github/workflows/ci.yml` implements signing as follows. Secrets are
+passed via `env:` blocks — **never** interpolated inline into `run:` scripts — to prevent
+exposure via process lists or logs.
 
 ```yaml
-# .github/workflows/release.yml (signing steps only — add to your release job)
+# .github/workflows/ci.yml (release job — signing steps)
 - name: Decode keystore
-  run: |
-    echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode \
-      > $RUNNER_TEMP/cosmic-match-release.jks
-
-- name: Build release APK
   env:
-    KEYSTORE_PATH: ${{ runner.temp }}/cosmic-match-release.jks
-    KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
-    KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
-    KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
-  run: flutter build apk --release
+    KEYSTORE_B64: ${{ secrets.KEYSTORE_BASE64 }}
+  run: printf '%s' "$KEYSTORE_B64" | base64 --decode > android/cosmic-match-release.jks
 
-- name: Upload APK artifact
-  uses: actions/upload-artifact@v4
-  with:
-    name: release-apk
-    path: build/app/outputs/flutter-apk/app-release.apk
+- name: Write key.properties
+  env:
+    STORE_PASSWORD: ${{ secrets.KEYSTORE_STORE_PASSWORD }}
+    KEY_PASSWORD: ${{ secrets.KEYSTORE_KEY_PASSWORD }}
+    KEY_ALIAS: ${{ secrets.KEYSTORE_KEY_ALIAS }}
+  run: |
+    {
+      echo "storePassword=$STORE_PASSWORD"
+      echo "keyPassword=$KEY_PASSWORD"
+      echo "keyAlias=$KEY_ALIAS"
+      echo "storeFile=${{ github.workspace }}/android/cosmic-match-release.jks"
+    } > android/key.properties
+
+- run: flutter build appbundle --release
+
+- name: Clean up signing credentials
+  if: always()
+  run: rm -f android/cosmic-match-release.jks android/key.properties
 ```
+
+> Secrets are passed via `env:` blocks, never interpolated inline into `run:` scripts, to prevent exposure via process lists.
 
 **Required GitHub Secrets:**
 
 | Secret | Value |
 |--------|-------|
 | `KEYSTORE_BASE64` | **Linux:** `base64 -w 0 cosmic-match-release.jks` <br> **macOS:** `base64 cosmic-match-release.jks \| tr -d '\n'` |
-| `KEYSTORE_PASSWORD` | Store password |
-| `KEY_ALIAS` | `cosmic-match` |
-| `KEY_PASSWORD` | Key password |
+| `KEYSTORE_STORE_PASSWORD` | Store password |
+| `KEYSTORE_KEY_ALIAS` | `cosmic-match` |
+| `KEYSTORE_KEY_PASSWORD` | Key password |
 
 ### 8.6 Key Properties Example File
 

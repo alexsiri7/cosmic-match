@@ -34,7 +34,6 @@ class GridWorld extends World {
     // After maxAttempts, accept as-is; first game cycle will clear any matches
   }
 
-  /// Returns a random tile type using a proper RNG instance.
   TileType _randomTile() {
     return TileType.values[_rng.nextInt(TileType.values.length)];
   }

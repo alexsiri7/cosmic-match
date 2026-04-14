@@ -12,6 +12,9 @@ flutter test
 # Build (debug APK)
 flutter build apk --debug
 
+# Build (release AAB) — requires android/key.properties (see android/key.properties.example)
+flutter build appbundle --release
+
 # Generate Hive adapters (run after adding new Hive types)
 dart run build_runner build --delete-conflicting-outputs
 ```
