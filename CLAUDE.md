@@ -22,7 +22,7 @@ dart run build_runner build --delete-conflicting-outputs
 lib/
   game/           # Flame game, FSM, world, components
   models/         # Pure data: Score, TileType, LevelProgress
-  services/       # Hive persistence (ProgressService)
+  services/       # Hive persistence (ProgressService) and key management (KeyService)
 test/             # Unit tests mirror lib/ structure
 ```
 
@@ -63,6 +63,11 @@ any map missing or mismatching the CRC and resets to `LevelProgress.initial()`.
 When adding new fields to `LevelProgress`:
 - Include them in `toMap()` before computing the CRC
 - The canonicalized format sorts keys alphabetically, so insertion order does not matter
+
+**Cipher invariant**: `ProgressService` accepts an optional `HiveAesCipher` (SEC-004).
+A box opened with a cipher cannot later be opened without one (and vice-versa). For V1
+there are no existing users, so this is safe. In future migrations, ensure the cipher
+parameter is consistent across all `ProgressService` instantiation sites.
 
 ### SEC-008 Integrity Controls
 
