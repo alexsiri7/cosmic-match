@@ -1,5 +1,6 @@
+import 'dart:developer' as dev;
+
 import 'package:archive/archive.dart';
-import 'package:flutter/foundation.dart';
 import 'package:hive/hive.dart';
 import '../models/level_progress.dart';
 
@@ -25,8 +26,23 @@ class ProgressService {
         return LevelProgress.initial(level);
       }
       return LevelProgress.fromMap(raw);
+    } on HiveError catch (e, stack) {
+      dev.log(
+        'ProgressService.load($level): HiveError — possible cipher mismatch. Resetting to initial.',
+        name: 'ProgressService',
+        error: e,
+        stackTrace: stack,
+        level: 1000, // SEVERE
+      );
+      return LevelProgress.initial(level);
     } catch (e, stack) {
-      debugPrint('ProgressService.load($level) failed: $e\n$stack');
+      dev.log(
+        'ProgressService.load($level) failed: $e',
+        name: 'ProgressService',
+        error: e,
+        stackTrace: stack,
+        level: 900, // WARNING
+      );
       return LevelProgress.initial(level);
     }
   }
@@ -35,9 +51,23 @@ class ProgressService {
     try {
       final box = await Hive.openBox(_boxName, encryptionCipher: _cipher);
       await box.put('level_${progress.level}', progress.toMap());
+    } on HiveError catch (e, stack) {
+      dev.log(
+        'ProgressService.save(level=${progress.level}): HiveError — possible cipher mismatch.',
+        name: 'ProgressService',
+        error: e,
+        stackTrace: stack,
+        level: 1000, // SEVERE
+      );
+      // Progress loss is unfortunate but not catastrophic; do not rethrow
     } catch (e, stack) {
-      debugPrint(
-          'ProgressService.save(level=${progress.level}) failed: $e\n$stack');
+      dev.log(
+        'ProgressService.save(level=${progress.level}) failed: $e',
+        name: 'ProgressService',
+        error: e,
+        stackTrace: stack,
+        level: 900, // WARNING
+      );
       // Progress loss is unfortunate but not catastrophic; do not rethrow
     }
   }

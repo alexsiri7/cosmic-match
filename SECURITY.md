@@ -15,7 +15,7 @@ Cosmic Match V1 is a **fully offline** game. The current security surface is min
 |---|---|
 | Network access | None in release builds |
 | INTERNET permission | Debug-only (Flutter tooling) |
-| Data storage | Local-only via Hive (AES-256 encrypted, key in Android Keystore) |
+| Data storage | Local-only via Hive (encryption key infrastructure in place; cipher wiring deferred to M2) |
 | Authentication | None |
 | Permissions requested | None beyond default |
 

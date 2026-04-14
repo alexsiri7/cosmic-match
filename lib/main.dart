@@ -8,11 +8,12 @@ import 'services/key_service.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Hive.initFlutter();
-  // SEC-004: fetch or generate AES-256 key from Android Keystore.
-  // Returns null on platforms / emulators without secure storage.
+  // SEC-004: trigger first-launch key generation — generates and stores the
+  // AES-256 key in platform secure storage if not already present.
+  // Returns null on platforms / emulators without secure storage (graceful degradation).
+  // TODO(M2): capture cipher and pass to ProgressService via Riverpod provider.
   // ignore: unused_local_variable
   final cipher = await KeyService().getCipher();
-  // SEC-004: cipher ready for ProgressService injection in M2 game wiring
   runApp(
     const ProviderScope(
       child: CosmicMatchApp(),

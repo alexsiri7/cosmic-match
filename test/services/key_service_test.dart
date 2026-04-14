@@ -52,4 +52,19 @@ void main() {
       expect(encoded1, isNot(equals(encoded2)));
     });
   });
+
+  group('KeyService decodeKey edge cases', () {
+    test('decodeKey throws FormatException on invalid base64url characters', () {
+      expect(
+        () => KeyService.decodeKey('!!!invalid!!!'),
+        throwsA(isA<FormatException>()),
+      );
+    });
+
+    test('encodeKey of empty list produces empty string', () {
+      // Documents the behaviour: empty input → empty base64url output.
+      final encoded = KeyService.encodeKey([]);
+      expect(encoded, equals(''));
+    });
+  });
 }
