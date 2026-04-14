@@ -23,6 +23,6 @@ class ProgressService {
     final storedCrc = raw['crc'] as int?;
     if (storedCrc == null) return false;
     final data = Map.of(raw)..remove('crc');
-    return Crc32.compute(data.toString()) == storedCrc;
+    return Crc32.compute(data.toString().codeUnits) == storedCrc;
   }
 }

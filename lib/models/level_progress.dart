@@ -20,7 +20,7 @@ class LevelProgress {
       'starsEarned': starsEarned,
       'bestScore': bestScore,
     };
-    data['crc'] = Crc32.compute(data.toString());
+    data['crc'] = Crc32.compute(data.toString().codeUnits);
     return data;
   }
 
