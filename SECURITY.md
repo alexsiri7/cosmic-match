@@ -42,7 +42,7 @@ Until one of these features is implemented, no action is required. When backend 
 
 | Criteria | Firebase Auth | Supabase Auth |
 |---|---|---|
-| Flutter SDK maturity | Mature, first-party | Community-maintained, improving |
+| Flutter SDK maturity | Mature, first-party | Actively maintained by Supabase; slightly less Flutter-ecosystem integration than Firebase |
 | Social auth (Google, Apple) | Built-in | Built-in |
 | Self-hosting | No | Yes (Docker) |
 | Vendor lock-in | High (Google ecosystem) | Low (open source, PostgreSQL) |
@@ -64,7 +64,8 @@ Choose **Supabase Auth** if:
 
 ### 3.3 Requirements (Either Provider)
 
-- Use social sign-in (Google, Apple) — required for Play Store compliance
+- Support social sign-in (Google) — strongly recommended to reduce sign-up friction; Apple Sign-In is required on iOS (App Store rule) if any other social provider is offered
+- Implement account deletion — required for Play Store compliance (apps with account creation must offer deletion)
 - Support anonymous/guest accounts for players who do not want to sign in
 - Store auth tokens securely using `flutter_secure_storage`, never in plain Hive boxes
 - Implement token refresh logic with exponential backoff
@@ -96,7 +97,9 @@ Create `android/app/src/main/res/xml/network_security_config.xml`:
     <!--
     <domain-config>
         <domain includeSubdomains="true">api.cosmicmatch.com</domain>
-        <pin-set expiration="2027-01-01">
+        <!-- Set expiration at least 2 years from today. Schedule a calendar reminder
+             to rotate pins and update this date before it expires. -->
+        <pin-set expiration="2028-04-01">
             <pin digest="SHA-256">YOUR_PIN_HASH_HERE</pin>
             <pin digest="SHA-256">YOUR_BACKUP_PIN_HASH_HERE</pin>
         </pin-set>
@@ -200,7 +203,22 @@ SUPABASE_URL=YOUR_SUPABASE_URL_HERE
 SUPABASE_ANON_KEY=YOUR_SUPABASE_ANON_KEY_HERE
 ```
 
-Use `flutter_dotenv` or `--dart-define` to inject values at build time. Never bundle `.env` files in release builds.
+Use `--dart-define` or `--dart-define-from-file` to inject values at build time:
+
+```bash
+flutter build apk \
+  --dart-define=API_KEY=... \
+  --dart-define=API_BASE_URL=...
+```
+
+Or with a file (Flutter 3.17+):
+```bash
+flutter build apk --dart-define-from-file=.env
+```
+
+Values passed via `--dart-define` are compiled into the binary and are not bundled as extractable text assets. Never commit actual `.env` files to the repository.
+
+> ⚠️ Do **not** use `flutter_dotenv` in release builds — it bundles the `.env` file into the APK's assets directory, where it can be extracted from a downloaded APK.
 
 ---
 
