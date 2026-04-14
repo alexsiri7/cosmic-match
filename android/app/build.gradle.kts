@@ -27,6 +27,8 @@ android {
 
     signingConfigs {
         create("release") {
+            // Properties only set when key.properties exists.
+            // buildTypes.release falls back to debug signing when this block is empty.
             if (keyPropertiesFile.exists()) {
                 keyAlias = keyProperties.getProperty("keyAlias")
                     ?: error("keyAlias missing from android/key.properties — see key.properties.example")

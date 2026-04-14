@@ -118,3 +118,7 @@ jobs:
           name: release-aab
           path: build/app/outputs/bundle/release/app-release.aab
           retention-days: 30
+
+      - name: Clean up signing credentials
+        if: always()
+        run: rm -f android/cosmic-match-release.jks android/key.properties
