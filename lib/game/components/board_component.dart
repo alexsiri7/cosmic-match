@@ -263,15 +263,12 @@ class BoardComponent extends PositionComponent
     // Remove matched tile components (skip preserved bonus positions)
     for (final match in matches) {
       for (final (int r, int c) in match.positions) {
+        final comp = _tileComponents[r][c];
         if (preserved.contains((r, c))) {
           // Update the existing component to show bonus visual
-          final comp = _tileComponents[r][c];
-          if (comp != null) {
-            comp.bonusType = boardState.getTile(r, c)?.bonusType;
-          }
+          if (comp != null) comp.bonusType = boardState.getTile(r, c)?.bonusType;
           continue;
         }
-        final comp = _tileComponents[r][c];
         if (comp != null) {
           comp.removeFromParent();
           _tileComponents[r][c] = null;
@@ -337,11 +334,7 @@ class BoardComponent extends PositionComponent
         final targetType = gameState.targetTileType;
         if (targetType == null) {
           // No specific target — count all cleared tiles
-          int total = 0;
-          for (final match in matches) {
-            total += match.size;
-          }
-          gameState.addGoalProgress(total);
+          gameState.addGoalProgress(matches.fold(0, (sum, m) => sum + m.size));
         } else {
           int count = 0;
           for (final match in matches) {
