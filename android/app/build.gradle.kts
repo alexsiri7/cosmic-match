@@ -25,23 +25,21 @@ android {
         versionName = flutter.versionName
     }
 
-    signingConfigs {
-        create("release") {
-            if (keyPropertiesFile.exists()) {
-                keyAlias = keyProperties["keyAlias"] as String
-                keyPassword = keyProperties["keyPassword"] as String
-                storeFile = file(keyProperties["storeFile"] as String)
-                storePassword = keyProperties["storePassword"] as String
+    if (keyPropertiesFile.exists()) {
+        signingConfigs {
+            create("release") {
+                keyAlias     = (keyProperties["keyAlias"]     as? String)?.takeIf { it.isNotBlank() } ?: error("key.properties missing: keyAlias")
+                keyPassword  = (keyProperties["keyPassword"]  as? String)?.takeIf { it.isNotBlank() } ?: error("key.properties missing: keyPassword")
+                storeFile    = file((keyProperties["storeFile"] as? String)?.takeIf { it.isNotBlank() } ?: error("key.properties missing: storeFile"))
+                storePassword = (keyProperties["storePassword"] as? String)?.takeIf { it.isNotBlank() } ?: error("key.properties missing: storePassword")
             }
         }
     }
 
     buildTypes {
         release {
-            signingConfig = if (keyPropertiesFile.exists())
-                signingConfigs.getByName("release")
-            else
-                signingConfigs.getByName("debug")
+            signingConfig = signingConfigs.findByName("release")
+                ?: signingConfigs.getByName("debug")
         }
     }
 }
