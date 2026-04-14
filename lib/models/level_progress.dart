@@ -22,7 +22,7 @@ class LevelProgress {
     };
     // CRC is computed over a canonicalized (key-sorted) representation to
     // ensure stability regardless of map insertion order or future field additions.
-    data['crc'] = Crc32.compute(_canonicalize(data).codeUnits);
+    data['crc'] = Crc32.compute(canonicalize(data).codeUnits);
     return data;
   }
 
@@ -37,8 +37,8 @@ class LevelProgress {
   }
 
   /// Canonicalize a map to a stable string by sorting keys.
-  /// Matches ProgressService._canonicalize — both must use the same algorithm.
-  static String _canonicalize(Map<String, dynamic> data) {
+  /// Used by both LevelProgress and ProgressService for CRC computation.
+  static String canonicalize(Map<String, dynamic> data) {
     final keys = data.keys.toList()..sort();
     return keys.map((k) => '$k:${data[k]}').join(',');
   }

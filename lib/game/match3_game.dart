@@ -31,8 +31,4 @@ class Match3Game extends FlameGame<GridWorld> with RiverpodGameMixin {
     _phase = next;
   }
 
-  @override
-  Future<void> onLoad() async {
-    await super.onLoad();
-  }
 }

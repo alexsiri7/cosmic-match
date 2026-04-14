@@ -151,31 +151,23 @@ class PatternDetector {
         if (type == null) continue;
         if (claimed.contains(TilePosition(x, y).key)) continue;
 
-        // Find all horizontal 3-runs through (x, y)
-        final hRuns = _findRunsThrough(grid, x, y, type, true, claimed);
-        // Find all vertical 3-runs through (x, y)
-        final vRuns = _findRunsThrough(grid, x, y, type, false, claimed);
+        final hRun = _findRunThrough(grid, x, y, type, true, claimed);
+        final vRun = _findRunThrough(grid, x, y, type, false, claimed);
 
-        // Each combination of h-run and v-run forms an L or T
-        for (final hRun in hRuns) {
-          for (final vRun in vRuns) {
-            final allPositions = <TilePosition>{...hRun, ...vRun};
-            // Must have at least 5 unique tiles for an L/T shape
-            if (allPositions.length >= 5) {
-              final noneAlreadyClaimed =
-                  allPositions.every((p) => !claimed.contains(p.key));
-              if (noneAlreadyClaimed) {
-                final positionsList = allPositions.toList();
-                for (final p in positionsList) {
-                  claimed.add(p.key);
-                }
-                results.add(MatchResult(
-                  tiles: positionsList,
-                  bonusTile: BonusTileType.blackHole,
-                  bonusPosition: TilePosition(x, y),
-                ));
-              }
+        if (hRun != null && vRun != null) {
+          final allPositions = <TilePosition>{...hRun, ...vRun};
+          // Must have at least 5 unique tiles for an L/T shape
+          if (allPositions.length >= 5 &&
+              allPositions.every((p) => !claimed.contains(p.key))) {
+            final positionsList = allPositions.toList();
+            for (final p in positionsList) {
+              claimed.add(p.key);
             }
+            results.add(MatchResult(
+              tiles: positionsList,
+              bonusTile: BonusTileType.blackHole,
+              bonusPosition: TilePosition(x, y),
+            ));
           }
         }
       }
@@ -184,19 +176,16 @@ class PatternDetector {
     return results;
   }
 
-  /// Find all 3+ runs along one axis that pass through (px, py).
-  List<List<TilePosition>> _findRunsThrough(
+  /// Find the 3+ run along one axis that passes through (px, py), or null if none.
+  List<TilePosition>? _findRunThrough(
       Grid grid, int px, int py, TileType type, bool horizontal,
       Set<String> claimed) {
     final cols = grid.length;
     final rows = grid[0].length;
-    final results = <List<TilePosition>>[];
 
-    // Extend in both directions from (px, py)
     final positions = <TilePosition>[TilePosition(px, py)];
 
     if (horizontal) {
-      // Extend left
       for (int x = px - 1; x >= 0; x--) {
         if (grid[x][py] == type && !claimed.contains(TilePosition(x, py).key)) {
           positions.insert(0, TilePosition(x, py));
@@ -204,7 +193,6 @@ class PatternDetector {
           break;
         }
       }
-      // Extend right
       for (int x = px + 1; x < cols; x++) {
         if (grid[x][py] == type && !claimed.contains(TilePosition(x, py).key)) {
           positions.add(TilePosition(x, py));
@@ -213,7 +201,6 @@ class PatternDetector {
         }
       }
     } else {
-      // Extend up
       for (int y = py - 1; y >= 0; y--) {
         if (grid[px][y] == type && !claimed.contains(TilePosition(px, y).key)) {
           positions.insert(0, TilePosition(px, y));
@@ -221,7 +208,6 @@ class PatternDetector {
           break;
         }
       }
-      // Extend down
       for (int y = py + 1; y < rows; y++) {
         if (grid[px][y] == type && !claimed.contains(TilePosition(px, y).key)) {
           positions.add(TilePosition(px, y));
@@ -231,10 +217,6 @@ class PatternDetector {
       }
     }
 
-    if (positions.length >= 3) {
-      results.add(positions);
-    }
-
-    return results;
+    return positions.length >= 3 ? positions : null;
   }
 }
