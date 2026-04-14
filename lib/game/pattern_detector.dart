@@ -79,9 +79,7 @@ class PatternDetector {
               grid[x + length][y] != type ||
               claimed.contains(TilePosition(x + length, y).key);
           if (leftOk && rightOk) {
-            for (final p in positions) {
-              claimed.add(p.key);
-            }
+            claimed.addAll(positions.map((p) => p.key));
             results.add(MatchResult(
               tiles: positions,
               bonusTile: bonus,
@@ -117,9 +115,7 @@ class PatternDetector {
               grid[x][y + length] != type ||
               claimed.contains(TilePosition(x, y + length).key);
           if (topOk && bottomOk) {
-            for (final p in positions) {
-              claimed.add(p.key);
-            }
+            claimed.addAll(positions.map((p) => p.key));
             results.add(MatchResult(
               tiles: positions,
               bonusTile: bonus,
@@ -160,9 +156,7 @@ class PatternDetector {
           if (allPositions.length >= 5 &&
               allPositions.every((p) => !claimed.contains(p.key))) {
             final positionsList = allPositions.toList();
-            for (final p in positionsList) {
-              claimed.add(p.key);
-            }
+            claimed.addAll(positionsList.map((p) => p.key));
             results.add(MatchResult(
               tiles: positionsList,
               bonusTile: BonusTileType.blackHole,
