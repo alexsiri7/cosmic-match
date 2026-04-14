@@ -27,5 +27,6 @@
             android:name="flutterEmbedding"
             android:value="2" />
     </application>
-    <!-- No <uses-permission> tags: game requires zero dangerous permissions -->
+    <!-- No <uses-permission> tags: release APK requests zero permissions.
+         INTERNET is restricted to debug/ and profile/ manifests only. -->
 </manifest>
