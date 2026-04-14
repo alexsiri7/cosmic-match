@@ -1,0 +1,7 @@
+# Copy this file to android/key.properties and fill in real values.
+# NEVER commit key.properties — it is gitignored.
+# See SECURITY.md §8 for full instructions.
+storePassword=YOUR_STORE_PASSWORD_HERE
+keyPassword=YOUR_KEY_PASSWORD_HERE
+keyAlias=cosmic-match
+storeFile=/absolute/path/to/cosmic-match-release.jks

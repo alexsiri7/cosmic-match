@@ -290,13 +290,22 @@ Future<void> main() async {
 
 ### 8.1 Current State
 
-`android/app/build.gradle.kts` contains:
+`android/app/build.gradle.kts` implements conditional release signing:
 
-```kotlin
-// TODO: Add your own signing config for the release build.
-// Signing with the debug keys for now
-signingConfig = signingConfigs.getByName("debug")
-```
+- When `android/key.properties` is present, the release build uses the production keystore
+- When `android/key.properties` is absent, the release build falls back to debug signing
+- CI decodes the keystore from GitHub Secrets and writes `key.properties` at build time
+
+**Required GitHub Secrets** (Settings > Secrets > Actions):
+
+| Secret | Description |
+|--------|-------------|
+| `KEYSTORE_BASE64` | Base64-encoded `.jks` file (`base64 -w 0 cosmic-match-release.jks`) |
+| `KEYSTORE_STORE_PASSWORD` | Keystore store password |
+| `KEYSTORE_KEY_PASSWORD` | Key password |
+| `KEYSTORE_KEY_ALIAS` | Key alias (e.g. `cosmic-match`) |
+
+See `android/key.properties.example` for the local development template.
 
 ### 8.2 Production Signing Requirements
 
