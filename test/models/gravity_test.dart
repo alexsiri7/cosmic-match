@@ -61,16 +61,14 @@ void main() {
       // Should report the star moved from row 6 to row 7
       expect(result.movedTiles[(7, 0)], 6);
       // Should have 7 new tiles in column 0 (rows 0-6)
-      final col0New =
-          result.newTiles.where((pos) => pos.$2 == 0).toList();
+      final col0New = result.newTiles.where((pos) => pos.$2 == 0).toList();
       expect(col0New.length, 7);
     });
 
     test('multiple gaps: tiles collapse correctly', () {
       final board = BoardState();
       // Column 2: tiles at rows 1, 3, 5 — gaps at 0, 2, 4, 6, 7
-      board.setTile(
-          1, 2, TileData(type: TileType.planetRed, row: 1, col: 2));
+      board.setTile(1, 2, TileData(type: TileType.planetRed, row: 1, col: 2));
       board.setTile(3, 2, TileData(type: TileType.moon, row: 3, col: 2));
       board.setTile(5, 2, TileData(type: TileType.comet, row: 5, col: 2));
 
@@ -99,8 +97,7 @@ void main() {
       final result = board.applyGravity(Random(42));
 
       // All 8 cells should be new tiles
-      final col4New =
-          result.newTiles.where((pos) => pos.$2 == 4).toList();
+      final col4New = result.newTiles.where((pos) => pos.$2 == 4).toList();
       expect(col4New.length, 8);
 
       for (int r = 0; r < 8; r++) {
@@ -137,8 +134,7 @@ void main() {
       final col0Moved = result.movedTiles.entries
           .where((e) => e.key.$2 == 0)
           .toList();
-      final col0New =
-          result.newTiles.where((pos) => pos.$2 == 0).toList();
+      final col0New = result.newTiles.where((pos) => pos.$2 == 0).toList();
       expect(col0Moved.length, 0);
       expect(col0New.length, 0);
     });
@@ -146,8 +142,7 @@ void main() {
     test('preserves tile order when falling', () {
       final board = BoardState();
       // Column 3: tiles at rows 0, 1, 2, gap at 3-7
-      board.setTile(
-          0, 3, TileData(type: TileType.planetBlue, row: 0, col: 3));
+      board.setTile(0, 3, TileData(type: TileType.planetBlue, row: 0, col: 3));
       board.setTile(1, 3, TileData(type: TileType.nebula, row: 1, col: 3));
       board.setTile(2, 3, TileData(type: TileType.star, row: 2, col: 3));
 
@@ -162,16 +157,14 @@ void main() {
     test('gravity result reports correct moved tiles', () {
       final board = BoardState();
       // Single tile at row 0, rest empty in column 1
-      board.setTile(
-          0, 1, TileData(type: TileType.moon, row: 0, col: 1));
+      board.setTile(0, 1, TileData(type: TileType.moon, row: 0, col: 1));
 
       final result = board.applyGravity(Random(42));
 
       // Tile moved from row 0 to row 7
       expect(result.movedTiles[(7, 1)], 0);
       // 7 new tiles in column 1 (rows 0-6)
-      final col1New =
-          result.newTiles.where((pos) => pos.$2 == 1).toList();
+      final col1New = result.newTiles.where((pos) => pos.$2 == 1).toList();
       expect(col1New.length, 7);
     });
   });

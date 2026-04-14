@@ -13,10 +13,7 @@ class BoardState {
   final List<List<TileData?>> grid;
 
   BoardState()
-      : grid = List.generate(
-          rows,
-          (_) => List<TileData?>.filled(cols, null),
-        );
+    : grid = List.generate(rows, (_) => List<TileData?>.filled(cols, null));
 
   /// Creates a BoardState from an existing grid (for testing).
   BoardState.fromGrid(this.grid);
@@ -109,8 +106,7 @@ class BoardState {
   }
 
   /// Clears matched tiles, preserving positions in [preserved] (bonus tiles).
-  void clearMatchesPreserving(
-      List<Match> matches, Set<(int, int)> preserved) {
+  void clearMatchesPreserving(List<Match> matches, Set<(int, int)> preserved) {
     for (final match in matches) {
       for (final (r, c) in match.positions) {
         if (!preserved.contains((r, c))) {

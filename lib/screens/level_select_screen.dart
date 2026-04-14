@@ -105,10 +105,7 @@ class _GalaxySection extends StatelessWidget {
               const SizedBox(width: 8),
               Text(
                 'Levels $startLevel–${startLevel + 9}',
-                style: const TextStyle(
-                  color: Colors.white38,
-                  fontSize: 13,
-                ),
+                style: const TextStyle(color: Colors.white38, fontSize: 13),
               ),
             ],
           ),
@@ -170,10 +167,14 @@ class _LevelButton extends StatelessWidget {
           : null,
       child: Container(
         decoration: BoxDecoration(
-          color: isUnlocked ? accentColor.withValues(alpha: 0.25) : const Color(0xFF1A1A2E),
+          color: isUnlocked
+              ? accentColor.withValues(alpha: 0.25)
+              : const Color(0xFF1A1A2E),
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: isUnlocked ? accentColor.withValues(alpha: 0.6) : Colors.white10,
+            color: isUnlocked
+                ? accentColor.withValues(alpha: 0.6)
+                : Colors.white10,
             width: 1.5,
           ),
         ),
@@ -199,7 +200,9 @@ class _LevelButton extends StatelessWidget {
                   children: List.generate(3, (i) {
                     return Icon(
                       i < stars ? Icons.star : Icons.star_border,
-                      color: i < stars ? const Color(0xFFFFD93D) : Colors.white24,
+                      color: i < stars
+                          ? const Color(0xFFFFD93D)
+                          : Colors.white24,
                       size: 12,
                     );
                   }),

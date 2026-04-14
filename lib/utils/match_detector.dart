@@ -78,8 +78,7 @@ class MatchDetector {
     if (matches.isEmpty) return matches;
 
     // Build a set of positions for each match
-    final positionSets =
-        matches.map((m) => m.positions.toSet()).toList();
+    final positionSets = matches.map((m) => m.positions.toSet()).toList();
 
     // Union-find style merge
     bool merged = true;
@@ -87,9 +86,7 @@ class MatchDetector {
       merged = false;
       for (int i = 0; i < positionSets.length; i++) {
         for (int j = i + 1; j < positionSets.length; j++) {
-          if (positionSets[i]
-              .intersection(positionSets[j])
-              .isNotEmpty) {
+          if (positionSets[i].intersection(positionSets[j]).isNotEmpty) {
             positionSets[i] = positionSets[i].union(positionSets[j]);
             positionSets.removeAt(j);
             merged = true;
@@ -100,8 +97,6 @@ class MatchDetector {
       }
     }
 
-    return positionSets
-        .map((s) => Match(s.toList()))
-        .toList();
+    return positionSets.map((s) => Match(s.toList())).toList();
   }
 }

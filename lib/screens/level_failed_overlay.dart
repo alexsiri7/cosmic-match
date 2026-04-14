@@ -36,10 +36,7 @@ class LevelFailedOverlay extends StatelessWidget {
               const SizedBox(height: 16),
               const Text(
                 'Out of moves!',
-                style: TextStyle(
-                  color: Colors.white70,
-                  fontSize: 18,
-                ),
+                style: TextStyle(color: Colors.white70, fontSize: 18),
               ),
               const SizedBox(height: 24),
               Row(
@@ -94,9 +91,7 @@ class _OverlayButton extends StatelessWidget {
         backgroundColor: color,
         foregroundColor: Colors.white,
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       ),
     );
   }

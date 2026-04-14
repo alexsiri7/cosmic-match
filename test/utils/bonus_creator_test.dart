@@ -38,8 +38,7 @@ void main() {
     });
 
     test('6-in-a-row returns supernova', () {
-      final match =
-          Match([(0, 0), (0, 1), (0, 2), (0, 3), (0, 4), (0, 5)]);
+      final match = Match([(0, 0), (0, 1), (0, 2), (0, 3), (0, 4), (0, 5)]);
       expect(BonusCreator.bonusTypeForMatch(match), BonusTileType.supernova);
     });
 

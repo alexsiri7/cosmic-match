@@ -98,11 +98,7 @@ class TileComponent extends PositionComponent with TapCallbacks {
           ..color = const Color(0xAAFFFFFF)
           ..style = PaintingStyle.stroke
           ..strokeWidth = 2.5;
-        canvas.drawCircle(
-          Offset(cx, cy),
-          radius * 0.5 * pulse,
-          glowPaint,
-        );
+        canvas.drawCircle(Offset(cx, cy), radius * 0.5 * pulse, glowPaint);
       case BonusTileType.blackHole:
         // Dark swirl — concentric dark rings
         final swirlPaint = Paint()
@@ -132,8 +128,10 @@ class TileComponent extends PositionComponent with TapCallbacks {
           final angle = (i * math.pi * 2 / rays) + _elapsed * 1.5;
           canvas.drawLine(
             Offset(cx, cy),
-            Offset(cx + math.cos(angle) * rayLen,
-                cy + math.sin(angle) * rayLen),
+            Offset(
+              cx + math.cos(angle) * rayLen,
+              cy + math.sin(angle) * rayLen,
+            ),
             burstPaint,
           );
         }

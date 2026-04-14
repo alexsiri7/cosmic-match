@@ -37,7 +37,9 @@ class BonusCreator {
   /// Creates bonus tiles on the board for matching patterns, returning
   /// positions that should be excluded from clearing.
   static Set<(int, int)> createBonusTiles(
-      BoardState board, List<Match> matches) {
+    BoardState board,
+    List<Match> matches,
+  ) {
     final preserved = <(int, int)>{};
 
     for (final match in matches) {
@@ -67,10 +69,12 @@ class BonusCreator {
   /// neighbours in both a horizontal and vertical direction within the match.
   static (int, int) _findIntersection(Match match) {
     for (final pos in match.positions) {
-      final sameRow =
-          match.positions.where((p) => p.$1 == pos.$1 && p != pos).length;
-      final sameCol =
-          match.positions.where((p) => p.$2 == pos.$2 && p != pos).length;
+      final sameRow = match.positions
+          .where((p) => p.$1 == pos.$1 && p != pos)
+          .length;
+      final sameCol = match.positions
+          .where((p) => p.$2 == pos.$2 && p != pos)
+          .length;
       if (sameRow >= 1 && sameCol >= 1) {
         return pos;
       }

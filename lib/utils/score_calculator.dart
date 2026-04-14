@@ -1,6 +1,7 @@
 /// Calculates score for matches with cascade multiplier.
 class ScoreCalculator {
   static const int _maxScorePerCall = 99999;
+
   /// Points for a match based on its size.
   static int matchPoints(int matchSize) {
     if (matchSize >= 5) return 500;

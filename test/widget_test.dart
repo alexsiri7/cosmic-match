@@ -29,7 +29,9 @@ void main() {
     await tempDir.delete(recursive: true);
   });
 
-  testWidgets('App renders home screen with title', (WidgetTester tester) async {
+  testWidgets('App renders home screen with title', (
+    WidgetTester tester,
+  ) async {
     await tester.pumpWidget(const CosmicMatchApp());
 
     expect(find.text('Cosmic Match'), findsOneWidget);

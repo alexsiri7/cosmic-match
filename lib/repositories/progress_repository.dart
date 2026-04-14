@@ -13,8 +13,8 @@ class ProgressRepository {
   ProgressRepository({
     required Box<LevelProgress> progressBox,
     required Box<dynamic> settingsBox,
-  })  : _progressBox = progressBox,
-        _settingsBox = settingsBox;
+  }) : _progressBox = progressBox,
+       _settingsBox = settingsBox;
 
   /// Save or update progress for a level.
   /// Only updates stars and highScore if the new values are better.
@@ -77,9 +77,11 @@ class ProgressRepository {
 
   // --- Settings ---
 
-  bool get soundEnabled => _settingsBox.get('soundEnabled', defaultValue: true) as bool;
+  bool get soundEnabled =>
+      _settingsBox.get('soundEnabled', defaultValue: true) as bool;
   set soundEnabled(bool value) => _settingsBox.put('soundEnabled', value);
 
-  bool get musicEnabled => _settingsBox.get('musicEnabled', defaultValue: true) as bool;
+  bool get musicEnabled =>
+      _settingsBox.get('musicEnabled', defaultValue: true) as bool;
   set musicEnabled(bool value) => _settingsBox.put('musicEnabled', value);
 }

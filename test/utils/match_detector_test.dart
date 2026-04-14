@@ -5,8 +5,13 @@ import 'package:cosmic_match/models/tile_type.dart';
 import 'package:cosmic_match/utils/match_detector.dart';
 
 /// Helper to place a tile on the board.
-void placeTile(BoardState board, int row, int col, TileType type,
-    {ObstacleTileType? obstacle}) {
+void placeTile(
+  BoardState board,
+  int row,
+  int col,
+  TileType type, {
+  ObstacleTileType? obstacle,
+}) {
   board.setTile(
     row,
     col,
@@ -173,8 +178,13 @@ void main() {
     test('does not match obstacle tiles', () {
       final board = BoardState();
       placeTile(board, 0, 0, TileType.star);
-      placeTile(board, 0, 1, TileType.star,
-          obstacle: ObstacleTileType.asteroid);
+      placeTile(
+        board,
+        0,
+        1,
+        TileType.star,
+        obstacle: ObstacleTileType.asteroid,
+      );
       placeTile(board, 0, 2, TileType.star);
 
       final matches = MatchDetector.findMatches(board);
@@ -214,10 +224,7 @@ void main() {
     });
 
     test('detects match of 2 tiles as no match', () {
-      final board = boardWith([
-        (0, 0, TileType.star),
-        (0, 1, TileType.star),
-      ]);
+      final board = boardWith([(0, 0, TileType.star), (0, 1, TileType.star)]);
 
       final matches = MatchDetector.findMatches(board);
       expect(matches, isEmpty);
@@ -228,8 +235,13 @@ void main() {
       final board = BoardState();
       placeTile(board, 0, 0, TileType.star);
       placeTile(board, 0, 1, TileType.star);
-      placeTile(board, 0, 2, TileType.star,
-          obstacle: ObstacleTileType.darkMatter);
+      placeTile(
+        board,
+        0,
+        2,
+        TileType.star,
+        obstacle: ObstacleTileType.darkMatter,
+      );
       placeTile(board, 0, 3, TileType.star);
       placeTile(board, 0, 4, TileType.star);
 

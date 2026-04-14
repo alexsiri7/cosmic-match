@@ -24,21 +24,13 @@ class HomeScreen extends StatelessWidget {
                     fontWeight: FontWeight.bold,
                     color: Colors.white,
                     letterSpacing: 2,
-                    shadows: [
-                      Shadow(
-                        color: Color(0xFF6C63FF),
-                        blurRadius: 20,
-                      ),
-                    ],
+                    shadows: [Shadow(color: Color(0xFF6C63FF), blurRadius: 20)],
                   ),
                 ),
                 const SizedBox(height: 8),
                 const Text(
                   'A Space Puzzle Adventure',
-                  style: TextStyle(
-                    fontSize: 16,
-                    color: Color(0xAAFFFFFF),
-                  ),
+                  style: TextStyle(fontSize: 16, color: Color(0xAAFFFFFF)),
                 ),
                 const SizedBox(height: 64),
                 ElevatedButton(
@@ -95,10 +87,7 @@ class HomeScreen extends StatelessWidget {
   }
 
   void _showSettingsDialog(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (context) => const SettingsDialog(),
-    );
+    showDialog(context: context, builder: (context) => const SettingsDialog());
   }
 }
 
@@ -117,10 +106,7 @@ class _SettingsDialogState extends State<SettingsDialog> {
   Widget build(BuildContext context) {
     return AlertDialog(
       backgroundColor: const Color(0xFF1A1A2E),
-      title: const Text(
-        'Settings',
-        style: TextStyle(color: Colors.white),
-      ),
+      title: const Text('Settings', style: TextStyle(color: Colors.white)),
       content: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -177,11 +163,7 @@ class StarPainter extends CustomPainter {
       ..shader = const LinearGradient(
         begin: Alignment.topCenter,
         end: Alignment.bottomCenter,
-        colors: [
-          Color(0xFF0A0E21),
-          Color(0xFF1A1A2E),
-          Color(0xFF16213E),
-        ],
+        colors: [Color(0xFF0A0E21), Color(0xFF1A1A2E), Color(0xFF16213E)],
       ).createShader(Rect.fromLTWH(0, 0, size.width, size.height));
     canvas.drawRect(Rect.fromLTWH(0, 0, size.width, size.height), bgPaint);
 

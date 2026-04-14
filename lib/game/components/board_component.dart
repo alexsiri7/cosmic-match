@@ -158,12 +158,7 @@ class BoardComponent extends PositionComponent
     final posB = tileB.position.clone();
 
     // Animate both tiles to each other's positions
-    tileA.add(
-      MoveEffect.to(
-        posB.clone(),
-        EffectController(duration: 0.2),
-      ),
-    );
+    tileA.add(MoveEffect.to(posB.clone(), EffectController(duration: 0.2)));
     tileB.add(
       MoveEffect.to(
         posA.clone(),
@@ -320,12 +315,7 @@ class BoardComponent extends PositionComponent
           position: startPos,
           onTileTapped: _onTileTapped,
         );
-        comp.add(
-          MoveEffect.to(
-            targetPos,
-            EffectController(duration: 0.3),
-          ),
-        );
+        comp.add(MoveEffect.to(targetPos, EffectController(duration: 0.3)));
         _tileComponents[r][c] = comp;
         add(comp);
       }
@@ -394,10 +384,7 @@ class BoardComponent extends PositionComponent
 
     // Animate back
     tileA.add(
-      MoveEffect.to(
-        originalPosA.clone(),
-        EffectController(duration: 0.2),
-      ),
+      MoveEffect.to(originalPosA.clone(), EffectController(duration: 0.2)),
     );
     tileB.add(
       MoveEffect.to(

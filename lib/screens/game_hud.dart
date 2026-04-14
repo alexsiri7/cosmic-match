@@ -92,7 +92,8 @@ class _GameHudState extends State<GameHud> with SingleTickerProviderStateMixin {
                   child: AnimatedBuilder(
                     animation: _animController,
                     builder: (context, child) {
-                      final value = _animatingFrom +
+                      final value =
+                          _animatingFrom +
                           ((_animatingTo - _animatingFrom) *
                                   _animController.value)
                               .round();

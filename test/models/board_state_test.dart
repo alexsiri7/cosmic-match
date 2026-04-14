@@ -84,8 +84,7 @@ void main() {
 
     test('randomFill does not overwrite existing tiles', () {
       final board = BoardState();
-      final existing =
-          TileData(type: TileType.comet, row: 2, col: 3);
+      final existing = TileData(type: TileType.comet, row: 2, col: 3);
       board.setTile(2, 3, existing);
       board.randomFill(Random(42));
 
