@@ -1,7 +1,10 @@
 import 'package:flame_riverpod/flame_riverpod.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hive_flutter/hive_flutter.dart';
+import 'package:package_info_plus/package_info_plus.dart';
+import 'package:sentry_flutter/sentry_flutter.dart';
 import 'game/match3_game.dart';
 import 'services/key_service.dart';
 import 'services/progress_service.dart';
@@ -11,10 +14,25 @@ Future<void> main() async {
   await Hive.initFlutter();
   final cipher = await KeyService().getCipher();
   final progressService = ProgressService(cipher: cipher);
-  runApp(
-    ProviderScope(
-      child: CosmicMatchApp(progressService: progressService),
-    ),
+
+  const sentryDsn = String.fromEnvironment('SENTRY_DSN', defaultValue: '');
+  if (sentryDsn.isEmpty) {
+    runApp(ProviderScope(child: CosmicMatchApp(progressService: progressService)));
+    return;
+  }
+
+  final packageInfo = await PackageInfo.fromPlatform();
+  await SentryFlutter.init(
+    (options) {
+      options.dsn = sentryDsn;
+      options.environment = kReleaseMode ? 'release' : 'debug';
+      options.release =
+          'com.cosmicmatch.cosmic_match@${packageInfo.version}+${packageInfo.buildNumber}';
+      options.tracesSampleRate = 0.0;
+      options.sendDefaultPii = false;
+      options.attachScreenshot = false;
+    },
+    appRunner: () => runApp(ProviderScope(child: CosmicMatchApp(progressService: progressService))),
   );
 }
 

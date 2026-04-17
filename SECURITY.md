@@ -13,13 +13,18 @@ Cosmic Match V1 is a **fully offline** game. The current security surface is min
 
 | Aspect | Status |
 |---|---|
-| Network access | None in release builds |
-| INTERNET permission | Debug-only (Flutter tooling) |
+| Network access | HTTPS to Sentry when `SENTRY_DSN` is set; otherwise none |
+| INTERNET permission | Release + Debug (Sentry crash reports in release; Flutter tooling in debug) |
 | Data storage | Local-only via Hive (encryption key infrastructure in place; cipher wiring deferred to M2) |
 | Authentication | None |
 | Permissions requested | None beyond default |
 
-The main `AndroidManifest.xml` declares no permissions. The `INTERNET` permission exists only in `android/app/src/debug/AndroidManifest.xml` for Flutter hot reload and debugging — it is **not** included in release builds.
+The main `AndroidManifest.xml` declares the `INTERNET` permission for Sentry crash reporting (see below). The `android/app/src/debug/AndroidManifest.xml` also includes it for Flutter hot reload and debugging.
+
+**Crash reporting**: When built with a `SENTRY_DSN` compile-time value (release CI
+only), the app sends anonymous crash reports to Sentry over HTTPS. No PII,
+no game state, no screenshots are included. Local and debug builds with no
+DSN configured remain fully offline.
 
 ### 1.1 Client-Side Integrity Controls (SEC-008)
 
