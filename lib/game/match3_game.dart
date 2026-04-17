@@ -1,33 +1,69 @@
 import 'package:flame/game.dart';
 import 'package:flame_riverpod/flame_riverpod.dart';
+import 'components/grid_tile.dart';
 import 'world/grid_world.dart';
+import '../services/progress_service.dart';
 
 enum GamePhase { idle, swapping, matching, falling, cascading }
 
 // Legal state transitions
 const _validTransitions = <GamePhase, Set<GamePhase>>{
-  GamePhase.idle:      {GamePhase.swapping},
-  GamePhase.swapping:  {GamePhase.matching, GamePhase.idle}, // idle on invalid swap
-  GamePhase.matching:  {GamePhase.falling},
-  GamePhase.falling:   {GamePhase.cascading, GamePhase.idle},
+  GamePhase.idle: {GamePhase.swapping},
+  GamePhase.swapping: {GamePhase.matching, GamePhase.idle}, // idle on invalid swap
+  GamePhase.matching: {GamePhase.falling},
+  GamePhase.falling: {GamePhase.cascading, GamePhase.idle},
   GamePhase.cascading: {GamePhase.matching},
 };
 
 class Match3Game extends FlameGame<GridWorld> with RiverpodGameMixin {
-  Match3Game() : super(world: GridWorld());
+  final ProgressService? progressService;
+
+  Match3Game({this.progressService}) : super(world: GridWorld());
 
   GamePhase _phase = GamePhase.idle;
   GamePhase get phase => _phase;
 
+  GridTile? _selectedTile;
+
   void transitionTo(GamePhase next) {
     final allowed = _validTransitions[_phase];
     if (allowed == null || !allowed.contains(next)) {
-      // In debug, surface FSM bugs immediately
+      // Debug: crash immediately; release: reset to idle rather than corrupt state.
       assert(false, 'Illegal FSM transition: $_phase → $next');
-      // In release, reset to idle rather than entering a corrupt state
       _phase = GamePhase.idle;
       return;
     }
     _phase = next;
+  }
+
+  void onTileTap(GridTile tile) {
+    if (_selectedTile == null) {
+      _selectedTile = tile;
+      tile.select();
+      return;
+    }
+
+    if (tile == _selectedTile) {
+      tile.deselect();
+      _selectedTile = null;
+      return;
+    }
+
+    // Check adjacency
+    final dx = (tile.gridX - _selectedTile!.gridX).abs();
+    final dy = (tile.gridY - _selectedTile!.gridY).abs();
+    if (dx + dy != 1) {
+      // Not adjacent — switch selection
+      _selectedTile!.deselect();
+      _selectedTile = tile;
+      tile.select();
+      return;
+    }
+
+    // Adjacent — initiate swap
+    final tileA = _selectedTile!;
+    tileA.deselect();
+    _selectedTile = null;
+    world.runSwap(tileA, tile);
   }
 }

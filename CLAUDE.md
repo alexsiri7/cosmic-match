@@ -24,6 +24,7 @@ dart run build_runner build --delete-conflicting-outputs
 ```
 lib/
   game/           # Flame game, FSM, world, components
+    theme/        # Tile color palette constants (kTilePalette — derived from TileType.colorValue; kTileSelectedOverlay)
   models/         # Pure data: Score, TileType, LevelProgress
   services/       # Hive persistence (ProgressService) and key management (KeyService)
 test/             # Unit tests mirror lib/ structure
