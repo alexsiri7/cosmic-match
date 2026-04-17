@@ -4,6 +4,7 @@ import java.io.FileInputStream
 plugins {
     id("com.android.application")
     id("kotlin-android")
+    // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
 }
 
@@ -14,11 +15,21 @@ if (keyPropertiesFile.exists()) {
 }
 
 android {
-    namespace = "com.cosmicmatch.app"
+    namespace = "com.cosmicmatch.cosmic_match"
     compileSdk = flutter.compileSdkVersion
+    ndkVersion = flutter.ndkVersion
+
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
+    }
+
+    kotlinOptions {
+        jvmTarget = JavaVersion.VERSION_17.toString()
+    }
 
     defaultConfig {
-        applicationId = "com.cosmicmatch.app"
+        applicationId = "com.cosmicmatch.cosmic_match"
         minSdk = 26
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
@@ -27,8 +38,6 @@ android {
 
     signingConfigs {
         create("release") {
-            // Properties only set when key.properties exists.
-            // buildTypes.release falls back to debug signing when this block is empty.
             if (keyPropertiesFile.exists()) {
                 keyAlias = keyProperties.getProperty("keyAlias")
                     ?: error("keyAlias missing from android/key.properties — see key.properties.example")
