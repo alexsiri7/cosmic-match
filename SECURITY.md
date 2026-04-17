@@ -9,17 +9,24 @@
 
 ## 1. Current Security Posture (V1)
 
-Cosmic Match V1 is a **fully offline** game. The current security surface is minimal:
+Cosmic Match V1 is **offline by default**. Release builds compiled with a
+`SENTRY_DSN` value send crash reports to Sentry over HTTPS; all other
+builds remain fully offline. The current security surface is minimal:
 
 | Aspect | Status |
 |---|---|
-| Network access | None in release builds |
-| INTERNET permission | Debug-only (Flutter tooling) |
+| Network access | HTTPS to Sentry when `SENTRY_DSN` is set; otherwise none |
+| INTERNET permission | Release + Debug (Sentry crash reports in release; Flutter tooling in debug) |
 | Data storage | Local-only via Hive (encryption key infrastructure in place; cipher wiring deferred to M2) |
 | Authentication | None |
 | Permissions requested | None beyond default |
 
-The main `AndroidManifest.xml` declares no permissions. The `INTERNET` permission exists only in `android/app/src/debug/AndroidManifest.xml` for Flutter hot reload and debugging — it is **not** included in release builds.
+The main `AndroidManifest.xml` declares the `INTERNET` permission for Sentry crash reporting (see below). The `android/app/src/debug/AndroidManifest.xml` also includes it for Flutter hot reload and debugging.
+
+**Crash reporting**: When built with a `SENTRY_DSN` compile-time value (release CI
+only), the app sends anonymous crash reports to Sentry over HTTPS. No PII,
+no game state, no screenshots are included. Local and debug builds with no
+DSN configured remain fully offline.
 
 ### 1.1 Client-Side Integrity Controls (SEC-008)
 
@@ -406,6 +413,10 @@ exposure via process lists or logs.
 
 - run: flutter build appbundle --release
 
+# Note: This snippet illustrates the signing steps only. The live
+# ci.yml may include additional --dart-define flags (e.g. SENTRY_DSN).
+# See .github/workflows/ci.yml for the canonical build command.
+
 - name: Clean up signing credentials
   if: always()
   run: rm -f android/cosmic-match-release.jks android/key.properties
@@ -432,8 +443,12 @@ A committed example file at `android/key.properties.example` documents the expec
 
 ### 9.1 Current State (V1)
 
-- All data is stored locally on-device via Hive
-- No data is transmitted over the network
+- All game data is stored locally on-device via Hive
+- Release builds with a `SENTRY_DSN` value send anonymous crash reports
+  to Sentry over HTTPS (stack traces, device/OS metadata); `sendDefaultPii`
+  and `attachScreenshot` are both `false` — no user-identifiable data or
+  screenshots are included
+- Local and debug builds (no DSN) transmit nothing
 - No personal information is collected
 
 ### 9.2 When a Backend Is Added
