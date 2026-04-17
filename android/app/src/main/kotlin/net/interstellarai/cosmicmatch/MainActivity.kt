@@ -1,4 +1,4 @@
-package com.cosmicmatch.cosmic_match
+package net.interstellarai.cosmicmatch
 
 import io.flutter.embedding.android.FlutterActivity
 
