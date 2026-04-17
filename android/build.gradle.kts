@@ -22,10 +22,10 @@ subprojects {
 subprojects {
     afterEvaluate {
         tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach {
-            kotlinOptions {
-                languageVersion = "1.9"
-                apiVersion = "1.9"
-                jvmTarget = "11"
+            compilerOptions {
+                languageVersion.set(org.jetbrains.kotlin.gradle.dsl.KotlinVersion.KOTLIN_1_9)
+                apiVersion.set(org.jetbrains.kotlin.gradle.dsl.KotlinVersion.KOTLIN_1_9)
+                jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_11)
             }
         }
     }
