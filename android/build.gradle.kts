@@ -17,6 +17,23 @@ subprojects {
 }
 subprojects {
     project.evaluationDependsOn(":app")
+
+    // Force JVM 17 on every subproject so plugin-defined Android modules
+    // (e.g. sentry_flutter) don't fall back to Java 1.8 and break the
+    // build with "Inconsistent JVM-target compatibility" on release.
+    plugins.withId("com.android.library") {
+        extensions.configure<com.android.build.gradle.LibraryExtension> {
+            compileOptions {
+                sourceCompatibility = JavaVersion.VERSION_17
+                targetCompatibility = JavaVersion.VERSION_17
+            }
+        }
+    }
+    tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach {
+        compilerOptions {
+            jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
+        }
+    }
 }
 
 tasks.register<Delete>("clean") {
