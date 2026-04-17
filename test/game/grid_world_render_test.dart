@@ -56,6 +56,36 @@ void main() {
       world.refillTop();
       expect(world.grid[0][0], TileType.purple);
     });
+
+    test('refillAll fills all null cells in every row', () {
+      // Leave all cells null (setUp creates all-null grid)
+      world.refillAll();
+      for (int x = 0; x < GridWorld.cols; x++) {
+        for (int y = 0; y < GridWorld.rows; y++) {
+          expect(world.grid[x][y], isNotNull,
+              reason: 'grid[$x][$y] should be filled after refillAll()');
+        }
+      }
+    });
+
+    test('refillAll does not overwrite existing tiles', () {
+      world.grid[3][5] = TileType.orange;
+      world.refillAll();
+      expect(world.grid[3][5], TileType.orange);
+    });
+
+    test('refillAll fills partial column — rows 1-N get filled after multi-tile clear', () {
+      // Simulate a 3-tile vertical clear in column 0: rows 0, 1, 2 become null;
+      // row 3 has a tile that gravity settled to the bottom region.
+      world.grid[0][3] = TileType.blue;
+      // rows 0, 1, 2 remain null
+      world.refillAll();
+      // All cells in column 0 must be non-null after refillAll
+      for (int y = 0; y < GridWorld.rows; y++) {
+        expect(world.grid[0][y], isNotNull,
+            reason: 'grid[0][$y] should be non-null after refillAll()');
+      }
+    });
   });
 
   group('GridWorld score', () {

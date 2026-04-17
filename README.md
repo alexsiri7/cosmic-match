@@ -4,7 +4,7 @@ A space-themed match-3 mobile game built with Flutter + Flame.
 
 ## Status
 
-Milestone M1 (core game loop) — draft / in progress.
+Milestone M1 (core game loop) — complete.
 
 ## Requirements
 

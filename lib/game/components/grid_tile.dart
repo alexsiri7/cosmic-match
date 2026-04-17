@@ -1,7 +1,7 @@
-import 'dart:ui';
 import 'package:flame/components.dart';
 import 'package:flame/events.dart';
 import 'package:flame_riverpod/flame_riverpod.dart';
+import 'package:flutter/material.dart' show Colors, Paint;
 import '../../models/tile_type.dart';
 import '../match3_game.dart';
 import '../theme/tile_palette.dart';
@@ -24,7 +24,9 @@ class GridTile extends RectangleComponent
 
   @override
   Future<void> onLoad() async {
-    paint.color = kTilePalette[tileType]!;
+    assert(kTilePalette.containsKey(tileType),
+        'kTilePalette missing entry for TileType.$tileType — update tile_type.dart');
+    paint.color = kTilePalette[tileType] ?? Colors.grey;
 
     _selectionOverlay = RectangleComponent(
       size: size.clone(),
