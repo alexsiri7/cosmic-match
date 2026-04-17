@@ -20,7 +20,9 @@ class GridWorld extends World {
   final Score score = Score();
   final CascadeController cascade = CascadeController();
   final PatternDetector detector = PatternDetector();
-  final _rng = Random();
+  final Random _rng;
+
+  GridWorld({Random? rng}) : _rng = rng ?? Random();
 
   // Logical grid — null means empty (tile is falling)
   late List<List<TileType?>> grid;
