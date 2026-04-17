@@ -59,10 +59,7 @@ class PatternDetector {
         final positions = <TilePosition>[];
         for (int dx = 0; dx < length; dx++) {
           final pos = TilePosition(x + dx, y);
-          if (grid[x + dx][y] != type || claimed.contains(pos)) {
-            valid = false;
-            break;
-          }
+          if (grid[x + dx][y] != type || claimed.contains(pos)) break;
           positions.add(pos);
         }
 
@@ -96,10 +93,7 @@ class PatternDetector {
         final positions = <TilePosition>[];
         for (int dy = 0; dy < length; dy++) {
           final pos = TilePosition(x, y + dy);
-          if (grid[x][y + dy] != type || claimed.contains(pos)) {
-            valid = false;
-            break;
-          }
+          if (grid[x][y + dy] != type || claimed.contains(pos)) break;
           positions.add(pos);
         }
 
@@ -170,9 +164,6 @@ class PatternDetector {
   List<TilePosition>? _findRunThrough(
       Grid grid, int px, int py, TileType type, bool horizontal,
       Set<TilePosition> claimed) {
-    final cols = grid.length;
-    final rows = grid[0].length;
-
     final positions = <TilePosition>[TilePosition(px, py)];
 
     if (horizontal) {
