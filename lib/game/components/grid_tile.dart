@@ -43,8 +43,7 @@ class GridTile extends RectangleComponent
   void onTapDown(TapDownEvent event) {
     // INPUT GATE — drop all taps except when idle
     final game = findGame() as Match3Game?;
-    if (game == null) return;
-    if (game.phase != GamePhase.idle) return;
+    if (game == null || game.phase != GamePhase.idle) return;
 
     game.onTileTap(this);
     event.handled = true;
