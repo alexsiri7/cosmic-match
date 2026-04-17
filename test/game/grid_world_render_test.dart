@@ -1,3 +1,4 @@
+import 'package:flame/components.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:cosmic_match/game/world/grid_world.dart';
 import 'package:cosmic_match/models/tile_type.dart';
@@ -105,6 +106,24 @@ void main() {
       world.score.add(100);
       world.score.add(200);
       expect(world.score.value, 300);
+    });
+  });
+
+  group('GridWorld tile position snap', () {
+    late GridWorld world;
+
+    setUp(() {
+      world = GridWorld();
+      world.grid = List.generate(
+          GridWorld.cols, (_) => List.generate(GridWorld.rows, (_) => null));
+      world.tiles =
+          List.generate(GridWorld.cols, (_) => List.generate(GridWorld.rows, (_) => null));
+      world.tileSize = 50.0;
+      world.boardOffset = Vector2(10, 20);
+    });
+
+    test('snapAllTilesToGrid skips null cells without error', () {
+      expect(() => world.snapAllTilesToGrid(), returnsNormally);
     });
   });
 
