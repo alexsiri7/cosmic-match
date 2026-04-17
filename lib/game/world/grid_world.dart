@@ -79,8 +79,8 @@ class GridWorld extends World {
       add(GridDebugOverlay(
         cols: cols,
         rows: rows,
-        tileSize: tileSize,
-        boardOffset: boardOffset,
+        getOffset: () => boardOffset,
+        getTileSize: () => tileSize,
       ));
       return true;
     }());
@@ -120,7 +120,6 @@ class GridWorld extends World {
   /// Snaps every live tile to its exact logical grid position.
   /// Called after each animation phase to guarantee pixel-perfect alignment
   /// regardless of floating-point drift in MoveEffect interpolation.
-  @visibleForTesting
   void snapAllTilesToGrid() {
     for (int x = 0; x < cols; x++) {
       for (int y = 0; y < rows; y++) {
@@ -204,12 +203,16 @@ class GridWorld extends World {
       game.transitionTo(GamePhase.falling);
 
       _applyGravityWithAnimation();
+      // TIMING INVARIANT: delay (300 ms) must exceed MoveEffect duration (250 ms = 0.25 s).
+      // If either changes, update both together to preserve the snap guarantee.
       await Future<void>.delayed(const Duration(milliseconds: 300));
       snapAllTilesToGrid(); // guarantee pixel-perfect landing after gravity
 
       // Fill ALL null cells (not just row 0) so the board is fully packed
       // before checking for new matches. refillTop() is kept for unit tests.
       _refillAllWithAnimation();
+      // TIMING INVARIANT: delay (300 ms) must exceed MoveEffect duration (250 ms = 0.25 s).
+      // If either changes, update both together to preserve the snap guarantee.
       await Future<void>.delayed(const Duration(milliseconds: 300));
       snapAllTilesToGrid(); // guarantee pixel-perfect landing after refill
 
