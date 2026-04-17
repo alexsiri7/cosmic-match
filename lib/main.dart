@@ -4,24 +4,24 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'game/match3_game.dart';
 import 'services/key_service.dart';
+import 'services/progress_service.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Hive.initFlutter();
-  // SEC-004: trigger first-launch key generation — generates and stores the
-  // AES-256 key in platform secure storage if not already present.
-  // Returns null on platforms / emulators without secure storage (graceful degradation).
-  // TODO(M2): capture cipher and pass to ProgressService via Riverpod provider.
-  await KeyService().getCipher();
+  final cipher = await KeyService().getCipher();
+  final progressService = ProgressService(cipher: cipher);
   runApp(
-    const ProviderScope(
-      child: CosmicMatchApp(),
+    ProviderScope(
+      child: CosmicMatchApp(progressService: progressService),
     ),
   );
 }
 
 class CosmicMatchApp extends StatefulWidget {
-  const CosmicMatchApp({super.key});
+  final ProgressService progressService;
+
+  const CosmicMatchApp({super.key, required this.progressService});
 
   @override
   State<CosmicMatchApp> createState() => _CosmicMatchAppState();
@@ -29,16 +29,24 @@ class CosmicMatchApp extends StatefulWidget {
 
 class _CosmicMatchAppState extends State<CosmicMatchApp> {
   final _gameKey = GlobalKey<RiverpodAwareGameWidgetState<Match3Game>>();
-  final _game = Match3Game();
+  late final Match3Game _game;
+
+  @override
+  void initState() {
+    super.initState();
+    _game = Match3Game(progressService: widget.progressService);
+  }
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Cosmic Match',
       theme: ThemeData.dark(),
-      home: RiverpodAwareGameWidget(
-        key: _gameKey,
-        game: _game,
+      home: SafeArea(
+        child: RiverpodAwareGameWidget(
+          key: _gameKey,
+          game: _game,
+        ),
       ),
     );
   }

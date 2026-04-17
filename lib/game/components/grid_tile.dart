@@ -1,14 +1,18 @@
+import 'dart:ui';
 import 'package:flame/components.dart';
 import 'package:flame/events.dart';
 import 'package:flame_riverpod/flame_riverpod.dart';
 import '../../models/tile_type.dart';
 import '../match3_game.dart';
+import '../theme/tile_palette.dart';
 
 class GridTile extends RectangleComponent
     with TapCallbacks, RiverpodComponentMixin {
-  final int gridX;
-  final int gridY;
+  int gridX;
+  int gridY;
   TileType tileType;
+
+  late RectangleComponent _selectionOverlay;
 
   GridTile({
     required this.gridX,
@@ -19,14 +23,28 @@ class GridTile extends RectangleComponent
   }) : super(position: position, size: size);
 
   @override
+  Future<void> onLoad() async {
+    paint.color = kTilePalette[tileType]!;
+
+    _selectionOverlay = RectangleComponent(
+      size: size.clone(),
+      paint: Paint()..color = kTileSelectedOverlay,
+    );
+    _selectionOverlay.opacity = 0;
+    add(_selectionOverlay);
+  }
+
+  void select() => _selectionOverlay.opacity = 1;
+  void deselect() => _selectionOverlay.opacity = 0;
+
+  @override
   void onTapDown(TapDownEvent event) {
     // INPUT GATE — drop all taps except when idle
     final game = findGame() as Match3Game?;
-    if (game == null) return; // component not yet properly mounted
+    if (game == null) return;
     if (game.phase != GamePhase.idle) return;
 
-    // Stub: two-tap swap selection is out of M1 scope.
-    // M2 will implement first-tap highlight → second-tap swap.
+    game.onTileTap(this);
     event.handled = true;
   }
 }
