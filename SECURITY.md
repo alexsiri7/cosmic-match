@@ -483,3 +483,39 @@ Complete all items before shipping any backend-connected release:
 | 13 | TLS 1.2+ enforced for all API communication | [ ] |
 | 14 | Certificate pinning configured with backup pin | [ ] |
 | 15 | This document reviewed and updated for the chosen architecture | [ ] |
+
+---
+
+## 11. Dependency Pinning and Audit Strategy
+
+### 11.1 Current State (V1)
+
+All direct dependencies use caret (`^`) constraints in `pubspec.yaml`, allowing patch and compatible minor updates while preventing accidental major-version breakage. `pubspec.lock` is committed to version control, pinning all transitive dependencies to known-good versions.
+
+| Control | Implementation | Purpose |
+|---------|---------------|---------|
+| Lockfile commit | `pubspec.lock` tracked in git | Deterministic builds across machines and CI |
+| Caret constraints | `^` prefix on all direct deps | Allow security patches; block breaking changes |
+| Automated CVE monitoring | `.github/dependabot.yml` (weekly, `pub` ecosystem) | Dependabot opens PRs when vulnerabilities found |
+
+**Note**: `pubspec.lock` must be updated and recommitted whenever a dependency is added, removed, or upgraded. Never run `flutter pub upgrade` without reviewing the resulting lock diff.
+
+### 11.2 Constraints
+
+- **Fully offline V1**: No network code exists, so the blast radius of a compromised dependency is limited to build-time and dev tooling. Risk level: LOW.
+- **No CI yet**: `dart pub get --enforce-lockfile` (enforces that the lockfile is not stale) will be added to the CI pipeline when GitHub Actions is configured (SEC-003, issue #3).
+
+### 11.3 Quarterly Transitive Dependency Review
+
+Every quarter, perform the following manually:
+
+1. Run `dart pub outdated` to identify outdated direct and transitive dependencies
+2. Run `dart pub audit` to check for known vulnerabilities (requires Dart 3.0+)
+3. Review Dependabot PRs — merge security patches promptly; schedule major upgrades
+4. Update `pubspec.lock` by running `flutter pub upgrade --major-versions` for intentional major bumps only, reviewing the diff before committing
+
+### 11.4 When a Backend Is Added
+
+- Pin critical security dependencies (auth, TLS, crypto) to exact versions in `pubspec.yaml` (no caret) once the API surface stabilises
+- Add `dart pub audit` as a required CI step that blocks merges on HIGH severity findings
+- Enable Dependabot auto-merge for patch-level updates after CI passes
