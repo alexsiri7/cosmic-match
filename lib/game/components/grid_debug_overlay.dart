@@ -21,7 +21,7 @@ class GridDebugOverlay extends Component {
     required this.getTileSize,
   });
 
-  late final _paint = Paint()
+  final _paint = Paint()
     ..color = const Color(0x66FFFFFF)
     ..style = PaintingStyle.stroke
     ..strokeWidth = 1.0;
