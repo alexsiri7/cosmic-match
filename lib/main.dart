@@ -15,10 +15,12 @@ Future<void> main() async {
   final cipher = await KeyService().getCipher();
   final progressService = ProgressService(cipher: cipher);
 
+  void launch() => runApp(ProviderScope(child: CosmicMatchApp(progressService: progressService)));
+
   const sentryDsn = String.fromEnvironment('SENTRY_DSN', defaultValue: '');
   if (sentryDsn.isEmpty) {
     debugPrint('Sentry disabled: SENTRY_DSN not set at compile time.');
-    runApp(ProviderScope(child: CosmicMatchApp(progressService: progressService)));
+    launch();
     return;
   }
 
@@ -36,12 +38,11 @@ Future<void> main() async {
         options.sendDefaultPii = false;
         options.attachScreenshot = false;
       },
-      appRunner: () => runApp(ProviderScope(child: CosmicMatchApp(progressService: progressService))),
+      appRunner: launch,
     );
   } catch (_) {
     // Sentry init failure must not prevent the app from launching.
-    // Fall back to running without crash reporting.
-    runApp(ProviderScope(child: CosmicMatchApp(progressService: progressService)));
+    launch();
   }
 }
 
