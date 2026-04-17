@@ -1,4 +1,4 @@
-import 'package:flame/game.dart';
+import 'package:flame_riverpod/flame_riverpod.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hive_flutter/hive_flutter.dart';
@@ -20,15 +20,26 @@ Future<void> main() async {
   );
 }
 
-class CosmicMatchApp extends StatelessWidget {
+class CosmicMatchApp extends StatefulWidget {
   const CosmicMatchApp({super.key});
+
+  @override
+  State<CosmicMatchApp> createState() => _CosmicMatchAppState();
+}
+
+class _CosmicMatchAppState extends State<CosmicMatchApp> {
+  final _gameKey = GlobalKey<RiverpodAwareGameWidgetState<Match3Game>>();
+  final _game = Match3Game();
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Cosmic Match',
       theme: ThemeData.dark(),
-      home: GameWidget(game: Match3Game()),
+      home: RiverpodAwareGameWidget(
+        key: _gameKey,
+        game: _game,
+      ),
     );
   }
 }
