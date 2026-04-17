@@ -17,23 +17,32 @@ Future<void> main() async {
 
   const sentryDsn = String.fromEnvironment('SENTRY_DSN', defaultValue: '');
   if (sentryDsn.isEmpty) {
+    debugPrint('Sentry disabled: SENTRY_DSN not set at compile time.');
     runApp(ProviderScope(child: CosmicMatchApp(progressService: progressService)));
     return;
   }
 
-  final packageInfo = await PackageInfo.fromPlatform();
-  await SentryFlutter.init(
-    (options) {
-      options.dsn = sentryDsn;
-      options.environment = kReleaseMode ? 'release' : 'debug';
-      options.release =
-          'com.cosmicmatch.cosmic_match@${packageInfo.version}+${packageInfo.buildNumber}';
-      options.tracesSampleRate = 0.0;
-      options.sendDefaultPii = false;
-      options.attachScreenshot = false;
-    },
-    appRunner: () => runApp(ProviderScope(child: CosmicMatchApp(progressService: progressService))),
-  );
+  try {
+    final packageInfo = await PackageInfo.fromPlatform();
+    await SentryFlutter.init(
+      (options) {
+        options.dsn = sentryDsn;
+        options.environment = kReleaseMode ? 'release' : 'debug';
+        options.release =
+            '${packageInfo.packageName}@${packageInfo.version}+${packageInfo.buildNumber}';
+        // V1 privacy defaults: no performance tracing, no PII, no screenshots.
+        // Revisit tracesSampleRate when the app has a backend (post-V1).
+        options.tracesSampleRate = 0.0;
+        options.sendDefaultPii = false;
+        options.attachScreenshot = false;
+      },
+      appRunner: () => runApp(ProviderScope(child: CosmicMatchApp(progressService: progressService))),
+    );
+  } catch (_) {
+    // Sentry init failure must not prevent the app from launching.
+    // Fall back to running without crash reporting.
+    runApp(ProviderScope(child: CosmicMatchApp(progressService: progressService)));
+  }
 }
 
 class CosmicMatchApp extends StatefulWidget {

@@ -14,6 +14,8 @@ flutter build apk --debug
 
 # Build (release AAB) — requires android/key.properties (see android/key.properties.example)
 flutter build appbundle --release
+# To enable Sentry crash reporting, add: --dart-define=SENTRY_DSN=<your-dsn>
+# (CI injects this automatically via the SENTRY_DSN secret)
 
 # Generate Hive adapters (run after adding new Hive types)
 dart run build_runner build --delete-conflicting-outputs

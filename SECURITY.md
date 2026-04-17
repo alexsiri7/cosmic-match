@@ -9,7 +9,9 @@
 
 ## 1. Current Security Posture (V1)
 
-Cosmic Match V1 is a **fully offline** game. The current security surface is minimal:
+Cosmic Match V1 is **offline by default**. Release builds compiled with a
+`SENTRY_DSN` value send crash reports to Sentry over HTTPS; all other
+builds remain fully offline. The current security surface is minimal:
 
 | Aspect | Status |
 |---|---|
@@ -411,6 +413,10 @@ exposure via process lists or logs.
 
 - run: flutter build appbundle --release
 
+# Note: This snippet illustrates the signing steps only. The live
+# ci.yml may include additional --dart-define flags (e.g. SENTRY_DSN).
+# See .github/workflows/ci.yml for the canonical build command.
+
 - name: Clean up signing credentials
   if: always()
   run: rm -f android/cosmic-match-release.jks android/key.properties
@@ -437,8 +443,12 @@ A committed example file at `android/key.properties.example` documents the expec
 
 ### 9.1 Current State (V1)
 
-- All data is stored locally on-device via Hive
-- No data is transmitted over the network
+- All game data is stored locally on-device via Hive
+- Release builds with a `SENTRY_DSN` value send anonymous crash reports
+  to Sentry over HTTPS (stack traces, device/OS metadata); `sendDefaultPii`
+  and `attachScreenshot` are both `false` — no user-identifiable data or
+  screenshots are included
+- Local and debug builds (no DSN) transmit nothing
 - No personal information is collected
 
 ### 9.2 When a Backend Is Added
