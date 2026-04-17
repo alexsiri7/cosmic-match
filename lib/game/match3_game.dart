@@ -1,3 +1,4 @@
+import 'package:flame/components.dart';
 import 'package:flame/game.dart';
 import 'package:flame_riverpod/flame_riverpod.dart';
 import 'components/grid_tile.dart';
@@ -19,6 +20,15 @@ class Match3Game extends FlameGame<GridWorld> with RiverpodGameMixin {
   final ProgressService? progressService;
 
   Match3Game({this.progressService}) : super(world: GridWorld());
+
+  @override
+  Future<void> onLoad() async {
+    await super.onLoad();
+    // Align world (0,0) with the top-left of the viewport so GridWorld's
+    // layout math (which computes positions relative to top-left) renders
+    // the board correctly instead of drifting into the bottom-right.
+    camera.viewfinder.anchor = Anchor.topLeft;
+  }
 
   GamePhase _phase = GamePhase.idle;
   GamePhase get phase => _phase;
