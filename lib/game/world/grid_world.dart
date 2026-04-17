@@ -13,7 +13,6 @@ import '../components/grid_tile.dart';
 import '../match3_game.dart';
 import '../pattern_detector.dart';
 
-
 class GridWorld extends World {
   static const int cols = 8;
   static const int rows = 8;
@@ -373,26 +372,16 @@ class GridWorld extends World {
   }
 
   /// Test-only wrapper for [_swapTiles] that accepts raw grid coordinates.
-  /// Allows unit-testing of the triple-mutation (grid types, tiles matrix,
-  /// gridX/Y fields) without needing a Flame game instance.
+  /// Allows unit-testing of grid and tiles matrix mutations without a Flame
+  /// game instance.
   @visibleForTesting
   void swapTilesForTest(int ax, int ay, int bx, int by) {
-    // Build lightweight stubs that carry only the fields _swapTiles mutates.
-    // The tiles[x][y] entries are intentionally left as-is (may be null).
-    final tileA = _SwapStub(ax, ay, grid[ax][ay]);
-    final tileB = _SwapStub(bx, by, grid[bx][by]);
-    grid[ax][ay] = tileB.tileType;
-    grid[bx][by] = tileA.tileType;
+    final typeA = grid[ax][ay];
+    final typeB = grid[bx][by];
+    grid[ax][ay] = typeB;
+    grid[bx][by] = typeA;
     final tmpRef = tiles[ax][ay];
     tiles[ax][ay] = tiles[bx][by];
     tiles[bx][by] = tmpRef;
   }
-}
-
-/// Lightweight value object used exclusively by [GridWorld.swapTilesForTest].
-class _SwapStub {
-  int gridX;
-  int gridY;
-  TileType? tileType;
-  _SwapStub(this.gridX, this.gridY, this.tileType);
 }
