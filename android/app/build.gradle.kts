@@ -25,6 +25,15 @@ android {
         versionName = flutter.versionName
     }
 
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
+    }
+
+    kotlinOptions {
+        jvmTarget = JavaVersion.VERSION_17.toString()
+    }
+
     signingConfigs {
         create("release") {
             // Properties only set when key.properties exists.
