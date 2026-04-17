@@ -48,8 +48,9 @@ Future<void> main() async {
 
 class CosmicMatchApp extends StatefulWidget {
   final ProgressService progressService;
+  final Match3Game? game; // @visibleForTesting — integration tests pass pre-built game
 
-  const CosmicMatchApp({super.key, required this.progressService});
+  const CosmicMatchApp({super.key, required this.progressService, this.game});
 
   @override
   State<CosmicMatchApp> createState() => _CosmicMatchAppState();
@@ -62,7 +63,7 @@ class _CosmicMatchAppState extends State<CosmicMatchApp> {
   @override
   void initState() {
     super.initState();
-    _game = Match3Game(progressService: widget.progressService);
+    _game = widget.game ?? Match3Game(progressService: widget.progressService);
   }
 
   @override
