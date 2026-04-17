@@ -20,7 +20,7 @@ class GridWorld extends World {
   final Score score = Score();
   final CascadeController cascade = CascadeController();
   final PatternDetector detector = PatternDetector();
-  final _rng = Random();
+  final Random _rng;
 
   // Logical grid — null means empty (tile is falling)
   late List<List<TileType?>> grid;
@@ -34,6 +34,8 @@ class GridWorld extends World {
   int _bestScore = 0;
 
   ProgressService? _progressService;
+
+  GridWorld({Random? rng}) : _rng = rng ?? Random();
 
   @override
   Future<void> onLoad() async {
