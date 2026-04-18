@@ -44,4 +44,46 @@ void main() {
       expect(() => world.swapTilesForTest(0, 0, 0, 1), returnsNormally);
     });
   });
+
+  group('GridWorld.tileAt — bounds checking', () {
+    late GridWorld world;
+
+    setUp(() {
+      world = GridWorld();
+      world.grid = List.generate(
+          GridWorld.cols, (_) => List.generate(GridWorld.rows, (_) => null));
+      world.tiles = List.generate(
+          GridWorld.cols, (_) => List.generate(GridWorld.rows, (_) => null));
+    });
+
+    test('returns null for negative x', () {
+      expect(world.tileAt(-1, 0), isNull);
+    });
+
+    test('returns null for x == cols (upper boundary)', () {
+      expect(world.tileAt(GridWorld.cols, 0), isNull);
+    });
+
+    test('returns null for negative y', () {
+      expect(world.tileAt(0, -1), isNull);
+    });
+
+    test('returns null for y == rows (upper boundary)', () {
+      expect(world.tileAt(0, GridWorld.rows), isNull);
+    });
+
+    test('returns null when tile slot is empty (null component)', () {
+      // tiles[0][0] is null by setUp
+      expect(world.tileAt(0, 0), isNull);
+    });
+
+    test('returns null for in-bounds x at right edge (cols-1 is valid)', () {
+      // Ensures the >= guard is correct: cols-1 is inside, cols is outside.
+      expect(world.tileAt(GridWorld.cols - 1, 0), isNull); // null component, not crash
+    });
+
+    test('returns null for in-bounds y at bottom edge (rows-1 is valid)', () {
+      expect(world.tileAt(0, GridWorld.rows - 1), isNull); // null component, not crash
+    });
+  });
 }

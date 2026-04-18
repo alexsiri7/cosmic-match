@@ -2,6 +2,7 @@ import 'package:flame/components.dart';
 import 'package:flame/events.dart';
 import 'package:flame_riverpod/flame_riverpod.dart';
 import 'package:flutter/material.dart' show Canvas, Color, Colors, CustomPainter, Paint, PaintingStyle, RRect, Radius, Rect, visibleForTesting;
+import '../../core/logger.dart';
 import '../../models/tile_type.dart';
 import '../match3_game.dart';
 import '../theme/tile_palette.dart';
@@ -107,6 +108,23 @@ class GridTile extends RectangleComponent
     }
   }
 
+  /// Thin wrapper exposed for unit testing without a Flame engine.
+  /// Consistent with the [selectionBorderVisible] pattern in this file.
+  @visibleForTesting
+  SwipeDirection? dominantDirectionForTest(Vector2 delta, double threshold) =>
+      _dominantDirection(delta, threshold);
+
+  /// Restores all drag-mutated positions and clears drag state.
+  /// Called from every drag exit path to prevent tiles staying displaced.
+  void _resetDragState() {
+    _dragging = false;
+    position = _dragOriginPosition;
+    if (_dragPreviewNeighbor != null) {
+      _dragPreviewNeighbor!.position = _dragNeighborOrigin;
+      _dragPreviewNeighbor = null;
+    }
+  }
+
   @override
   void onDragStart(DragStartEvent event) {
     super.onDragStart(event);
@@ -138,17 +156,22 @@ class GridTile extends RectangleComponent
 
     // Preview neighbor tile (subtle counter-offset)
     final game = findGame() as Match3Game?;
-    if (game == null) return;
+    if (game == null) {
+      _resetDragState();
+      return;
+    }
     final neighborX = gridX + direction.dx;
     final neighborY = gridY + direction.dy;
     final neighbor = game.world.tileAt(neighborX, neighborY);
-    if (neighbor != null && neighbor != _dragPreviewNeighbor) {
-      // Restore previous neighbor if direction changed
+    // Restore previous neighbor whenever the target changes, including to null/OOB.
+    if (neighbor != _dragPreviewNeighbor) {
       if (_dragPreviewNeighbor != null) {
         _dragPreviewNeighbor!.position = _dragNeighborOrigin;
       }
       _dragPreviewNeighbor = neighbor;
-      _dragNeighborOrigin = neighbor.position.clone();
+      if (neighbor != null) {
+        _dragNeighborOrigin = neighbor.position.clone();
+      }
     }
     if (_dragPreviewNeighbor != null) {
       _dragPreviewNeighbor!.position = _dragNeighborOrigin - axisOffset * 0.3;
@@ -159,32 +182,26 @@ class GridTile extends RectangleComponent
   void onDragEnd(DragEndEvent event) {
     super.onDragEnd(event);
     if (!_dragging) return;
-    _dragging = false;
 
     // Snap tiles back to home positions before handing off to runSwap
     // (runSwap records position at start, so must be canonical first)
-    position = _dragOriginPosition;
-    if (_dragPreviewNeighbor != null) {
-      _dragPreviewNeighbor!.position = _dragNeighborOrigin;
-      _dragPreviewNeighbor = null;
-    }
+    _resetDragState();
 
     final direction = _dominantDirection(_accumulatedDelta, size.x * 0.3);
     if (direction == null) return; // too short — ignore
 
     final game = findGame() as Match3Game?;
-    game?.onTileSwipe(this, direction);
+    if (game == null) {
+      gameLogger.w('GridTile.onDragEnd: findGame() returned null — swap dropped');
+      return;
+    }
+    game.onTileSwipe(this, direction);
   }
 
   @override
   void onDragCancel(DragCancelEvent event) {
     super.onDragCancel(event);
     if (!_dragging) return;
-    _dragging = false;
-    position = _dragOriginPosition;
-    if (_dragPreviewNeighbor != null) {
-      _dragPreviewNeighbor!.position = _dragNeighborOrigin;
-      _dragPreviewNeighbor = null;
-    }
+    _resetDragState();
   }
 }
