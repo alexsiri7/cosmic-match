@@ -296,14 +296,14 @@ class GridWorld extends World {
             gridX: x,
             gridY: y,
             tileType: grid[x][y]!,
-            position: _tilePosition(x, y - 1), // start one row above
+            position: _tilePosition(x, -1), // always spawn above the board top
             size: Vector2.all(tileSize - 2),
           );
           tiles[x][y] = tile;
           add(tile);
           tile.add(MoveEffect.to(
             _tilePosition(x, y),
-            EffectController(duration: 0.25),
+            EffectController(duration: 0.035 * (y + 1)),
           ));
         }
       }

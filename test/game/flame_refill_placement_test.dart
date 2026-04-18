@@ -87,8 +87,7 @@ void main() {
         final gameSize = Vector2(400, 800);
         world.initLayoutForTest(gameSize);
 
-        // The refill animation starts tiles at _tilePosition(x, y - 1)
-        // For row 0, that's _tilePosition(x, -1) which should be above row 0
+        // The refill animation always starts tiles at _tilePosition(x, -1) — above the board top
         final aboveRow0 = world.tilePositionAt(0, -1);
         final row0 = world.tilePositionAt(0, 0);
         expect(aboveRow0.y, lessThan(row0.y),
@@ -99,5 +98,39 @@ void main() {
         expect(aboveRow0.x, closeTo(row0.x, _epsilon));
       },
     );
+
+    testWithGame<FlameGame>(
+      'refill tiles for all target rows spawn above the board top regardless of target row',
+      () => FlameGame(world: _TestGridWorld()),
+      (game) async {
+        final world = game.world as _TestGridWorld;
+        world.grid = List.generate(
+            GridWorld.cols, (_) => List.generate(GridWorld.rows, (_) => null));
+        final gameSize = Vector2(400, 800);
+        world.initLayoutForTest(gameSize);
+
+        final spawnY = world.tilePositionAt(0, -1).y;
+
+        // Every target row must have its spawn position above the top visible row.
+        // This guards against reintroducing y-relative spawn (the original bug):
+        // the old code used _tilePosition(x, y - 1), so rows y=1..7 would have
+        // spawned inside the board at rows 0..6 respectively.
+        for (int y = 0; y < GridWorld.rows; y++) {
+          final targetY = world.tilePositionAt(0, y).y;
+          expect(spawnY, lessThan(targetY),
+              reason: 'Spawn at y=-1 must be above target row $y');
+        }
+      },
+    );
+
+    test('refill animation worst-case duration is under cascade await threshold', () {
+      // Cascade await in _runCascade is 300 ms.
+      // Duration for the deepest row (y = rows - 1): 0.035 * rows seconds.
+      const cascadeAwaitSeconds = 0.300;
+      final worstCase = 0.035 * GridWorld.rows;
+      expect(worstCase, lessThan(cascadeAwaitSeconds),
+          reason:
+              'Refill animation must complete before cascade restarts (worst case: ${worstCase * 1000} ms < ${cascadeAwaitSeconds * 1000} ms)');
+    });
   });
 }

@@ -31,6 +31,9 @@ class HudOverlay extends StatelessWidget {
   }
 }
 
+const _kCardFill = Color(0x0FFFFFFF);   // 6% white fill
+const _kCardBorder = Color(0x1AFFFFFF); // 10% white border
+
 class _StatCard extends StatelessWidget {
   final String label;
   final String value;
@@ -41,8 +44,8 @@ class _StatCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
-        color: const Color(0x0FFFFFFF),
-        border: Border.all(color: const Color(0x1AFFFFFF)),
+        color: _kCardFill,
+        border: Border.all(color: _kCardBorder),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Column(
