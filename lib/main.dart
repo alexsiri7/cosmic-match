@@ -8,6 +8,7 @@ import 'package:sentry_flutter/sentry_flutter.dart';
 import 'core/logger.dart';
 import 'game/match3_game.dart';
 import 'services/key_service.dart';
+import 'services/feedback_service.dart';
 import 'services/progress_service.dart';
 import 'widgets/hud_overlay.dart';
 
@@ -25,7 +26,19 @@ Future<void> main() async {
 
   gameLogger.i('CosmicMatch initialised — hive ready, progressService ready');
 
-  void launch() => runApp(ProviderScope(child: CosmicMatchApp(progressService: progressService)));
+  const feedbackWorkerUrl = String.fromEnvironment(
+    'FEEDBACK_WORKER_URL',
+    defaultValue: 'https://feedback.alexsiri7.workers.dev/',
+  );
+  final feedbackService = FeedbackService(workerUrl: feedbackWorkerUrl);
+  feedbackService.listenConnectivity();
+
+  void launch() => runApp(ProviderScope(
+    child: CosmicMatchApp(
+      progressService: progressService,
+      feedbackService: feedbackService,
+    ),
+  ));
 
   const sentryDsn = String.fromEnvironment('SENTRY_DSN', defaultValue: '');
   if (sentryDsn.isEmpty) {
@@ -59,8 +72,9 @@ Future<void> main() async {
 
 class CosmicMatchApp extends StatefulWidget {
   final ProgressService progressService;
+  final FeedbackService? feedbackService;
 
-  const CosmicMatchApp({super.key, required this.progressService});
+  const CosmicMatchApp({super.key, required this.progressService, this.feedbackService});
 
   @override
   State<CosmicMatchApp> createState() => _CosmicMatchAppState();
@@ -68,6 +82,7 @@ class CosmicMatchApp extends StatefulWidget {
 
 class _CosmicMatchAppState extends State<CosmicMatchApp> {
   final _gameKey = GlobalKey<RiverpodAwareGameWidgetState<Match3Game>>();
+  final _screenshotKey = GlobalKey();
   late final Match3Game _game;
 
   @override
@@ -84,12 +99,19 @@ class _CosmicMatchAppState extends State<CosmicMatchApp> {
         scaffoldBackgroundColor: const Color(0xFF0D0A1A),
       ),
       home: SafeArea(
-        child: RiverpodAwareGameWidget(
-          key: _gameKey,
-          game: _game,
-          overlayBuilderMap: {
-            'hud': (context, game) => HudOverlay(game: game as Match3Game),
-          },
+        child: RepaintBoundary(
+          key: _screenshotKey,
+          child: RiverpodAwareGameWidget(
+            key: _gameKey,
+            game: _game,
+            overlayBuilderMap: {
+              'hud': (context, game) => HudOverlay(
+                game: game as Match3Game,
+                feedbackService: widget.feedbackService,
+                screenshotKey: _screenshotKey,
+              ),
+            },
+          ),
         ),
       ),
     );
