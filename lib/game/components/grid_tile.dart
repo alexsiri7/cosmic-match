@@ -10,6 +10,12 @@ import 'tile_shape_painter.dart';
 
 class GridTile extends RectangleComponent
     with TapCallbacks, DragCallbacks, RiverpodComponentMixin {
+  // Swipe gesture thresholds, expressed as fractions of tile width.
+  // Both onDragUpdate (preview) and onDragEnd (commit) use the same ratio
+  // so preview starts and the swap commits at identical distances.
+  static const double _kSwipeThresholdRatio = 0.3;
+  static const double _kDragClampRatio = 0.4;
+
   int gridX;
   int gridY;
 
@@ -33,6 +39,10 @@ class GridTile extends RectangleComponent
   Vector2 _dragAccumulator = Vector2.zero();
   GridTile? _previewNeighbor;
   Vector2? _neighborBasePosition;
+  // True once resolveSwipeNeighbor has been attempted above threshold on the
+  // current gesture. Prevents repeated findGame() + resolveSwipeNeighbor calls
+  // on every frame when the swipe points off-board (result is always null).
+  bool _neighborResolved = false;
   late Paint _glowPaint;
   late CustomPainter _painter; // cached per-type — avoids per-frame allocation
 
@@ -72,6 +82,12 @@ class GridTile extends RectangleComponent
   @visibleForTesting
   bool get selectionBorderVisible => _selected;
 
+  /// True while the tile has active drag state (i.e. [onDragStart] succeeded
+  /// and [_snapBack] has not yet been called). Used in tests to verify the
+  /// FSM input gate without relying on private fields.
+  @visibleForTesting
+  bool get dragActive => _basePosition != null;
+
   @override
   void render(Canvas canvas) {
     _painter.paint(canvas, size.toSize()); // reuse cached instance — no allocation per frame
@@ -99,12 +115,15 @@ class GridTile extends RectangleComponent
   @override
   void onDragStart(DragStartEvent event) {
     super.onDragStart(event);
+    // INPUT GATE — drop all drags except when idle (SEC-008)
     final game = findGame() as Match3Game?;
     if (game == null || game.phase != GamePhase.idle) return;
     _basePosition = position.clone();
     _dragAccumulator = Vector2.zero();
     _previewNeighbor = null;
     _neighborBasePosition = null;
+    _neighborResolved = false;
+    // Raise render priority so the dragged tile draws above its siblings.
     priority = 100;
     event.handled = true;
   }
@@ -113,15 +132,18 @@ class GridTile extends RectangleComponent
   void onDragUpdate(DragUpdateEvent event) {
     if (_basePosition == null) return;
     _dragAccumulator += event.localDelta;
-    final clampedDelta = _dragAccumulator.clone()..clampLength(0, size.x * 0.4);
+    final clampedDelta = _dragAccumulator.clone()..clampLength(0, size.x * _kDragClampRatio);
     position = _basePosition! + clampedDelta;
 
     final dx = _dragAccumulator.x.abs();
     final dy = _dragAccumulator.y.abs();
-    final threshold = size.x * 0.3;
+    final threshold = size.x * _kSwipeThresholdRatio;
 
     if (dx >= threshold || dy >= threshold) {
-      if (_previewNeighbor == null) {
+      if (_previewNeighbor == null && !_neighborResolved) {
+        // Mark resolved immediately so we don't re-enter on every frame when
+        // the swipe points off-board (resolveSwipeNeighbor returns null).
+        _neighborResolved = true;
         final game = findGame() as Match3Game?;
         if (game != null) {
           final neighbor = resolveSwipeNeighbor(_dragAccumulator, game.world);
@@ -132,6 +154,8 @@ class GridTile extends RectangleComponent
         }
       }
       if (_previewNeighbor != null) {
+        assert(_neighborBasePosition != null,
+            '_previewNeighbor set without _neighborBasePosition — invariant broken');
         final neighborOffset = clampedDelta.clone()..negate();
         _previewNeighbor!.position = _neighborBasePosition! + neighborOffset;
       }
@@ -147,7 +171,7 @@ class GridTile extends RectangleComponent
 
     final dx = _dragAccumulator.x.abs();
     final dy = _dragAccumulator.y.abs();
-    final threshold = size.x * 0.3;
+    final threshold = size.x * _kSwipeThresholdRatio;
     if (dx < threshold && dy < threshold) return;
 
     final neighbor = resolveSwipeNeighbor(_dragAccumulator, game.world);
@@ -166,9 +190,18 @@ class GridTile extends RectangleComponent
       _previewNeighbor = null;
       _neighborBasePosition = null;
     }
+    _neighborResolved = false;
+    // Restore default render priority so the tile no longer draws above siblings.
     priority = 0;
   }
 
+  /// Returns the [GridTile] in [world] that a swipe in the direction of
+  /// [accumulator] would target, or `null` if the target is off-board.
+  ///
+  /// Direction is resolved to the dominant axis (largest absolute component).
+  /// Ties (`|dx| == |dy|`) favour the horizontal axis.
+  /// Returns `null` when the resolved target lies outside
+  /// `[0, GridWorld.cols)` × `[0, GridWorld.rows)`.
   @visibleForTesting
   GridTile? resolveSwipeNeighbor(Vector2 accumulator, GridWorld world) {
     final dx = accumulator.x.abs();
