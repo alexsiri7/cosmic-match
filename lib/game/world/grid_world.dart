@@ -57,11 +57,13 @@ class GridWorld extends World {
       ..size = Vector2(game.size.x, game.size.y);
     add(_bgRef);
 
-    // Compute layout
-    tileSize = min(game.size.x / cols, (game.size.y - 60) / rows);
+    // Compute layout — use min() to keep the grid fitting both axes, guarding
+    // against landscape/square viewports where width-only sizing would overflow.
+    final sz = game.canvasSize;
+    tileSize = min(sz.x / cols, (sz.y - 60) / rows);
     _boardOffset = Vector2(
-      (game.size.x - tileSize * cols) / 2,
-      60 + (game.size.y - 60 - tileSize * rows) / 2,
+      (sz.x - tileSize * cols) / 2,
+      60 + (sz.y - 60 - tileSize * rows) / 2,
     );
 
     // Board backdrop panel
@@ -94,10 +96,11 @@ class GridWorld extends World {
     super.onGameResize(size);
     if (!isLoaded) return;
     final game = findGame() as Match3Game;
-    tileSize = min(game.size.x / cols, (game.size.y - 60) / rows);
+    final sz = game.canvasSize;
+    tileSize = min(sz.x / cols, (sz.y - 60) / rows);
     _boardOffset = Vector2(
-      (game.size.x - tileSize * cols) / 2,
-      60 + (game.size.y - 60 - tileSize * rows) / 2,
+      (sz.x - tileSize * cols) / 2,
+      60 + (sz.y - 60 - tileSize * rows) / 2,
     );
     _bgRef.size = Vector2(game.size.x, game.size.y);
     _backdropRef.position = _boardOffset - Vector2(8, 8);

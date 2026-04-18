@@ -27,11 +27,29 @@ void main() {
         final gameSize = Vector2(400, 800);
         world.initLayoutForTest(gameSize);
         final expected = world.tilePositionAt(0, 0);
+        // Verify tileSize is min(width/cols, (height-60)/rows) — width-constrained here
+        expect(world.tileSize, closeTo(gameSize.x / GridWorld.cols, _epsilon));
         // Verify position is within the board area (below the 60px header)
         expect(expected.y, greaterThanOrEqualTo(60.0));
-        // Verify position uses the layout formula: _boardOffset + (x * tileSize, y * tileSize)
-        expect(expected.x, closeTo(world.tilePositionAt(0, 0).x, _epsilon));
-        expect(expected.y, closeTo(world.tilePositionAt(0, 0).y, _epsilon));
+      },
+    );
+
+    testWithGame<FlameGame>(
+      'tileSize uses min(width/cols, height/rows) — height-constrained on square canvas',
+      () => FlameGame(world: _TestGridWorld()),
+      (game) async {
+        final world = game.world as _TestGridWorld;
+        world.grid = List.generate(
+            GridWorld.cols, (_) => List.generate(GridWorld.rows, (_) => null));
+        // Square canvas: width/cols = 400/8 = 50; (height-60)/rows = (400-60)/8 = 42.5
+        // min() picks 42.5 (height-constrained); a width-only formula would pick 50.
+        final gameSize = Vector2(400, 400);
+        world.initLayoutForTest(gameSize);
+        const expectedTileSize = (400.0 - 60.0) / GridWorld.rows;
+        expect(world.tileSize, closeTo(expectedTileSize, _epsilon));
+        // Verify the grid stays on screen: boardOffset.y + rows * tileSize <= height
+        final bottomEdge = world.tilePositionAt(0, GridWorld.rows - 1).y + world.tileSize;
+        expect(bottomEdge, lessThanOrEqualTo(gameSize.y + _epsilon));
       },
     );
 
