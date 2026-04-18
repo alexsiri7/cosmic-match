@@ -87,8 +87,7 @@ void main() {
         final gameSize = Vector2(400, 800);
         world.initLayoutForTest(gameSize);
 
-        // The refill animation starts tiles at _tilePosition(x, y - 1)
-        // For row 0, that's _tilePosition(x, -1) which should be above row 0
+        // The refill animation always starts tiles at _tilePosition(x, -1) — above the board top
         final aboveRow0 = world.tilePositionAt(0, -1);
         final row0 = world.tilePositionAt(0, 0);
         expect(aboveRow0.y, lessThan(row0.y),
@@ -97,6 +96,25 @@ void main() {
         expect(row0.y - aboveRow0.y, closeTo(world.tileSize, _epsilon));
         // Same x coordinate
         expect(aboveRow0.x, closeTo(row0.x, _epsilon));
+      },
+    );
+
+    testWithGame<FlameGame>(
+      'refill tiles for all target rows spawn above the board',
+      () => FlameGame(world: _TestGridWorld()),
+      (game) async {
+        final world = game.world as _TestGridWorld;
+        world.grid = List.generate(
+            GridWorld.cols, (_) => List.generate(GridWorld.rows, (_) => null));
+        final gameSize = Vector2(400, 800);
+        world.initLayoutForTest(gameSize);
+
+        final aboveBoard = world.tilePositionAt(0, -1);
+        final topRow = world.tilePositionAt(0, 0);
+
+        // Spawn position must always be above row 0, regardless of target row
+        expect(aboveBoard.y, lessThan(topRow.y),
+            reason: 'Spawn at y=-1 must be above the top visible row for every refill tile');
       },
     );
   });
