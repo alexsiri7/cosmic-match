@@ -91,7 +91,8 @@ Four mitigations protect against trivial client-side manipulation (see SECURITY.
 
 | Control | Location | Behaviour |
 |---------|----------|-----------|
-| FSM Input Gate | `GridTile.onTapDown` | Drops all taps when `phase != idle` |
+| FSM Input Gate (tap) | `GridTile.onTapDown` | Drops all taps when `phase != idle` |
+| FSM Input Gate (drag) | `GridTile.onDragStart` | Drops all drag gestures when `phase != idle` |
 | Score Clamp | `Score.add()` | Clamps to 999,999,999; ignores negative inputs |
 | Cascade Depth Limit | `CascadeController.increment()` | Caps at 20; no-op beyond max |
 | CRC32 Save Integrity | `LevelProgress.toMap()` / `ProgressService._isValid()` | Resets tampered save data |

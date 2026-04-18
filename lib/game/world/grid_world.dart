@@ -17,6 +17,8 @@ import '../pattern_detector.dart';
 class GridWorld extends World {
   static const int cols = 8;
   static const int rows = 8;
+  static const Duration _kSwapAnimDuration = Duration(milliseconds: 220);
+  static const Duration _kFallAnimDuration = Duration(milliseconds: 300);
 
   final Score score = Score();
   final CascadeController cascade = CascadeController();
@@ -129,7 +131,7 @@ class GridWorld extends World {
       final posB = tileB.position.clone();
       tileA.add(MoveEffect.to(posB, EffectController(duration: 0.2)));
       tileB.add(MoveEffect.to(posA, EffectController(duration: 0.2)));
-      await Future<void>.delayed(const Duration(milliseconds: 220));
+      await Future<void>.delayed(_kSwapAnimDuration);
 
       // Swap in logical grid
       _swapTiles(tileA, tileB);
@@ -143,7 +145,7 @@ class GridWorld extends World {
         // Revert swap
         tileA.add(MoveEffect.to(posA, EffectController(duration: 0.2)));
         tileB.add(MoveEffect.to(posB, EffectController(duration: 0.2)));
-        await Future<void>.delayed(const Duration(milliseconds: 220));
+        await Future<void>.delayed(_kSwapAnimDuration);
         _swapTiles(tileA, tileB);
         game.transitionTo(GamePhase.idle);
         return;
@@ -187,12 +189,12 @@ class GridWorld extends World {
       game.transitionTo(GamePhase.falling);
 
       _applyGravityWithAnimation();
-      await Future<void>.delayed(const Duration(milliseconds: 300));
+      await Future<void>.delayed(_kFallAnimDuration);
 
       // Fill ALL null cells (not just row 0) so the board is fully packed
       // before checking for new matches. refillTop() is kept for unit tests.
       _refillAllWithAnimation();
-      await Future<void>.delayed(const Duration(milliseconds: 300));
+      await Future<void>.delayed(_kFallAnimDuration);
 
       final newMatches = detector.detectAll(grid);
       if (newMatches.isEmpty || !cascade.canContinue) {
