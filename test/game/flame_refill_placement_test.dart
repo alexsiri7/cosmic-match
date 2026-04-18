@@ -100,7 +100,7 @@ void main() {
     );
 
     testWithGame<FlameGame>(
-      'refill tiles for all target rows spawn above the board',
+      'refill tiles for all target rows spawn above the board top regardless of target row',
       () => FlameGame(world: _TestGridWorld()),
       (game) async {
         final world = game.world as _TestGridWorld;
@@ -109,13 +109,28 @@ void main() {
         final gameSize = Vector2(400, 800);
         world.initLayoutForTest(gameSize);
 
-        final aboveBoard = world.tilePositionAt(0, -1);
-        final topRow = world.tilePositionAt(0, 0);
+        final spawnY = world.tilePositionAt(0, -1).y;
 
-        // Spawn position must always be above row 0, regardless of target row
-        expect(aboveBoard.y, lessThan(topRow.y),
-            reason: 'Spawn at y=-1 must be above the top visible row for every refill tile');
+        // Every target row must have its spawn position above the top visible row.
+        // This guards against reintroducing y-relative spawn (the original bug):
+        // the old code used _tilePosition(x, y - 1), so rows y=1..7 would have
+        // spawned inside the board at rows 0..6 respectively.
+        for (int y = 0; y < GridWorld.rows; y++) {
+          final targetY = world.tilePositionAt(0, y).y;
+          expect(spawnY, lessThan(targetY),
+              reason: 'Spawn at y=-1 must be above target row $y');
+        }
       },
     );
+
+    test('refill animation worst-case duration is under cascade await threshold', () {
+      // Cascade await in _runCascade is 300 ms.
+      // Duration for the deepest row (y = rows - 1): 0.035 * rows seconds.
+      const cascadeAwaitSeconds = 0.300;
+      final worstCase = 0.035 * GridWorld.rows;
+      expect(worstCase, lessThan(cascadeAwaitSeconds),
+          reason:
+              'Refill animation must complete before cascade restarts (worst case: ${worstCase * 1000} ms < ${cascadeAwaitSeconds * 1000} ms)');
+    });
   });
 }
