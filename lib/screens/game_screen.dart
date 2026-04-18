@@ -1,5 +1,8 @@
+import 'dart:typed_data';
+import 'dart:ui' as ui;
 import 'package:flame_riverpod/flame_riverpod.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../game/match3_game.dart';
 import '../game/theme/app_theme.dart';
@@ -17,8 +20,9 @@ String formatGameScore(int n) {
 class GameScreen extends StatefulWidget {
   final Match3Game game;
   final VoidCallback onBack;
+  final VoidCallback onFeedback;
 
-  const GameScreen({super.key, required this.game, required this.onBack});
+  const GameScreen({super.key, required this.game, required this.onBack, required this.onFeedback});
 
   @override
   State<GameScreen> createState() => _GameScreenState();
@@ -26,6 +30,15 @@ class GameScreen extends StatefulWidget {
 
 class _GameScreenState extends State<GameScreen> {
   final _gameKey = GlobalKey<RiverpodAwareGameWidgetState<Match3Game>>();
+  final _repaintKey = GlobalKey();
+
+  Future<Uint8List> captureScreenshot() async {
+    final boundary = _repaintKey.currentContext!.findRenderObject()
+        as RenderRepaintBoundary;
+    final image = await boundary.toImage(pixelRatio: 2.0);
+    final data = await image.toByteData(format: ui.ImageByteFormat.png);
+    return data!.buffer.asUint8List();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -36,9 +49,12 @@ class _GameScreenState extends State<GameScreen> {
           children: [
             _buildHUD(),
             Expanded(
-              child: RiverpodAwareGameWidget(
-                key: _gameKey,
-                game: widget.game,
+              child: RepaintBoundary(
+                key: _repaintKey,
+                child: RiverpodAwareGameWidget(
+                  key: _gameKey,
+                  game: widget.game,
+                ),
               ),
             ),
             _buildLegend(),
@@ -69,10 +85,17 @@ class _GameScreenState extends State<GameScreen> {
                   color: Colors.white.withValues(alpha: 0.55),
                 ),
               ),
-              _circleButton(
-                onTap: () {},
-                child: const Icon(Icons.pause, size: 14, color: Colors.white),
-              ),
+              Row(children: [
+                _circleButton(
+                  onTap: () {},
+                  child: const Icon(Icons.pause, size: 14, color: Colors.white),
+                ),
+                const SizedBox(width: 6),
+                _circleButton(
+                  onTap: widget.onFeedback,
+                  child: const Icon(Icons.mail_outline, size: 14, color: Colors.white),
+                ),
+              ]),
             ],
           ),
           const SizedBox(height: 10),

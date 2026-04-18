@@ -124,12 +124,14 @@ jobs:
       - name: Build release AAB
         env:
           SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
-        run: flutter build appbundle --release --dart-define=SENTRY_DSN=$SENTRY_DSN
+          GITHUB_FEEDBACK_TOKEN: ${{ secrets.GITHUB_FEEDBACK_TOKEN }}
+        run: flutter build appbundle --release --dart-define=SENTRY_DSN=$SENTRY_DSN --dart-define=GITHUB_FEEDBACK_TOKEN=$GITHUB_FEEDBACK_TOKEN
 
       - name: Build release APK
         env:
           SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
-        run: flutter build apk --release --dart-define=SENTRY_DSN=$SENTRY_DSN
+          GITHUB_FEEDBACK_TOKEN: ${{ secrets.GITHUB_FEEDBACK_TOKEN }}
+        run: flutter build apk --release --dart-define=SENTRY_DSN=$SENTRY_DSN --dart-define=GITHUB_FEEDBACK_TOKEN=$GITHUB_FEEDBACK_TOKEN
 
       - name: Upload signed AAB
         if: steps.keystore.outputs.used_real == 'yes'
