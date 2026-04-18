@@ -85,7 +85,7 @@ class _GameScreenState extends State<GameScreen> {
                   valueListenable: widget.game.scoreNotifier,
                   builder: (_, score, __) => _StatCard(
                     label: 'SCORE',
-                    value: _formatNumber(score),
+                    value: formatGameScore(score),
                   ),
                 ),
               ),
@@ -165,7 +165,6 @@ class _GameScreenState extends State<GameScreen> {
     );
   }
 
-  String _formatNumber(int n) => formatGameScore(n);
 }
 
 class _StatCard extends StatelessWidget {

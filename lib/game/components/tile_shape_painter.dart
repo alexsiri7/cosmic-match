@@ -54,8 +54,7 @@ class NeptunePainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     final s = size.width;
     final r = s * 0.30;
-    final cx = s / 2, cy = s / 2;
-    final center = Offset(cx, cy);
+    final center = Offset(s / 2, s / 2);
 
     // Back of ring
     final ringPaint = Paint()

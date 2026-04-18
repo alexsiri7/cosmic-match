@@ -1,4 +1,3 @@
-import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../game/theme/app_theme.dart';
@@ -215,7 +214,7 @@ class HomeScreen extends StatelessWidget {
             height: size,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: Colors.white.withValues(alpha: min(opacity, 1.0)),
+              color: Colors.white.withValues(alpha: opacity),
             ),
           ),
         ),
