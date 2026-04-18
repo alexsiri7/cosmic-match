@@ -1,7 +1,7 @@
 import 'package:flame/components.dart';
 import 'package:flame/events.dart';
 import 'package:flame_riverpod/flame_riverpod.dart';
-import 'package:flutter/material.dart' show Canvas, Color, Colors, CustomPainter, Paint, PaintingStyle, RRect, Radius, Rect;
+import 'package:flutter/material.dart' show Canvas, Color, Colors, CustomPainter, Paint, PaintingStyle, RRect, Radius, Rect, visibleForTesting;
 import '../../models/tile_type.dart';
 import '../match3_game.dart';
 import '../theme/tile_palette.dart';
@@ -63,6 +63,9 @@ class GridTile extends RectangleComponent
 
   void select() => _selected = true;
   void deselect() => _selected = false;
+
+  @visibleForTesting
+  bool get selectionBorderVisible => _selected;
 
   @override
   void render(Canvas canvas) {

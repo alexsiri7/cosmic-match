@@ -81,11 +81,11 @@ class _GameScreenState extends State<GameScreen> {
             children: [
               Expanded(
                 flex: 2,
-                child: ValueListenableBuilder<int>(
+                child: ValueListenableBuilder<({int score, int best})>(
                   valueListenable: widget.game.scoreNotifier,
-                  builder: (_, score, __) => _StatCard(
+                  builder: (_, data, __) => _StatCard(
                     label: 'SCORE',
-                    value: formatGameScore(score),
+                    value: formatGameScore(data.score),
                   ),
                 ),
               ),
