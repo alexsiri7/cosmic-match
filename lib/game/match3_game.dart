@@ -2,6 +2,7 @@ import 'dart:math';
 import 'package:flame/components.dart';
 import 'package:flame/game.dart';
 import 'package:flame_riverpod/flame_riverpod.dart';
+import 'package:flutter/foundation.dart';
 import 'components/grid_tile.dart';
 import 'world/grid_world.dart';
 import '../core/logger.dart';
@@ -20,6 +21,7 @@ const _validTransitions = <GamePhase, Set<GamePhase>>{
 
 class Match3Game extends FlameGame<GridWorld> with RiverpodGameMixin {
   final ProgressService? progressService;
+  final scoreNotifier = ValueNotifier<({int score, int best})>((score: 0, best: 0));
 
   Match3Game({this.progressService, Random? rng})
       : super(world: GridWorld(rng: rng));
@@ -31,6 +33,9 @@ class Match3Game extends FlameGame<GridWorld> with RiverpodGameMixin {
     // layout math (which computes positions relative to top-left) renders
     // the board correctly instead of drifting into the bottom-right.
     camera.viewfinder.anchor = Anchor.topLeft;
+    if (overlays.registeredOverlays.contains('hud')) {
+      overlays.add('hud');
+    }
     gameLogger.d('Match3Game loaded');
   }
 
