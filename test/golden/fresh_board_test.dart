@@ -1,0 +1,36 @@
+import 'dart:math';
+import 'package:flame_riverpod/flame_riverpod.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:cosmic_match/game/match3_game.dart';
+import 'golden_test_helpers.dart';
+
+void main() {
+  testWidgets('fresh board matches golden', (tester) async {
+    suppressFlameRiverpodDisposeError();
+
+    final gameKey = GlobalKey<RiverpodAwareGameWidgetState<Match3Game>>();
+    final game = Match3Game(rng: Random(42));
+    await tester.pumpWidget(
+      ProviderScope(
+        child: MaterialApp(
+          debugShowCheckedModeBanner: false,
+          home: SizedBox(
+            width: 1080,
+            height: 2244,
+            child: RiverpodAwareGameWidget(
+              key: gameKey,
+              game: game,
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pump(const Duration(seconds: 2));
+    await expectLater(
+      find.byKey(gameKey),
+      matchesGoldenFile('goldens/fresh_board.png'),
+    );
+  });
+}
