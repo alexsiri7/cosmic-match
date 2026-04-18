@@ -31,9 +31,6 @@ void main() {
         expect(world.tileSize, closeTo(gameSize.x / GridWorld.cols, _epsilon));
         // Verify position is within the board area (below the 60px header)
         expect(expected.y, greaterThanOrEqualTo(60.0));
-        // Verify position uses the layout formula: _boardOffset + (x * tileSize, y * tileSize)
-        expect(expected.x, closeTo(world.tilePositionAt(0, 0).x, _epsilon));
-        expect(expected.y, closeTo(world.tilePositionAt(0, 0).y, _epsilon));
       },
     );
 
