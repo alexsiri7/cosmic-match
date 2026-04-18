@@ -4,6 +4,7 @@ import 'package:flame/game.dart';
 import 'package:flame_riverpod/flame_riverpod.dart';
 import 'components/grid_tile.dart';
 import 'world/grid_world.dart';
+import '../core/logger.dart';
 import '../services/progress_service.dart';
 
 enum GamePhase { idle, swapping, matching, falling, cascading }
@@ -30,6 +31,7 @@ class Match3Game extends FlameGame<GridWorld> with RiverpodGameMixin {
     // layout math (which computes positions relative to top-left) renders
     // the board correctly instead of drifting into the bottom-right.
     camera.viewfinder.anchor = Anchor.topLeft;
+    gameLogger.d('Match3Game loaded');
   }
 
   GamePhase _phase = GamePhase.idle;

@@ -1,4 +1,4 @@
-import 'package:flutter/foundation.dart';
+import '../core/logger.dart';
 
 class CascadeController {
   /// Maximum cascade chain depth before aborting.
@@ -15,8 +15,7 @@ class CascadeController {
   void increment() {
     if (_depth >= maxDepth) {
       // Cap rather than overflow; caller must check canContinue before proceeding
-      debugPrint(
-          'CascadeController: maxDepth ($maxDepth) reached, aborting cascade');
+      gameLogger.w('CascadeController: maxDepth ($maxDepth) reached, aborting cascade');
       return;
     }
     _depth++;

@@ -5,15 +5,24 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:sentry_flutter/sentry_flutter.dart';
+import 'core/logger.dart';
 import 'game/match3_game.dart';
 import 'services/key_service.dart';
 import 'services/progress_service.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Silence Flutter framework's own debugPrint in release — gameLogger handles game-level logs.
+  if (kReleaseMode) {
+    debugPrint = (String? message, {int? wrapWidth}) {};
+  }
+
   await Hive.initFlutter();
   final cipher = await KeyService().getCipher();
   final progressService = ProgressService(cipher: cipher);
+
+  gameLogger.i('CosmicMatch initialised — hive ready, progressService ready');
 
   void launch() => runApp(ProviderScope(child: CosmicMatchApp(progressService: progressService)));
 
