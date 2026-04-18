@@ -16,6 +16,8 @@ class GridTile extends RectangleComponent
   static const double _kSwipeThresholdRatio = 0.3;
   static const double _kDragClampRatio = 0.4;
 
+  double get _swipeThreshold => size.x * _kSwipeThresholdRatio;
+
   int gridX;
   int gridY;
 
@@ -137,9 +139,8 @@ class GridTile extends RectangleComponent
 
     final dx = _dragAccumulator.x.abs();
     final dy = _dragAccumulator.y.abs();
-    final threshold = size.x * _kSwipeThresholdRatio;
 
-    if (dx >= threshold || dy >= threshold) {
+    if (dx >= _swipeThreshold || dy >= _swipeThreshold) {
       if (_previewNeighbor == null && !_neighborResolved) {
         // Mark resolved immediately so we don't re-enter on every frame when
         // the swipe points off-board (resolveSwipeNeighbor returns null).
@@ -171,8 +172,7 @@ class GridTile extends RectangleComponent
 
     final dx = _dragAccumulator.x.abs();
     final dy = _dragAccumulator.y.abs();
-    final threshold = size.x * _kSwipeThresholdRatio;
-    if (dx < threshold && dy < threshold) return;
+    if (dx < _swipeThreshold && dy < _swipeThreshold) return;
 
     final neighbor = resolveSwipeNeighbor(_dragAccumulator, game.world);
     if (neighbor == null) return;
