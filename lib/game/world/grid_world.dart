@@ -113,6 +113,13 @@ class GridWorld extends World {
   Vector2 _tilePosition(int x, int y) =>
       _boardOffset + Vector2(x * tileSize, y * tileSize);
 
+  /// Returns the tile component at grid position (x, y), or null if out of
+  /// bounds or the cell is empty (e.g. a tile currently falling).
+  GridTile? tileAt(int x, int y) {
+    if (x < 0 || x >= cols || y < 0 || y >= rows) return null;
+    return tiles[x][y];
+  }
+
   void _updateScoreNotifier() {
     (findGame() as Match3Game?)?.scoreNotifier.value =
         (score: score.value, best: _bestScore);

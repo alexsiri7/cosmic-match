@@ -8,7 +8,7 @@ import '../theme/tile_palette.dart';
 import 'tile_shape_painter.dart';
 
 class GridTile extends RectangleComponent
-    with TapCallbacks, RiverpodComponentMixin {
+    with TapCallbacks, DragCallbacks, RiverpodComponentMixin {
   int gridX;
   int gridY;
 
@@ -28,6 +28,13 @@ class GridTile extends RectangleComponent
 
   bool _painterReady = false;
   bool _selected = false;
+
+  // --- drag state (reset on each gesture) ---
+  bool _dragging = false;
+  Vector2 _dragOriginPosition = Vector2.zero();
+  Vector2 _accumulatedDelta = Vector2.zero();
+  GridTile? _dragPreviewNeighbor;
+  Vector2 _dragNeighborOrigin = Vector2.zero();
   late Paint _glowPaint;
   late CustomPainter _painter; // cached per-type — avoids per-frame allocation
 
@@ -89,5 +96,95 @@ class GridTile extends RectangleComponent
 
     game.onTileTap(this);
     event.handled = true;
+  }
+
+  SwipeDirection? _dominantDirection(Vector2 delta, double threshold) {
+    if (delta.length < threshold) return null;
+    if (delta.x.abs() >= delta.y.abs()) {
+      return delta.x > 0 ? SwipeDirection.right : SwipeDirection.left;
+    } else {
+      return delta.y > 0 ? SwipeDirection.down : SwipeDirection.up;
+    }
+  }
+
+  @override
+  void onDragStart(DragStartEvent event) {
+    super.onDragStart(event);
+    final game = findGame() as Match3Game?;
+    if (game == null || game.phase != GamePhase.idle) return;
+
+    _dragging = true;
+    _dragOriginPosition = position.clone();
+    _accumulatedDelta = Vector2.zero();
+    _dragPreviewNeighbor = null;
+    event.handled = true;
+  }
+
+  @override
+  void onDragUpdate(DragUpdateEvent event) {
+    if (!_dragging) return;
+    _accumulatedDelta += event.localDelta;
+
+    final threshold = size.x * 0.3;
+    final direction = _dominantDirection(_accumulatedDelta, threshold);
+    if (direction == null) return; // below threshold — no preview yet
+
+    // Constrain preview offset to dominant axis only
+    final axisOffset = direction == SwipeDirection.left || direction == SwipeDirection.right
+        ? Vector2(_accumulatedDelta.x.clamp(-size.x * 0.5, size.x * 0.5), 0)
+        : Vector2(0, _accumulatedDelta.y.clamp(-size.y * 0.5, size.y * 0.5));
+
+    position = _dragOriginPosition + axisOffset;
+
+    // Preview neighbor tile (subtle counter-offset)
+    final game = findGame() as Match3Game?;
+    if (game == null) return;
+    final neighborX = gridX + direction.dx;
+    final neighborY = gridY + direction.dy;
+    final neighbor = game.world.tileAt(neighborX, neighborY);
+    if (neighbor != null && neighbor != _dragPreviewNeighbor) {
+      // Restore previous neighbor if direction changed
+      if (_dragPreviewNeighbor != null) {
+        _dragPreviewNeighbor!.position = _dragNeighborOrigin;
+      }
+      _dragPreviewNeighbor = neighbor;
+      _dragNeighborOrigin = neighbor.position.clone();
+    }
+    if (_dragPreviewNeighbor != null) {
+      _dragPreviewNeighbor!.position = _dragNeighborOrigin - axisOffset * 0.3;
+    }
+  }
+
+  @override
+  void onDragEnd(DragEndEvent event) {
+    super.onDragEnd(event);
+    if (!_dragging) return;
+    _dragging = false;
+
+    // Snap tiles back to home positions before handing off to runSwap
+    // (runSwap records position at start, so must be canonical first)
+    position = _dragOriginPosition;
+    if (_dragPreviewNeighbor != null) {
+      _dragPreviewNeighbor!.position = _dragNeighborOrigin;
+      _dragPreviewNeighbor = null;
+    }
+
+    final direction = _dominantDirection(_accumulatedDelta, size.x * 0.3);
+    if (direction == null) return; // too short — ignore
+
+    final game = findGame() as Match3Game?;
+    game?.onTileSwipe(this, direction);
+  }
+
+  @override
+  void onDragCancel(DragCancelEvent event) {
+    super.onDragCancel(event);
+    if (!_dragging) return;
+    _dragging = false;
+    position = _dragOriginPosition;
+    if (_dragPreviewNeighbor != null) {
+      _dragPreviewNeighbor!.position = _dragNeighborOrigin;
+      _dragPreviewNeighbor = null;
+    }
   }
 }

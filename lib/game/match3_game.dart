@@ -10,6 +10,17 @@ import '../services/progress_service.dart';
 
 enum GamePhase { idle, swapping, matching, falling, cascading }
 
+enum SwipeDirection {
+  up(0, -1),
+  down(0, 1),
+  left(-1, 0),
+  right(1, 0);
+
+  const SwipeDirection(this.dx, this.dy);
+  final int dx;
+  final int dy;
+}
+
 // Legal state transitions
 const _validTransitions = <GamePhase, Set<GamePhase>>{
   GamePhase.idle: {GamePhase.swapping},
@@ -90,5 +101,21 @@ class Match3Game extends FlameGame<GridWorld> with RiverpodGameMixin {
     tileA.deselect();
     _selectedTile = null;
     world.runSwap(tileA, tile);
+  }
+
+  void onTileSwipe(GridTile tile, SwipeDirection direction) {
+    if (phase != GamePhase.idle) return;
+
+    final targetX = tile.gridX + direction.dx;
+    final targetY = tile.gridY + direction.dy;
+
+    // Clear any pending tap selection so the two input paths don't conflict
+    _selectedTile?.deselect();
+    _selectedTile = null;
+
+    final neighbor = world.tileAt(targetX, targetY);
+    if (neighbor == null) return; // out-of-bounds or empty cell
+
+    world.runSwap(tile, neighbor);
   }
 }
