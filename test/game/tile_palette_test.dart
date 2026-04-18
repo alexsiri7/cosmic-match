@@ -33,6 +33,7 @@ void main() {
     });
   });
 
+
   group('kTileGlowPalette', () {
     test('contains an entry for every TileType value', () {
       for (final type in TileType.values) {

@@ -50,8 +50,9 @@ Future<void> main() async {
       },
       appRunner: launch,
     );
-  } catch (_) {
+  } catch (e, stack) {
     // Sentry init failure must not prevent the app from launching.
+    gameLogger.w('Sentry init failed — crash reporting disabled', error: e, stackTrace: stack);
     launch();
   }
 }

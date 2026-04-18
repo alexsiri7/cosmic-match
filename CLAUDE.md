@@ -35,6 +35,8 @@ lib/
                   #   kTileSelectedOverlay — transparent, selection drawn by _GlowBorder stroke;
                   #   cosmic_theme.dart — Lyra galaxy tokens: kCosmicInk, kCosmicNebulaA/B, kCosmicAccent, kBoardBackdrop, kGridLine)
   models/         # Pure data: Score, TileType, LevelProgress
+  screens/        # Flutter screens: HomeScreen, MapScreen, GameScreen, modals
+                  # Navigation: _Screen enum + _buildScreen() in main.dart
   services/       # Hive persistence (ProgressService) and key management (KeyService)
   widgets/        # Flutter overlay widgets (HudOverlay — driven by Match3Game.scoreNotifier)
 test/             # Unit tests mirror lib/ structure
