@@ -39,6 +39,12 @@ class Match3Game extends FlameGame<GridWorld> with RiverpodGameMixin {
     gameLogger.d('Match3Game loaded');
   }
 
+  @override
+  void onRemove() {
+    scoreNotifier.dispose();
+    super.onRemove();
+  }
+
   GamePhase _phase = GamePhase.idle;
   GamePhase get phase => _phase;
 

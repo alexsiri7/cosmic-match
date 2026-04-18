@@ -4,6 +4,7 @@ import 'package:flame/effects.dart';
 import 'package:flutter/material.dart' hide GridTile;
 // visibleForTesting is re-exported by flutter/material.dart via foundation.dart
 import '../../models/level_progress.dart';
+import '../theme/cosmic_theme.dart';
 import '../../models/score.dart';
 import '../../models/tile_type.dart';
 import '../../core/logger.dart';
@@ -35,6 +36,7 @@ class GridWorld extends World {
   ProgressService? _progressService;
 
   late _BoardBackdrop _backdropRef;
+  late _CosmicBackground _bgRef;
 
   GridWorld({Random? rng}) : _rng = rng ?? Random();
 
@@ -51,9 +53,9 @@ class GridWorld extends World {
     _bestScore = progress.bestScore;
 
     // Cosmic background (behind everything)
-    final bg = _CosmicBackground()
+    _bgRef = _CosmicBackground()
       ..size = Vector2(game.size.x, game.size.y);
-    add(bg);
+    add(_bgRef);
 
     // Compute layout
     tileSize = min(game.size.x / cols, (game.size.y - 60) / rows);
@@ -97,6 +99,7 @@ class GridWorld extends World {
       (game.size.x - tileSize * cols) / 2,
       60 + (game.size.y - 60 - tileSize * rows) / 2,
     );
+    _bgRef.size = Vector2(game.size.x, game.size.y);
     _backdropRef.position = _boardOffset - Vector2(8, 8);
     _backdropRef.size = Vector2(tileSize * cols + 16, tileSize * rows + 16);
     for (int x = 0; x < cols; x++) {
@@ -111,7 +114,7 @@ class GridWorld extends World {
       _boardOffset + Vector2(x * tileSize, y * tileSize);
 
   void _updateScoreNotifier() {
-    (findGame() as Match3Game).scoreNotifier.value =
+    (findGame() as Match3Game?)?.scoreNotifier.value =
         (score: score.value, best: _bestScore);
   }
 
@@ -411,14 +414,14 @@ class _CosmicBackground extends PositionComponent {
   void render(Canvas canvas) {
     // 1. Solid ink fill
     canvas.drawRect(Rect.fromLTWH(0, 0, size.x, size.y),
-        Paint()..color = const Color(0xFF0D0A1A));
+        Paint()..color = kCosmicInk);
 
     // 2. Nebula A — violet radial at top
     canvas.drawOval(
       Rect.fromCenter(center: Offset(size.x / 2, size.y * 0.15),
           width: size.x * 1.2, height: size.y * 0.6),
-      Paint()..shader = const RadialGradient(
-        colors: [Color(0x664B2870), Color(0x00000000)],
+      Paint()..shader = RadialGradient(
+        colors: [kCosmicNebulaA.withValues(alpha: 0.4), const Color(0x00000000)],
       ).createShader(Rect.fromLTWH(0, 0, size.x, size.y * 0.4)),
     );
 
@@ -426,8 +429,8 @@ class _CosmicBackground extends PositionComponent {
     canvas.drawOval(
       Rect.fromCenter(center: Offset(size.x * 0.85, size.y * 0.85),
           width: size.x * 0.9, height: size.y * 0.5),
-      Paint()..shader = const RadialGradient(
-        colors: [Color(0x55244E7A), Color(0x00000000)],
+      Paint()..shader = RadialGradient(
+        colors: [kCosmicNebulaB.withValues(alpha: 0.33), const Color(0x00000000)],
       ).createShader(Rect.fromLTWH(size.x * 0.4, size.y * 0.55,
           size.x * 0.6, size.y * 0.45)),
     );
@@ -443,7 +446,7 @@ class _BoardBackdrop extends PositionComponent {
         Rect.fromLTWH(0, 0, size.x, size.y),
         const Radius.circular(14),
       ),
-      Paint()..color = const Color(0x59000000),
+      Paint()..color = kBoardBackdrop,
     );
   }
 }

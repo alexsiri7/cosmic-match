@@ -30,6 +30,10 @@ class GridTile extends PositionComponent
 
   @override
   Future<void> onLoad() async {
+    assert(kTilePalette.containsKey(tileType),
+        'kTilePalette missing entry for TileType.$tileType — update tile_type.dart');
+    assert(kTileGlowPalette.containsKey(tileType),
+        'kTileGlowPalette missing entry for TileType.$tileType — update tile_type.dart');
     _selectionBorder = _GlowBorder(
       size: size.clone(),
       glowColor: kTileGlowPalette[tileType] ?? Colors.white,
@@ -191,7 +195,7 @@ class GridTile extends PositionComponent
     );
   }
 
-  // Comet — teardrop head + two trail strokes
+  // Comet — circular head + two trail strokes
   void _drawComet(Canvas canvas, double w, double h) {
     final color = kTilePalette[tileType]!;
     final headCx = w * 0.6;
@@ -229,8 +233,12 @@ class GridTile extends PositionComponent
   void select()   => _selectionBorder.visible = true;
   void deselect() => _selectionBorder.visible = false;
 
+  @visibleForTesting
+  bool get selectionBorderVisible => _selectionBorder.visible;
+
   @override
   void onTapDown(TapDownEvent event) {
+    // INPUT GATE — drop all taps except when idle (SEC-008)
     final game = findGame() as Match3Game?;
     if (game == null || game.phase != GamePhase.idle) return;
     game.onTileTap(this);
@@ -238,7 +246,7 @@ class GridTile extends PositionComponent
   }
 }
 
-// Draws a glowing colored border rectangle (no fill).
+// Selection border drawn in the tile's glow colour (solid stroke — no blur).
 class _GlowBorder extends PositionComponent {
   final Color glowColor;
   bool visible = false;
