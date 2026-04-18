@@ -9,6 +9,7 @@ import '../../models/score.dart';
 import '../../models/tile_type.dart';
 import '../../services/progress_service.dart';
 import '../cascade_controller.dart';
+import '../components/grid_debug_overlay.dart';
 import '../components/grid_tile.dart';
 import '../match3_game.dart';
 import '../pattern_detector.dart';
@@ -28,7 +29,7 @@ class GridWorld extends World {
   // Render-layer parallel to grid
   late List<List<GridTile?>> tiles;
   late double tileSize;
-  late Vector2 _boardOffset;
+  late Vector2 boardOffset;
 
   late TextComponent _scoreText;
   int _bestScore = 0;
@@ -49,7 +50,7 @@ class GridWorld extends World {
 
     // Compute layout
     tileSize = min(game.size.x / cols, (game.size.y - 60) / rows);
-    _boardOffset = Vector2(
+    boardOffset = Vector2(
       (game.size.x - tileSize * cols) / 2,
       60 + (game.size.y - 60 - tileSize * rows) / 2,
     );
@@ -72,6 +73,16 @@ class GridWorld extends World {
       }
     }
 
+    assert(() {
+      add(GridDebugOverlay(
+        cols: cols,
+        rows: rows,
+        getOffset: () => boardOffset,
+        getTileSize: () => tileSize,
+      ));
+      return true;
+    }());
+
     // Score bar
     _scoreText = TextComponent(
       text: 'Score: 0  Best: $_bestScore',
@@ -89,7 +100,7 @@ class GridWorld extends World {
     if (!isLoaded) return;
     final game = findGame() as Match3Game;
     tileSize = min(game.size.x / cols, (game.size.y - 60) / rows);
-    _boardOffset = Vector2(
+    boardOffset = Vector2(
       (game.size.x - tileSize * cols) / 2,
       60 + (game.size.y - 60 - tileSize * rows) / 2,
     );
@@ -102,7 +113,21 @@ class GridWorld extends World {
   }
 
   Vector2 _tilePosition(int x, int y) =>
-      _boardOffset + Vector2(x * tileSize, y * tileSize);
+      boardOffset + Vector2(x * tileSize, y * tileSize);
+
+  /// Snaps every live tile to its exact logical grid position.
+  /// Called after each animation phase to guarantee pixel-perfect alignment
+  /// regardless of floating-point drift in MoveEffect interpolation.
+  void snapAllTilesToGrid() {
+    for (int x = 0; x < cols; x++) {
+      for (int y = 0; y < rows; y++) {
+        final tile = tiles[x][y];
+        if (tile != null) {
+          tile.position = _tilePosition(x, y);
+        }
+      }
+    }
+  }
 
   // --- Swap + Cascade Pipeline ---
 
@@ -176,12 +201,18 @@ class GridWorld extends World {
       game.transitionTo(GamePhase.falling);
 
       _applyGravityWithAnimation();
+      // TIMING INVARIANT: delay (300 ms) must exceed MoveEffect duration (250 ms).
+      // If either changes, update both together to preserve the snap guarantee.
       await Future<void>.delayed(const Duration(milliseconds: 300));
+      snapAllTilesToGrid(); // guarantee pixel-perfect landing after gravity
 
       // Fill ALL null cells (not just row 0) so the board is fully packed
       // before checking for new matches. refillTop() is kept for unit tests.
       _refillAllWithAnimation();
+      // TIMING INVARIANT: delay (300 ms) must exceed MoveEffect duration (250 ms).
+      // If either changes, update both together to preserve the snap guarantee.
       await Future<void>.delayed(const Duration(milliseconds: 300));
+      snapAllTilesToGrid(); // guarantee pixel-perfect landing after refill
 
       final newMatches = detector.detectAll(grid);
       if (newMatches.isEmpty || !cascade.canContinue) {
@@ -283,7 +314,7 @@ class GridWorld extends World {
             gridX: x,
             gridY: y,
             tileType: grid[x][y]!,
-            position: _tilePosition(x, y - 1), // start one row above
+            position: _tilePosition(x, -1), // always spawn above the board
             size: Vector2.all(tileSize - 2),
           );
           tiles[x][y] = tile;

@@ -1,4 +1,6 @@
+import 'package:flame/components.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:cosmic_match/game/components/grid_tile.dart';
 import 'package:cosmic_match/game/world/grid_world.dart';
 import 'package:cosmic_match/models/tile_type.dart';
 
@@ -105,6 +107,51 @@ void main() {
       world.score.add(100);
       world.score.add(200);
       expect(world.score.value, 300);
+    });
+  });
+
+  group('GridWorld tile position snap', () {
+    late GridWorld world;
+
+    setUp(() {
+      world = GridWorld();
+      world.grid = List.generate(
+          GridWorld.cols, (_) => List.generate(GridWorld.rows, (_) => null));
+      world.tiles =
+          List.generate(GridWorld.cols, (_) => List.generate(GridWorld.rows, (_) => null));
+      world.tileSize = 50.0;
+      world.boardOffset = Vector2(10, 20);
+    });
+
+    test('snapAllTilesToGrid skips null cells without error', () {
+      expect(() => world.snapAllTilesToGrid(), returnsNormally);
+    });
+
+    test('snapAllTilesToGrid sets tile position to boardOffset + grid coords', () {
+      final fakeTile = GridTile(
+        gridX: 2,
+        gridY: 3,
+        tileType: TileType.values.first,
+        position: Vector2(999, 999), // wrong position
+        size: Vector2.all(48),
+      );
+      world.tiles[2][3] = fakeTile;
+
+      world.snapAllTilesToGrid();
+
+      // Expected: boardOffset + (2 * tileSize, 3 * tileSize) = (10 + 100, 20 + 150) = (110, 170)
+      expect(fakeTile.position.x, closeTo(110.0, 0.01));
+      expect(fakeTile.position.y, closeTo(170.0, 0.01));
+    });
+
+    test('spawn origin regression: _tilePosition(x, -1) is above the board', () {
+      // _tilePosition(x, -1) = boardOffset + Vector2(x * tileSize, -1 * tileSize)
+      // For any x, y-coordinate must be < boardOffset.y (i.e., above the board top)
+      for (int x = 0; x < GridWorld.cols; x++) {
+        final spawnPos = world.boardOffset + Vector2(x * world.tileSize, -1 * world.tileSize);
+        expect(spawnPos.y, lessThan(world.boardOffset.y),
+            reason: 'spawn origin must be above board top for column $x');
+      }
     });
   });
 
