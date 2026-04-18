@@ -99,19 +99,13 @@ class _FeedbackSheetState extends State<_FeedbackSheet> {
     final canvas = Canvas(recorder);
     canvas.drawImage(image, Offset.zero, Paint());
 
-    // Draw annotations
-    final paint = Paint()
-      ..color = Colors.red
-      ..strokeWidth = 3.0
-      ..strokeCap = StrokeCap.round
-      ..style = PaintingStyle.stroke;
-
+    // Draw annotations scaled from preview space to image space
+    final paint = _strokeAnnotationPaint();
+    final scaleX = image.width.toDouble() / _previewWidth;
+    final scaleY = image.height.toDouble() / _previewHeight;
     for (final path in _drawPaths) {
       for (int i = 0; i < path.length - 1; i++) {
         if (path[i] != null && path[i + 1] != null) {
-          // Scale draw coordinates from preview to image size
-          final scaleX = image.width.toDouble() / _previewWidth;
-          final scaleY = image.height.toDouble() / _previewHeight;
           canvas.drawLine(
             Offset(path[i]!.dx * scaleX, path[i]!.dy * scaleY),
             Offset(path[i + 1]!.dx * scaleX, path[i + 1]!.dy * scaleY),
@@ -351,18 +345,19 @@ class _TypeButton extends StatelessWidget {
   }
 }
 
+Paint _strokeAnnotationPaint() => Paint()
+  ..color = Colors.red
+  ..strokeWidth = 3.0
+  ..strokeCap = StrokeCap.round
+  ..style = PaintingStyle.stroke;
+
 class _DrawPainter extends CustomPainter {
   final List<List<Offset?>> paths;
   _DrawPainter(this.paths);
 
   @override
   void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = Colors.red
-      ..strokeWidth = 3.0
-      ..strokeCap = StrokeCap.round
-      ..style = PaintingStyle.stroke;
-
+    final paint = _strokeAnnotationPaint();
     for (final path in paths) {
       for (int i = 0; i < path.length - 1; i++) {
         if (path[i] != null && path[i + 1] != null) {
