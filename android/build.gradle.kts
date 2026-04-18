@@ -4,18 +4,6 @@ allprojects {
         mavenCentral()
     }
 
-    // Force JVM 17 everywhere — app + every plugin subproject (including
-    // sentry_flutter, which ships with Java 1.8 defaults). Uses reactive
-    // plugins.withId and task-type filters so config applies regardless
-    // of when the target plugin is applied.
-    plugins.withId("com.android.library") {
-        extensions.configure<com.android.build.gradle.LibraryExtension> {
-            compileOptions {
-                sourceCompatibility = JavaVersion.VERSION_17
-                targetCompatibility = JavaVersion.VERSION_17
-            }
-        }
-    }
     plugins.withId("com.android.application") {
         extensions.configure<com.android.build.gradle.AppExtension> {
             compileOptions {
@@ -48,15 +36,14 @@ subprojects {
 subprojects {
     project.evaluationDependsOn(":app")
 
-    // Force JVM 17 on every subproject so plugin-defined Android modules
-    // (e.g. sentry_flutter) don't fall back to Java 1.8 and break the
-    // build with "Inconsistent JVM-target compatibility" on release.
-    plugins.withId("com.android.library") {
-        extensions.configure<com.android.build.gradle.LibraryExtension> {
-            compileOptions {
-                sourceCompatibility = JavaVersion.VERSION_17
-                targetCompatibility = JavaVersion.VERSION_17
-            }
+    // afterEvaluate fires after the subproject's own build script has fully
+    // run, so this override wins over sentry_flutter's own compileOptions
+    // (which resets to Java 1.8). plugins.withId fires mid-evaluation and
+    // gets overridden — that's why PRs #45/#48 didn't stick.
+    afterEvaluate {
+        extensions.findByType<com.android.build.gradle.LibraryExtension>()?.compileOptions {
+            sourceCompatibility = JavaVersion.VERSION_17
+            targetCompatibility = JavaVersion.VERSION_17
         }
     }
     tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach {
