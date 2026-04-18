@@ -1,5 +1,5 @@
-import 'dart:convert';
-import 'dart:ui';
+import 'dart:io';
+import 'dart:ui' as ui;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
@@ -7,48 +7,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:sentry_flutter/sentry_flutter.dart';
-import 'package:workmanager/workmanager.dart' as wm;
 import 'core/logger.dart';
 import 'game/match3_game.dart';
+import 'screens/feedback_sheet.dart';
 import 'screens/game_screen.dart';
 import 'screens/home_screen.dart';
-import 'services/feedback_queue_service.dart';
-import 'services/github_feedback_client.dart';
+import 'services/feedback_service.dart';
 import 'services/key_service.dart';
 import 'services/progress_service.dart';
-import 'widgets/feedback_modal.dart';
-
-/// WorkManager background-task entry point.
-///
-/// Runs in a **separate Dart isolate** spun up by the OS scheduler, so all
-/// Flutter/Hive state must be re-initialised here. [KeyService.getCipher] is
-/// called to match the cipher used in the foreground app — the box must be
-/// opened with the same cipher or Hive will reject it.
-@pragma('vm:entry-point')
-void callbackDispatcher() {
-  wm.Workmanager().executeTask((task, inputData) async {
-    if (task == 'feedbackRetry') {
-      await Hive.initFlutter();
-      final cipher = await KeyService().getCipher();
-      final queue = FeedbackQueueService(cipher: cipher);
-      final client = GitHubFeedbackClient();
-      final items = await queue.loadQueue();
-      for (final item in items) {
-        if (item.uploaded) continue;
-        try {
-          final pngBytes = base64Decode(item.screenshotBase64);
-          final imageUrl = await client.uploadImage(item.id, pngBytes);
-          final issueUrl =
-              await client.createIssue(item.description, imageUrl);
-          await queue.markUploaded(item.id, issueUrl);
-        } catch (e, stack) {
-          gameLogger.w('feedbackRetry: failed for ${item.id}', error: e, stackTrace: stack);
-        }
-      }
-    }
-    return true;
-  });
-}
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -61,21 +27,22 @@ Future<void> main() async {
   await Hive.initFlutter();
   final cipher = await KeyService().getCipher();
   final progressService = ProgressService(cipher: cipher);
-  final feedbackQueue = FeedbackQueueService(cipher: cipher);
-  final feedbackClient = GitHubFeedbackClient();
-
-  // isInDebugMode deprecated in workmanager 0.9.x but not yet removed.
-  // Remove this argument once workmanager drops the parameter.
-  await wm.Workmanager().initialize(callbackDispatcher, isInDebugMode: !kReleaseMode); // ignore: deprecated_member_use
 
   gameLogger.i('CosmicMatch initialised — hive ready, progressService ready');
 
+  const feedbackWorkerUrl = String.fromEnvironment(
+    'FEEDBACK_WORKER_URL',
+    defaultValue: 'https://feedback.alexsiri7.workers.dev/',
+  );
+  final feedbackService = FeedbackService(workerUrl: feedbackWorkerUrl);
+  feedbackService.listenConnectivity();
+
   void launch() => runApp(ProviderScope(
-      child: CosmicMatchApp(
-        progressService: progressService,
-        feedbackQueue: feedbackQueue,
-        feedbackClient: feedbackClient,
-      )));
+    child: CosmicMatchApp(
+      progressService: progressService,
+      feedbackService: feedbackService,
+    ),
+  ));
 
   const sentryDsn = String.fromEnvironment('SENTRY_DSN', defaultValue: '');
   if (sentryDsn.isEmpty) {
@@ -111,15 +78,9 @@ enum _Screen { home, game }
 
 class CosmicMatchApp extends StatefulWidget {
   final ProgressService progressService;
-  final FeedbackQueueService feedbackQueue;
-  final GitHubFeedbackClient feedbackClient;
+  final FeedbackService? feedbackService;
 
-  const CosmicMatchApp({
-    super.key,
-    required this.progressService,
-    required this.feedbackQueue,
-    required this.feedbackClient,
-  });
+  const CosmicMatchApp({super.key, required this.progressService, this.feedbackService});
 
   @override
   State<CosmicMatchApp> createState() => _CosmicMatchAppState();
@@ -134,22 +95,6 @@ class _CosmicMatchAppState extends State<CosmicMatchApp> {
   void initState() {
     super.initState();
     _game = Match3Game(progressService: widget.progressService);
-    _scheduleRetryIfNeeded();
-  }
-
-  Future<void> _scheduleRetryIfNeeded() async {
-    final items = await widget.feedbackQueue.loadQueue();
-    if (items.any((i) => !i.uploaded)) {
-      try {
-        await wm.Workmanager().registerOneOffTask(
-          'feedbackRetry',
-          'feedbackRetry',
-          constraints: wm.Constraints(networkType: wm.NetworkType.connected),
-        );
-      } catch (e, stack) {
-        gameLogger.w('_scheduleRetryIfNeeded: WorkManager registration failed', error: e, stackTrace: stack);
-      }
-    }
   }
 
   Future<Uint8List> _captureScreenshot() async {
@@ -160,7 +105,7 @@ class _CosmicMatchAppState extends State<CosmicMatchApp> {
     }
     final boundary = context.findRenderObject() as RenderRepaintBoundary;
     final image = await boundary.toImage(pixelRatio: 2.0);
-    final data = await image.toByteData(format: ImageByteFormat.png);
+    final data = await image.toByteData(format: ui.ImageByteFormat.png);
     if (data == null) {
       gameLogger.w('_captureScreenshot: toByteData returned null');
       throw StateError('Failed to encode screenshot to PNG');
@@ -169,24 +114,45 @@ class _CosmicMatchAppState extends State<CosmicMatchApp> {
   }
 
   Future<void> _showFeedback() async {
+    if (widget.feedbackService == null) return;
+    Uint8List screenshotBytes;
     try {
-      final screenshot = await _captureScreenshot();
-      if (!mounted) return;
-      showDialog(
-        context: context,
-        builder: (_) => FeedbackModal(
-          screenshot: screenshot,
-          queue: widget.feedbackQueue,
-          client: widget.feedbackClient,
-        ),
-      );
+      screenshotBytes = await _captureScreenshot();
     } catch (e) {
       gameLogger.w('_showFeedback: screenshot capture failed', error: e);
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Could not capture screenshot')),
-      );
+      // Fall back to 1×1 transparent PNG so FeedbackSheet still opens.
+      screenshotBytes = Uint8List.fromList([
+        0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A,
+        0x00, 0x00, 0x00, 0x0D, 0x49, 0x48, 0x44, 0x52,
+        0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01,
+        0x08, 0x06, 0x00, 0x00, 0x00, 0x1F, 0x15, 0xC4,
+        0x89, 0x00, 0x00, 0x00, 0x0A, 0x49, 0x44, 0x41,
+        0x54, 0x78, 0x9C, 0x62, 0x00, 0x00, 0x00, 0x02,
+        0x00, 0x01, 0xE5, 0x27, 0xDE, 0xFC, 0x00, 0x00,
+        0x00, 0x00, 0x49, 0x45, 0x4E, 0x44, 0xAE, 0x42,
+        0x60, 0x82,
+      ]);
     }
+    if (!mounted) return;
+    showFeedbackSheet(
+      context,
+      screenshotBytes: screenshotBytes,
+      onSubmit: ({
+        required String type,
+        required String message,
+        required String screenshotB64,
+      }) async {
+        final packageInfo = await PackageInfo.fromPlatform();
+        await widget.feedbackService!.submit(
+          type: type,
+          message: message,
+          screenshotB64: screenshotB64,
+          appVersion: '${packageInfo.version}+${packageInfo.buildNumber}',
+          os: Platform.operatingSystem,
+          device: Platform.operatingSystemVersion,
+        );
+      },
+    );
   }
 
   Widget _buildScreen() {
