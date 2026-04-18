@@ -20,7 +20,7 @@ class HudOverlay extends StatelessWidget {
                   child: _StatCard(label: 'SCORE',
                       value: scores.score.toString())),
               const SizedBox(width: 8),
-              Expanded(flex: 1,
+              Expanded(
                   child: _StatCard(label: 'BEST',
                       value: scores.best.toString())),
             ],
@@ -39,7 +39,7 @@ class _StatCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
         color: const Color(0x0FFFFFFF),
         border: Border.all(color: const Color(0x1AFFFFFF)),

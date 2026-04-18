@@ -55,13 +55,10 @@ class _FeedbackModalState extends State<FeedbackModal> {
         ..strokeCap = StrokeCap.round
         ..style = PaintingStyle.stroke;
 
+      final scaleX = image.width / _imageDisplaySize.width;
+      final scaleY = image.height / _imageDisplaySize.height;
       for (int i = 0; i < _points.length - 1; i++) {
         if (_points[i] != null && _points[i + 1] != null) {
-          // Scale annotation points from widget-display coordinates to image-pixel
-          // coordinates. Precondition: _imageDisplaySize must be non-zero (guaranteed
-          // because _submit is only reachable after the modal has laid out).
-          final scaleX = image.width / _imageDisplaySize.width;
-          final scaleY = image.height / _imageDisplaySize.height;
           canvas.drawLine(
             Offset(_points[i]!.dx * scaleX, _points[i]!.dy * scaleY),
             Offset(_points[i + 1]!.dx * scaleX, _points[i + 1]!.dy * scaleY),
