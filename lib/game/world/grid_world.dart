@@ -57,14 +57,8 @@ class GridWorld extends World {
       ..size = Vector2(game.size.x, game.size.y);
     add(_bgRef);
 
-    // Compute layout — use min() to keep the grid fitting both axes, guarding
-    // against landscape/square viewports where width-only sizing would overflow.
-    final sz = game.canvasSize;
-    tileSize = min(sz.x / cols, (sz.y - 60) / rows);
-    _boardOffset = Vector2(
-      (sz.x - tileSize * cols) / 2,
-      60 + (sz.y - 60 - tileSize * rows) / 2,
-    );
+    // Compute layout — use canvasSize to prevent cropping on all viewports.
+    _applyLayout(game.canvasSize);
 
     // Board backdrop panel
     _backdropRef = _BoardBackdrop()
@@ -96,12 +90,7 @@ class GridWorld extends World {
     super.onGameResize(size);
     if (!isLoaded) return;
     final game = findGame() as Match3Game;
-    final sz = game.canvasSize;
-    tileSize = min(sz.x / cols, (sz.y - 60) / rows);
-    _boardOffset = Vector2(
-      (sz.x - tileSize * cols) / 2,
-      60 + (sz.y - 60 - tileSize * rows) / 2,
-    );
+    _applyLayout(game.canvasSize);
     _bgRef.size = Vector2(game.size.x, game.size.y);
     _backdropRef.position = _boardOffset - Vector2(8, 8);
     _backdropRef.size = Vector2(tileSize * cols + 16, tileSize * rows + 16);
@@ -111,6 +100,14 @@ class GridWorld extends World {
         tiles[x][y]?.size = Vector2.all(tileSize - 2);
       }
     }
+  }
+
+  void _applyLayout(Vector2 gameSize) {
+    tileSize = min(gameSize.x / cols, (gameSize.y - 60) / rows);
+    _boardOffset = Vector2(
+      (gameSize.x - tileSize * cols) / 2,
+      60 + (gameSize.y - 60 - tileSize * rows) / 2,
+    );
   }
 
   Vector2 _tilePosition(int x, int y) =>
@@ -402,11 +399,7 @@ class GridWorld extends World {
   /// use [tilePositionAt] to verify expected positions instead.
   @visibleForTesting
   void initLayoutForTest(Vector2 gameSize) {
-    tileSize = min(gameSize.x / cols, (gameSize.y - 60) / rows);
-    _boardOffset = Vector2(
-      (gameSize.x - tileSize * cols) / 2,
-      60 + (gameSize.y - 60 - tileSize * rows) / 2,
-    );
+    _applyLayout(gameSize);
     tiles = List.generate(cols, (_) => List.generate(rows, (_) => null));
   }
 }
