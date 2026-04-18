@@ -13,9 +13,12 @@ class FeedbackService {
   static const _maxQueueSize = 20;
 
   final String workerUrl;
+  final http.Client _httpClient;
   StreamSubscription<List<ConnectivityResult>>? _connectivitySub;
+  bool _flushing = false;
 
-  FeedbackService({required this.workerUrl});
+  FeedbackService({required this.workerUrl, http.Client? httpClient})
+      : _httpClient = httpClient ?? http.Client();
 
   /// Start listening for connectivity changes to flush queued feedback.
   void listenConnectivity() {
@@ -31,7 +34,8 @@ class FeedbackService {
     _connectivitySub?.cancel();
   }
 
-  /// Submit feedback — posts immediately if online, otherwise queues.
+  /// Submit feedback — attempts an immediate POST; queues locally on failure
+  /// (network error or non-400 HTTP error) for retry on next connectivity event.
   Future<void> submit({
     required String type,
     required String message,
@@ -48,7 +52,7 @@ class FeedbackService {
     gameLogger.d('FeedbackService.submit: type=$type');
 
     final item = PendingFeedback(
-      id: DateTime.now().millisecondsSinceEpoch.toString(),
+      id: DateTime.now().microsecondsSinceEpoch.toString(),
       type: type,
       message: message,
       screenshotB64: screenshotB64,
@@ -66,6 +70,8 @@ class FeedbackService {
 
   /// Flush all queued items — called on connectivity change.
   Future<void> flushQueue() async {
+    if (_flushing) return;
+    _flushing = true;
     gameLogger.d('FeedbackService.flushQueue');
     try {
       final box = await Hive.openBox(_boxName);
@@ -86,6 +92,8 @@ class FeedbackService {
       gameLogger.e('FeedbackService.flushQueue: HiveError', error: e, stackTrace: stack);
     } catch (e, stack) {
       gameLogger.w('FeedbackService.flushQueue failed', error: e, stackTrace: stack);
+    } finally {
+      _flushing = false;
     }
   }
 
@@ -103,11 +111,13 @@ class FeedbackService {
         },
       });
 
-      final response = await http.post(
-        Uri.parse(workerUrl),
-        headers: {'Content-Type': 'application/json'},
-        body: body,
-      );
+      final response = await _httpClient
+          .post(
+            Uri.parse(workerUrl),
+            headers: {'Content-Type': 'application/json'},
+            body: body,
+          )
+          .timeout(const Duration(seconds: 15));
 
       if (response.statusCode == 201) {
         gameLogger.d('FeedbackService: posted successfully');

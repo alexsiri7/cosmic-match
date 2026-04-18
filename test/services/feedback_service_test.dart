@@ -2,7 +2,10 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hive/hive.dart';
+import 'package:http/http.dart' as http;
+import 'package:http/testing.dart';
 import 'package:cosmic_match/models/pending_feedback.dart';
+import 'package:cosmic_match/services/feedback_service.dart';
 
 void main() {
   group('PendingFeedback', () {
@@ -127,6 +130,203 @@ void main() {
       expect(box.length, 5);
       final keys = box.keys.toList();
       expect(keys, hasLength(5));
+    });
+  });
+
+  group('FeedbackService.submit', () {
+    late Directory tempDir;
+
+    setUp(() {
+      tempDir = Directory.systemTemp.createTempSync('submit_test_');
+      Hive.init(tempDir.path);
+    });
+
+    tearDown(() async {
+      await Hive.deleteBoxFromDisk('feedback_queue');
+      await Hive.close();
+      if (tempDir.existsSync()) {
+        tempDir.deleteSync(recursive: true);
+      }
+    });
+
+    test('does not enqueue when POST succeeds (201)', () async {
+      final client = MockClient((_) async => http.Response('', 201));
+      final service = FeedbackService(
+        workerUrl: 'https://example.com/feedback',
+        httpClient: client,
+      );
+
+      await service.submit(
+        type: 'bug',
+        message: 'test',
+        screenshotB64: '',
+        appVersion: '1.0.0+1',
+        os: 'android',
+        device: 'Pixel',
+      );
+
+      final box = await Hive.openBox('feedback_queue');
+      expect(box.length, 0);
+    });
+
+    test('enqueues when POST fails (5xx)', () async {
+      final client = MockClient((_) async => http.Response('', 503));
+      final service = FeedbackService(
+        workerUrl: 'https://example.com/feedback',
+        httpClient: client,
+      );
+
+      await service.submit(
+        type: 'bug',
+        message: 'offline test',
+        screenshotB64: '',
+        appVersion: '1.0.0+1',
+        os: 'android',
+        device: 'Pixel',
+      );
+
+      final box = await Hive.openBox('feedback_queue');
+      expect(box.length, 1);
+    });
+
+    test('does not retry on 400 response (permanent failure)', () async {
+      final client = MockClient((_) async => http.Response('bad request', 400));
+      final service = FeedbackService(
+        workerUrl: 'https://example.com/feedback',
+        httpClient: client,
+      );
+
+      await service.submit(
+        type: 'bug',
+        message: 'test',
+        screenshotB64: '',
+        appVersion: '1.0.0+1',
+        os: 'android',
+        device: 'test',
+      );
+
+      final box = await Hive.openBox('feedback_queue');
+      expect(box.length, 0); // dropped, not queued
+    });
+
+    test('returns early without enqueue when workerUrl is empty', () async {
+      final service = FeedbackService(workerUrl: '');
+
+      await service.submit(
+        type: 'bug',
+        message: 'test',
+        screenshotB64: '',
+        appVersion: '1.0.0+1',
+        os: 'android',
+        device: 'Pixel',
+      );
+
+      final box = await Hive.openBox('feedback_queue');
+      expect(box.length, 0);
+    });
+
+    test('enforces 20-item cap — drops oldest when full', () async {
+      final client = MockClient((_) async => http.Response('', 503));
+      final service = FeedbackService(
+        workerUrl: 'https://example.com/feedback',
+        httpClient: client,
+      );
+
+      // Fill queue to 20 items
+      for (int i = 0; i < 20; i++) {
+        await service.submit(
+          type: 'bug',
+          message: 'msg $i',
+          screenshotB64: '',
+          appVersion: '1.0.0+1',
+          os: 'android',
+          device: 'test',
+        );
+      }
+
+      final box = await Hive.openBox('feedback_queue');
+      expect(box.length, 20);
+      final firstMsg = (box.getAt(0) as Map)['message'] as String;
+
+      // Submit one more — oldest should be evicted
+      await service.submit(
+        type: 'bug',
+        message: 'overflow',
+        screenshotB64: '',
+        appVersion: '1.0.0+1',
+        os: 'android',
+        device: 'test',
+      );
+
+      expect(box.length, 20);
+      expect((box.getAt(0) as Map)['message'], isNot(firstMsg)); // oldest gone
+      expect((box.getAt(box.length - 1) as Map)['message'], 'overflow');
+    });
+  });
+
+  group('FeedbackService.flushQueue', () {
+    late Directory tempDir;
+
+    setUp(() {
+      tempDir = Directory.systemTemp.createTempSync('flush_test_');
+      Hive.init(tempDir.path);
+    });
+
+    tearDown(() async {
+      await Hive.deleteBoxFromDisk('feedback_queue');
+      await Hive.close();
+      if (tempDir.existsSync()) {
+        tempDir.deleteSync(recursive: true);
+      }
+    });
+
+    test('removes successfully sent items from queue', () async {
+      final box = await Hive.openBox('feedback_queue');
+      final item = PendingFeedback(
+        id: 'flush-1',
+        type: 'bug',
+        message: 'queued',
+        screenshotB64: '',
+        appVersion: '1.0.0+1',
+        os: 'android',
+        device: 'test',
+        createdAt: DateTime.now(),
+      );
+      await box.put(item.id, item.toMap());
+      expect(box.length, 1);
+
+      final client = MockClient((_) async => http.Response('', 201));
+      final service = FeedbackService(
+        workerUrl: 'https://example.com/',
+        httpClient: client,
+      );
+
+      await service.flushQueue();
+      expect(box.length, 0);
+    });
+
+    test('retains items in queue when POST fails', () async {
+      final box = await Hive.openBox('feedback_queue');
+      final item = PendingFeedback(
+        id: 'flush-2',
+        type: 'bug',
+        message: 'offline',
+        screenshotB64: '',
+        appVersion: '1.0.0+1',
+        os: 'android',
+        device: 'test',
+        createdAt: DateTime.now(),
+      );
+      await box.put(item.id, item.toMap());
+
+      final client = MockClient((_) async => http.Response('', 503));
+      final service = FeedbackService(
+        workerUrl: 'https://example.com/',
+        httpClient: client,
+      );
+
+      await service.flushQueue();
+      expect(box.length, 1); // still in queue for next flush
     });
   });
 }

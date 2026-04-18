@@ -5,9 +5,12 @@ import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import '../core/logger.dart';
 import '../game/theme/app_theme.dart';
 
-/// Shows the feedback bottom sheet and returns the result via [onSubmit].
+/// Shows the feedback bottom sheet. When the user taps Submit, [onSubmit] is
+/// called with the selected type, description, and annotated screenshot.
+/// On success the sheet is dismissed; on failure a SnackBar is shown.
 Future<void> showFeedbackSheet(
   BuildContext context, {
   required Uint8List screenshotBytes,
@@ -72,6 +75,15 @@ class _FeedbackSheetState extends State<_FeedbackSheet> {
         screenshotB64: annotatedB64,
       );
       if (mounted) Navigator.pop(context);
+    } catch (e, stack) {
+      gameLogger.e('FeedbackSheet: submit failed', error: e, stackTrace: stack);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Failed to send feedback — will retry when online.'),
+          ),
+        );
+      }
     } finally {
       if (mounted) setState(() => _submitting = false);
     }
@@ -115,9 +127,12 @@ class _FeedbackSheetState extends State<_FeedbackSheet> {
     image.dispose();
     rendered.dispose();
 
-    return base64Encode(byteData!.buffer.asUint8List());
+    if (byteData == null) return '';
+    return base64Encode(byteData.buffer.asUint8List());
   }
 
+  // Updated by LayoutBuilder on each build; read by `_renderAnnotatedScreenshot()`
+  // to scale annotation coordinates from preview space to image space.
   double _previewWidth = 300;
   double _previewHeight = 200;
 
@@ -358,5 +373,5 @@ class _DrawPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(covariant _DrawPainter oldDelegate) => true;
+  bool shouldRepaint(covariant _DrawPainter oldDelegate) => paths != oldDelegate.paths;
 }

@@ -16,6 +16,8 @@ flutter build apk --debug
 flutter build appbundle --release
 # To enable Sentry crash reporting, add: --dart-define=SENTRY_DSN=<your-dsn>
 # (CI injects this automatically via the SENTRY_DSN secret)
+# To override the feedback worker endpoint, add: --dart-define=FEEDBACK_WORKER_URL=<your-worker-url>
+# (CI reads this from the FEEDBACK_WORKER_URL repository variable; defaults to https://feedback.alexsiri7.workers.dev/)
 
 # Generate Hive adapters (run after adding new Hive types)
 dart run build_runner build --delete-conflicting-outputs
@@ -35,10 +37,12 @@ lib/
                   #   kTileGlowPalette — derived from TileType.glowValue, used for selection border;
                   #   kTileSelectedOverlay — transparent, selection drawn by _GlowBorder stroke;
                   #   cosmic_theme.dart — Lyra galaxy tokens: kCosmicInk, kCosmicNebulaA/B, kCosmicAccent, kBoardBackdrop, kGridLine)
-  models/         # Pure data: Score, TileType, LevelProgress
+  models/         # Pure data: Score, TileType, LevelProgress, PendingFeedback (offline queue item)
   screens/        # Flutter screens: HomeScreen, MapScreen, GameScreen, modals
+                  #   FeedbackSheet — bottom-sheet with screenshot annotation overlay
                   # Navigation: _Screen enum + _buildScreen() in main.dart
   services/       # Hive persistence (ProgressService) and key management (KeyService)
+                  #   FeedbackService — Cloudflare Worker HTTP client with connectivity-triggered offline queue
   widgets/        # Flutter overlay widgets (HudOverlay — driven by Match3Game.scoreNotifier)
 test/             # Unit tests mirror lib/ structure
 ```

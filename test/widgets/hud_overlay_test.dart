@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:cosmic_match/game/match3_game.dart';
+import 'package:cosmic_match/services/feedback_service.dart';
 import 'package:cosmic_match/widgets/hud_overlay.dart';
 
 void main() {
@@ -39,6 +40,28 @@ void main() {
       await tester.pump();
       expect(find.text('300'), findsOneWidget);
       expect(find.text('900'), findsOneWidget);
+    });
+
+    testWidgets('feedback FAB hidden when feedbackService is null', (tester) async {
+      final game = Match3Game(progressService: null);
+      await tester.pumpWidget(
+        MaterialApp(home: Scaffold(body: HudOverlay(game: game))),
+      );
+      expect(find.byIcon(Icons.feedback_outlined), findsNothing);
+    });
+
+    testWidgets('feedback FAB visible when feedbackService is provided', (tester) async {
+      final game = Match3Game(progressService: null);
+      final service = FeedbackService(workerUrl: 'https://example.com/');
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: HudOverlay(game: game, feedbackService: service),
+          ),
+        ),
+      );
+      expect(find.byIcon(Icons.feedback_outlined), findsOneWidget);
+      expect(find.byTooltip('Send Feedback'), findsOneWidget);
     });
   });
 }
