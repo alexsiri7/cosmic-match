@@ -9,6 +9,7 @@ import 'core/logger.dart';
 import 'game/match3_game.dart';
 import 'services/key_service.dart';
 import 'services/progress_service.dart';
+import 'widgets/hud_overlay.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -78,11 +79,16 @@ class _CosmicMatchAppState extends State<CosmicMatchApp> {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Cosmic Match',
-      theme: ThemeData.dark(),
+      theme: ThemeData.dark().copyWith(
+        scaffoldBackgroundColor: const Color(0xFF0D0A1A),
+      ),
       home: SafeArea(
         child: RiverpodAwareGameWidget(
           key: _gameKey,
           game: _game,
+          overlayBuilderMap: {
+            'hud': (context, game) => HudOverlay(game: game as Match3Game),
+          },
         ),
       ),
     );

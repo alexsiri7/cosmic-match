@@ -30,9 +30,13 @@ flutter pub get
 ```
 lib/
   game/           # Flame game, FSM, world, components
-    theme/        # Tile color palette constants (kTilePalette — derived from TileType.colorValue; kTileSelectedOverlay)
+    theme/        # Tile color palette constants (kTilePalette — derived from TileType.colorValue;
+                  #   kTileGlowPalette — derived from TileType.glowValue, used for selection border;
+                  #   kTileSelectedOverlay — transparent, selection drawn by _GlowBorder stroke;
+                  #   cosmic_theme.dart — Lyra galaxy tokens: kCosmicInk, kCosmicNebulaA/B, kCosmicAccent, kBoardBackdrop, kGridLine)
   models/         # Pure data: Score, TileType, LevelProgress
   services/       # Hive persistence (ProgressService) and key management (KeyService)
+  widgets/        # Flutter overlay widgets (HudOverlay — driven by Match3Game.scoreNotifier)
 test/             # Unit tests mirror lib/ structure
 ```
 

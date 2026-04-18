@@ -36,6 +36,12 @@ void main() {
       expect(game.phase, GamePhase.matching);
     });
 
+    test('scoreNotifier initial value is (score: 0, best: 0)', () {
+      final game = Match3Game(progressService: null);
+      expect(game.scoreNotifier.value.score, equals(0));
+      expect(game.scoreNotifier.value.best, equals(0));
+    });
+
     test('illegal transition idle → cascading asserts in debug mode', () {
       final game = Match3Game(progressService: null);
       expect(game.phase, GamePhase.idle);

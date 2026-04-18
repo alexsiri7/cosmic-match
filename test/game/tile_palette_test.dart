@@ -27,20 +27,27 @@ void main() {
   });
 
   group('kTileSelectedOverlay', () {
-    test('has approximately 40% opacity (0x66 alpha)', () {
-      // toARGB32() returns a 32-bit ARGB int: bits 24-31 = alpha
+    test('is fully transparent (selection now uses glow border)', () {
       final alpha = (kTileSelectedOverlay.toARGB32() >> 24) & 0xFF;
-      expect(alpha, 0x66);
+      expect(alpha, 0x00);
+    });
+  });
+
+  group('kTileGlowPalette', () {
+    test('contains an entry for every TileType value', () {
+      for (final type in TileType.values) {
+        expect(kTileGlowPalette.containsKey(type), isTrue,
+            reason: 'kTileGlowPalette is missing entry for TileType.$type');
+      }
     });
 
-    test('is white (RGB components are 0xFF)', () {
-      final argb = kTileSelectedOverlay.toARGB32();
-      final r = (argb >> 16) & 0xFF;
-      final g = (argb >> 8) & 0xFF;
-      final b = argb & 0xFF;
-      expect(r, 0xFF);
-      expect(g, 0xFF);
-      expect(b, 0xFF);
+    test('glow color matches TileType.glowValue for every tile type', () {
+      for (final type in TileType.values) {
+        final expected = Color(type.glowValue);
+        expect(kTileGlowPalette[type], expected,
+            reason:
+                'kTileGlowPalette[$type] diverges from TileType.glowValue — update tile_type.dart only');
+      }
     });
   });
 }

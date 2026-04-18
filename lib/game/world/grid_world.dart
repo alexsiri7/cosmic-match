@@ -4,6 +4,7 @@ import 'package:flame/effects.dart';
 import 'package:flutter/material.dart' hide GridTile;
 // visibleForTesting is re-exported by flutter/material.dart via foundation.dart
 import '../../models/level_progress.dart';
+import '../theme/cosmic_theme.dart';
 import '../../models/score.dart';
 import '../../models/tile_type.dart';
 import '../../core/logger.dart';
@@ -30,10 +31,12 @@ class GridWorld extends World {
   late double tileSize;
   late Vector2 _boardOffset;
 
-  late TextComponent _scoreText;
   int _bestScore = 0;
 
   ProgressService? _progressService;
+
+  late _BoardBackdrop _backdropRef;
+  late _CosmicBackground _bgRef;
 
   GridWorld({Random? rng}) : _rng = rng ?? Random();
 
@@ -49,12 +52,23 @@ class GridWorld extends World {
         await _progressService?.load(1) ?? LevelProgress.initial(1);
     _bestScore = progress.bestScore;
 
+    // Cosmic background (behind everything)
+    _bgRef = _CosmicBackground()
+      ..size = Vector2(game.size.x, game.size.y);
+    add(_bgRef);
+
     // Compute layout
     tileSize = min(game.size.x / cols, (game.size.y - 60) / rows);
     _boardOffset = Vector2(
       (game.size.x - tileSize * cols) / 2,
       60 + (game.size.y - 60 - tileSize * rows) / 2,
     );
+
+    // Board backdrop panel
+    _backdropRef = _BoardBackdrop()
+      ..position = _boardOffset - Vector2(8, 8)
+      ..size = Vector2(tileSize * cols + 16, tileSize * rows + 16);
+    add(_backdropRef);
 
     // Build tiles matrix
     tiles = List.generate(cols, (_) => List.generate(rows, (_) => null));
@@ -73,16 +87,6 @@ class GridWorld extends World {
         }
       }
     }
-
-    // Score bar
-    _scoreText = TextComponent(
-      text: 'Score: 0  Best: $_bestScore',
-      position: Vector2(8, 8),
-      textRenderer: TextPaint(
-        style: const TextStyle(color: Colors.white, fontSize: 18),
-      ),
-    );
-    game.camera.viewport.add(_scoreText);
   }
 
   @override
@@ -95,6 +99,9 @@ class GridWorld extends World {
       (game.size.x - tileSize * cols) / 2,
       60 + (game.size.y - 60 - tileSize * rows) / 2,
     );
+    _bgRef.size = Vector2(game.size.x, game.size.y);
+    _backdropRef.position = _boardOffset - Vector2(8, 8);
+    _backdropRef.size = Vector2(tileSize * cols + 16, tileSize * rows + 16);
     for (int x = 0; x < cols; x++) {
       for (int y = 0; y < rows; y++) {
         tiles[x][y]?.position = _tilePosition(x, y);
@@ -105,6 +112,11 @@ class GridWorld extends World {
 
   Vector2 _tilePosition(int x, int y) =>
       _boardOffset + Vector2(x * tileSize, y * tileSize);
+
+  void _updateScoreNotifier() {
+    (findGame() as Match3Game?)?.scoreNotifier.value =
+        (score: score.value, best: _bestScore);
+  }
 
   // --- Swap + Cascade Pipeline ---
 
@@ -213,7 +225,7 @@ class GridWorld extends World {
         tiles[pos.x][pos.y] = null;
       }
     }
-    _scoreText.text = 'Score: ${score.value}  Best: $_bestScore';
+    _updateScoreNotifier();
   }
 
   void _applyGravityWithAnimation() {
@@ -293,7 +305,7 @@ class GridWorld extends World {
 
   Future<void> _persistScore() async {
     if (score.value > _bestScore) _bestScore = score.value;
-    _scoreText.text = 'Score: ${score.value}  Best: $_bestScore';
+    _updateScoreNotifier();
     try {
       await _progressService?.save(LevelProgress(
         level: 1,
@@ -393,5 +405,48 @@ class GridWorld extends World {
       60 + (gameSize.y - 60 - tileSize * rows) / 2,
     );
     tiles = List.generate(cols, (_) => List.generate(rows, (_) => null));
+  }
+}
+
+// Draws the cosmic ink background + nebula gradient overlays.
+class _CosmicBackground extends PositionComponent {
+  @override
+  void render(Canvas canvas) {
+    // 1. Solid ink fill
+    canvas.drawRect(Rect.fromLTWH(0, 0, size.x, size.y),
+        Paint()..color = kCosmicInk);
+
+    // 2. Nebula A — violet radial at top
+    canvas.drawOval(
+      Rect.fromCenter(center: Offset(size.x / 2, size.y * 0.15),
+          width: size.x * 1.2, height: size.y * 0.6),
+      Paint()..shader = RadialGradient(
+        colors: [kCosmicNebulaA.withValues(alpha: 0.4), const Color(0x00000000)],
+      ).createShader(Rect.fromLTWH(0, 0, size.x, size.y * 0.4)),
+    );
+
+    // 3. Nebula B — cyan-blue at bottom-right
+    canvas.drawOval(
+      Rect.fromCenter(center: Offset(size.x * 0.85, size.y * 0.85),
+          width: size.x * 0.9, height: size.y * 0.5),
+      Paint()..shader = RadialGradient(
+        colors: [kCosmicNebulaB.withValues(alpha: 0.33), const Color(0x00000000)],
+      ).createShader(Rect.fromLTWH(size.x * 0.4, size.y * 0.55,
+          size.x * 0.6, size.y * 0.45)),
+    );
+  }
+}
+
+// Dark rounded-rect panel behind the tile grid.
+class _BoardBackdrop extends PositionComponent {
+  @override
+  void render(Canvas canvas) {
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(
+        Rect.fromLTWH(0, 0, size.x, size.y),
+        const Radius.circular(14),
+      ),
+      Paint()..color = kBoardBackdrop,
+    );
   }
 }
