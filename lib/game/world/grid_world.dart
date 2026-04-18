@@ -57,9 +57,10 @@ class GridWorld extends World {
       ..size = Vector2(game.size.x, game.size.y);
     add(_bgRef);
 
-    // Compute layout
+    // Compute layout — use min() to keep the grid fitting both axes, guarding
+    // against landscape/square viewports where width-only sizing would overflow.
     final sz = game.canvasSize;
-    tileSize = sz.x / cols;
+    tileSize = min(sz.x / cols, (sz.y - 60) / rows);
     _boardOffset = Vector2(
       (sz.x - tileSize * cols) / 2,
       60 + (sz.y - 60 - tileSize * rows) / 2,
@@ -96,7 +97,7 @@ class GridWorld extends World {
     if (!isLoaded) return;
     final game = findGame() as Match3Game;
     final sz = game.canvasSize;
-    tileSize = sz.x / cols;
+    tileSize = min(sz.x / cols, (sz.y - 60) / rows);
     _boardOffset = Vector2(
       (sz.x - tileSize * cols) / 2,
       60 + (sz.y - 60 - tileSize * rows) / 2,
@@ -401,7 +402,7 @@ class GridWorld extends World {
   /// use [tilePositionAt] to verify expected positions instead.
   @visibleForTesting
   void initLayoutForTest(Vector2 gameSize) {
-    tileSize = gameSize.x / cols;
+    tileSize = min(gameSize.x / cols, (gameSize.y - 60) / rows);
     _boardOffset = Vector2(
       (gameSize.x - tileSize * cols) / 2,
       60 + (gameSize.y - 60 - tileSize * rows) / 2,
