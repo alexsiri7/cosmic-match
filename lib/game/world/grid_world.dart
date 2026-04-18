@@ -1,4 +1,3 @@
-import 'dart:developer' as dev;
 import 'dart:math';
 import 'package:flame/components.dart';
 import 'package:flame/effects.dart';
@@ -7,6 +6,7 @@ import 'package:flutter/material.dart' hide GridTile;
 import '../../models/level_progress.dart';
 import '../../models/score.dart';
 import '../../models/tile_type.dart';
+import '../../core/logger.dart';
 import '../../services/progress_service.dart';
 import '../cascade_controller.dart';
 import '../components/grid_tile.dart';
@@ -122,8 +122,11 @@ class GridWorld extends World {
       // Swap in logical grid
       _swapTiles(tileA, tileB);
 
+      gameLogger.t('Swap attempted: (${tileA.gridX},${tileA.gridY}) ↔ (${tileB.gridX},${tileB.gridY})');
+
       // Check for matches
       final matches = detector.detectAll(grid);
+      gameLogger.t('${matches.length} match(es) found after swap');
       if (matches.isEmpty) {
         // Revert swap
         tileA.add(MoveEffect.to(posA, EffectController(duration: 0.2)));
@@ -140,13 +143,7 @@ class GridWorld extends World {
       await _runCascade(matches);
     } catch (e, stack) {
       // Debug: crash immediately; release: reset to idle so the game is not bricked.
-      dev.log(
-        'GridWorld.runSwap() failed: $e — resetting FSM to idle',
-        name: 'GridWorld',
-        error: e,
-        stackTrace: stack,
-        level: 900,
-      );
+      gameLogger.e('GridWorld.runSwap() failed — resetting FSM to idle', error: e, stackTrace: stack);
       assert(false, 'runSwap() threw unexpectedly: $e');
       game.transitionTo(GamePhase.idle);
     }
@@ -192,19 +189,14 @@ class GridWorld extends World {
         return;
       }
 
+      gameLogger.t('Cascade depth: ${cascade.depth}');
       cascade.increment();
       game.transitionTo(GamePhase.cascading);
       game.transitionTo(GamePhase.matching);
       await _runCascade(newMatches);
     } catch (e, stack) {
       // Debug: crash immediately; release: reset to idle so the game is not bricked.
-      dev.log(
-        'GridWorld._runCascade() failed: $e — resetting FSM to idle',
-        name: 'GridWorld',
-        error: e,
-        stackTrace: stack,
-        level: 900,
-      );
+      gameLogger.e('GridWorld._runCascade() failed — resetting FSM to idle', error: e, stackTrace: stack);
       assert(false, '_runCascade() threw unexpectedly: $e');
       game.transitionTo(GamePhase.idle);
     }
@@ -309,13 +301,7 @@ class GridWorld extends World {
         bestScore: _bestScore,
       ));
     } catch (e, stack) {
-      dev.log(
-        'GridWorld._persistScore() failed: $e',
-        name: 'GridWorld',
-        error: e,
-        stackTrace: stack,
-        level: 900,
-      );
+      gameLogger.w('GridWorld._persistScore() failed', error: e, stackTrace: stack);
     }
   }
 

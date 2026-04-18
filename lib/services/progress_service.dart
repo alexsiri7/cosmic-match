@@ -1,7 +1,6 @@
-import 'dart:developer' as dev;
-
 import 'package:archive/archive.dart';
 import 'package:hive/hive.dart';
+import '../core/logger.dart';
 import '../models/level_progress.dart';
 
 class ProgressService {
@@ -19,6 +18,7 @@ class ProgressService {
   ProgressService({HiveAesCipher? cipher}) : _cipher = cipher;
 
   Future<LevelProgress> load(int level) async {
+    gameLogger.d('ProgressService.load: level=$level');
     try {
       final box = await Hive.openBox(_boxName, encryptionCipher: _cipher);
       final raw = box.get('level_$level');
@@ -27,47 +27,24 @@ class ProgressService {
       }
       return LevelProgress.fromMap(raw);
     } on HiveError catch (e, stack) {
-      dev.log(
-        'ProgressService.load($level): HiveError — possible cipher mismatch. Resetting to initial.',
-        name: 'ProgressService',
-        error: e,
-        stackTrace: stack,
-        level: 1000, // SEVERE
-      );
+      gameLogger.e('ProgressService.load($level): HiveError — possible cipher mismatch. Resetting to initial.', error: e, stackTrace: stack);
       return LevelProgress.initial(level);
     } catch (e, stack) {
-      dev.log(
-        'ProgressService.load($level) failed: $e',
-        name: 'ProgressService',
-        error: e,
-        stackTrace: stack,
-        level: 900, // WARNING
-      );
+      gameLogger.w('ProgressService.load($level) failed', error: e, stackTrace: stack);
       return LevelProgress.initial(level);
     }
   }
 
   Future<void> save(LevelProgress progress) async {
+    gameLogger.d('ProgressService.save: level=${progress.level}');
     try {
       final box = await Hive.openBox(_boxName, encryptionCipher: _cipher);
       await box.put('level_${progress.level}', progress.toMap());
     } on HiveError catch (e, stack) {
-      dev.log(
-        'ProgressService.save(level=${progress.level}): HiveError — possible cipher mismatch.',
-        name: 'ProgressService',
-        error: e,
-        stackTrace: stack,
-        level: 1000, // SEVERE
-      );
+      gameLogger.e('ProgressService.save(level=${progress.level}): HiveError — possible cipher mismatch.', error: e, stackTrace: stack);
       // Progress loss is unfortunate but not catastrophic; do not rethrow
     } catch (e, stack) {
-      dev.log(
-        'ProgressService.save(level=${progress.level}) failed: $e',
-        name: 'ProgressService',
-        error: e,
-        stackTrace: stack,
-        level: 900, // WARNING
-      );
+      gameLogger.w('ProgressService.save(level=${progress.level}) failed', error: e, stackTrace: stack);
       // Progress loss is unfortunate but not catastrophic; do not rethrow
     }
   }
