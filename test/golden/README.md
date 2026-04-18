@@ -15,7 +15,7 @@ flutter test test/golden/
 Goldens are pixel-exact and OS-dependent (font rendering varies). Always
 regenerate on a machine — or in CI — matching the pinned environment:
 
-- **Flutter**: 3.41.0
+- **Flutter**: 3.41.7
 - **OS**: ubuntu-latest (matches the CI `Test` job)
 
 ```sh
@@ -36,7 +36,7 @@ git commit -m "chore: regenerate golden baselines"
 git push
 ```
 
-Or update goldens locally on Ubuntu with Flutter 3.41.0 and push the PNG files.
+Or update goldens locally on Ubuntu with Flutter 3.41.7 and push the PNG files.
 
 ## Baseline files
 

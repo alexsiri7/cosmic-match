@@ -4,18 +4,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:cosmic_match/game/match3_game.dart';
+import 'golden_test_helpers.dart';
 
 void main() {
   testWidgets('fresh board matches golden', (tester) async {
-    // Suppress setState-after-dispose from flame_riverpod's frame callback
-    final originalOnError = FlutterError.onError;
-    FlutterError.onError = (details) {
-      if (details.toString().contains('setState() called after dispose()')) {
-        return;
-      }
-      originalOnError?.call(details);
-    };
-    addTearDown(() => FlutterError.onError = originalOnError);
+    suppressFlameRiverpodDisposeError();
 
     final gameKey = GlobalKey<RiverpodAwareGameWidgetState<Match3Game>>();
     final game = Match3Game(rng: Random(42));
