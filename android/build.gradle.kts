@@ -40,10 +40,15 @@ subprojects {
     // run, so this override wins over sentry_flutter's own compileOptions
     // (which resets to Java 1.8). plugins.withId fires mid-evaluation and
     // gets overridden — that's why PRs #45/#48 didn't stick.
-    afterEvaluate {
-        extensions.findByType<com.android.build.gradle.LibraryExtension>()?.compileOptions {
-            sourceCompatibility = JavaVersion.VERSION_17
-            targetCompatibility = JavaVersion.VERSION_17
+    // Skip :app — evaluationDependsOn(":app") above causes it to be evaluated
+    // before this block runs for it, making afterEvaluate illegal on :app.
+    // :app sets its own compileOptions directly in app/build.gradle.kts.
+    if (project.name != "app") {
+        afterEvaluate {
+            extensions.findByType<com.android.build.gradle.LibraryExtension>()?.compileOptions {
+                sourceCompatibility = JavaVersion.VERSION_17
+                targetCompatibility = JavaVersion.VERSION_17
+            }
         }
     }
     tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach {
