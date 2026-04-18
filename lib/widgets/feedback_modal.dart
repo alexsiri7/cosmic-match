@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:typed_data';
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
+import '../core/logger.dart';
 import '../game/theme/app_theme.dart';
 import '../models/feedback_item.dart';
 import '../screens/modals.dart';
@@ -45,7 +46,9 @@ class _FeedbackModalState extends State<FeedbackModal> {
     final canvas = Canvas(recorder);
     canvas.drawImage(image, Offset.zero, Paint());
 
-    if (_points.isNotEmpty) {
+    if (_points.isNotEmpty &&
+        _imageDisplaySize.width > 0 &&
+        _imageDisplaySize.height > 0) {
       final paint = Paint()
         ..color = kLyraAccent
         ..strokeWidth = 3.0
@@ -54,7 +57,9 @@ class _FeedbackModalState extends State<FeedbackModal> {
 
       for (int i = 0; i < _points.length - 1; i++) {
         if (_points[i] != null && _points[i + 1] != null) {
-          // Scale points from widget coordinates to image coordinates
+          // Scale annotation points from widget-display coordinates to image-pixel
+          // coordinates. Precondition: _imageDisplaySize must be non-zero (guaranteed
+          // because _submit is only reachable after the modal has laid out).
           final scaleX = image.width / _imageDisplaySize.width;
           final scaleY = image.height / _imageDisplaySize.height;
           canvas.drawLine(
@@ -73,7 +78,11 @@ class _FeedbackModalState extends State<FeedbackModal> {
         await rendered.toByteData(format: ui.ImageByteFormat.png);
     image.dispose();
     rendered.dispose();
-    return byteData!.buffer.asUint8List();
+    if (byteData == null) {
+      gameLogger.w('_renderAnnotatedScreenshot: toByteData returned null');
+      throw StateError('Failed to encode annotated screenshot to PNG');
+    }
+    return byteData.buffer.asUint8List();
   }
 
   Size _imageDisplaySize = Size.zero;
@@ -122,6 +131,14 @@ class _FeedbackModalState extends State<FeedbackModal> {
                 content: Text('Queued — will submit when online')),
           );
         }
+      }
+    } catch (e, stack) {
+      gameLogger.w('FeedbackModal._submit failed', error: e, stackTrace: stack);
+      if (mounted) {
+        Navigator.of(context).pop();
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Failed to prepare feedback — please try again')),
+        );
       }
     } finally {
       if (mounted) setState(() => _isSubmitting = false);
@@ -281,6 +298,9 @@ class _FeedbackModalState extends State<FeedbackModal> {
   }
 }
 
+/// Helper that measures its rendered size after layout and forwards it via
+/// [onSizeChanged]. Used to map annotation [Offset] points (in widget space)
+/// to the correct scale for the underlying image pixels.
 class _ImageSizeCapture extends StatefulWidget {
   final Widget child;
   final ValueChanged<Size> onSizeChanged;
@@ -330,5 +350,6 @@ class _AnnotationPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(covariant _AnnotationPainter oldDelegate) => true;
+  bool shouldRepaint(covariant _AnnotationPainter oldDelegate) =>
+      !identical(points, oldDelegate.points);
 }

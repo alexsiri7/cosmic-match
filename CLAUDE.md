@@ -15,7 +15,8 @@ flutter build apk --debug
 # Build (release AAB) — requires android/key.properties (see android/key.properties.example)
 flutter build appbundle --release
 # To enable Sentry crash reporting, add: --dart-define=SENTRY_DSN=<your-dsn>
-# (CI injects this automatically via the SENTRY_DSN secret)
+# To enable in-app feedback, add: --dart-define=GITHUB_FEEDBACK_TOKEN=<your-pat>
+# (CI injects both automatically via repository secrets)
 
 # Generate Hive adapters (run after adding new Hive types)
 dart run build_runner build --delete-conflicting-outputs
@@ -34,11 +35,14 @@ lib/
                   #   kTileGlowPalette — derived from TileType.glowValue, used for selection border;
                   #   kTileSelectedOverlay — transparent, selection drawn by _GlowBorder stroke;
                   #   cosmic_theme.dart — Lyra galaxy tokens: kCosmicInk, kCosmicNebulaA/B, kCosmicAccent, kBoardBackdrop, kGridLine)
-  models/         # Pure data: Score, TileType, LevelProgress
+  models/         # Pure data: Score, TileType, LevelProgress, FeedbackItem
   screens/        # Flutter screens: HomeScreen, MapScreen, GameScreen, modals
                   # Navigation: _Screen enum + _buildScreen() in main.dart
-  services/       # Hive persistence (ProgressService) and key management (KeyService)
-  widgets/        # Flutter overlay widgets (HudOverlay — driven by Match3Game.scoreNotifier)
+  services/       # Hive persistence (ProgressService) and key management (KeyService);
+                  #   FeedbackQueueService (offline feedback queue, Hive-backed, CRC32);
+                  #   GitHubFeedbackClient (screenshot upload + issue creation via GitHub API)
+  widgets/        # Flutter overlay widgets (HudOverlay — driven by Match3Game.scoreNotifier);
+                  #   FeedbackModal (bottom-sheet annotation canvas + text field)
 test/             # Unit tests mirror lib/ structure
 ```
 
@@ -70,20 +74,23 @@ Detection passes run in strict priority order. **Do NOT reorder**:
 Tiles consumed by a higher-priority pass are added to the `claimed` set and skipped by
 lower-priority passes, preventing double-counting.
 
-### CRC32 Persistence Contract (`lib/models/level_progress.dart`, `lib/services/progress_service.dart`)
+### CRC32 Persistence Contract (`lib/models/level_progress.dart`, `lib/services/progress_service.dart`; `lib/models/feedback_item.dart`, `lib/services/feedback_queue_service.dart`)
 
-`LevelProgress.toMap()` must always include a `crc` field computed over all other fields
-using `_canonicalize()` (key-sorted representation). `ProgressService._isValid()` rejects
-any map missing or mismatching the CRC and resets to `LevelProgress.initial()`.
+Any Hive-backed model must include a `crc` field in its `toMap()` output, computed over
+all other fields using a key-sorted canonical representation. The corresponding service's
+`_isValid()` must reject any map with a missing or mismatched CRC.
 
-When adding new fields to `LevelProgress`:
+- `LevelProgress.toMap()` / `ProgressService._isValid()` — resets to `LevelProgress.initial()` on tamper
+- `FeedbackItem.toMap()` / `FeedbackQueueService._isValid()` — skips the invalid queue entry on tamper
+
+When adding new fields to either model:
 - Include them in `toMap()` before computing the CRC
 - The canonicalized format sorts keys alphabetically, so insertion order does not matter
 
-**Cipher invariant**: `ProgressService` accepts an optional `HiveAesCipher` (SEC-004).
-A box opened with a cipher cannot later be opened without one (and vice-versa). For V1
-there are no existing users, so this is safe. In future migrations, ensure the cipher
-parameter is consistent across all `ProgressService` instantiation sites.
+**Cipher invariant**: `ProgressService` and `FeedbackQueueService` both accept an optional
+`HiveAesCipher` (SEC-004). A box opened with a cipher cannot later be opened without one
+(and vice-versa). For V1 there are no existing users, so this is safe. In future migrations,
+ensure the cipher parameter is consistent across all instantiation sites.
 
 ### SEC-008 Integrity Controls
 

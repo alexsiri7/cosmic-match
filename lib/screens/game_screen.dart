@@ -1,8 +1,5 @@
-import 'dart:typed_data';
-import 'dart:ui' as ui;
 import 'package:flame_riverpod/flame_riverpod.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/rendering.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../game/match3_game.dart';
 import '../game/theme/app_theme.dart';
@@ -30,15 +27,6 @@ class GameScreen extends StatefulWidget {
 
 class _GameScreenState extends State<GameScreen> {
   final _gameKey = GlobalKey<RiverpodAwareGameWidgetState<Match3Game>>();
-  final _repaintKey = GlobalKey();
-
-  Future<Uint8List> captureScreenshot() async {
-    final boundary = _repaintKey.currentContext!.findRenderObject()
-        as RenderRepaintBoundary;
-    final image = await boundary.toImage(pixelRatio: 2.0);
-    final data = await image.toByteData(format: ui.ImageByteFormat.png);
-    return data!.buffer.asUint8List();
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -49,12 +37,9 @@ class _GameScreenState extends State<GameScreen> {
           children: [
             _buildHUD(),
             Expanded(
-              child: RepaintBoundary(
-                key: _repaintKey,
-                child: RiverpodAwareGameWidget(
-                  key: _gameKey,
-                  game: widget.game,
-                ),
+              child: RiverpodAwareGameWidget(
+                key: _gameKey,
+                game: widget.game,
               ),
             ),
             _buildLegend(),
