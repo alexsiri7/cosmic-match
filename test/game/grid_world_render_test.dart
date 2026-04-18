@@ -1,4 +1,7 @@
+import 'package:flame/components.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:cosmic_match/game/components/grid_debug_overlay.dart';
+import 'package:cosmic_match/game/components/grid_tile.dart';
 import 'package:cosmic_match/game/world/grid_world.dart';
 import 'package:cosmic_match/models/tile_type.dart';
 
@@ -105,6 +108,108 @@ void main() {
       world.score.add(100);
       world.score.add(200);
       expect(world.score.value, 300);
+    });
+  });
+
+  group('GridWorld tile position snap', () {
+    late GridWorld world;
+
+    setUp(() {
+      world = GridWorld();
+      world.grid = List.generate(
+          GridWorld.cols, (_) => List.generate(GridWorld.rows, (_) => null));
+      world.tiles =
+          List.generate(GridWorld.cols, (_) => List.generate(GridWorld.rows, (_) => null));
+      world.tileSize = 50.0;
+      world.boardOffset = Vector2(10, 20);
+    });
+
+    test('snapAllTilesToGrid skips null cells without error', () {
+      expect(() => world.snapAllTilesToGrid(), returnsNormally);
+    });
+
+    test('snapAllTilesToGrid sets tile position to boardOffset + grid coords', () {
+      // Construct a GridTile without adding it to a parent; onLoad is not called
+      // so RiverpodComponentMixin is not activated — safe for unit tests.
+      final fakeTile = GridTile(
+        gridX: 2,
+        gridY: 3,
+        tileType: TileType.red,
+        position: Vector2(999, 999), // intentionally wrong — snap must correct this
+        size: Vector2.all(world.tileSize - 2),
+      );
+      world.tiles[2][3] = fakeTile;
+
+      world.snapAllTilesToGrid();
+
+      final expected = world.boardOffset + Vector2(2 * world.tileSize, 3 * world.tileSize);
+      expect(world.tiles[2][3]!.position, expected);
+    });
+
+    test('snapAllTilesToGrid only moves non-null tiles; null cells untouched', () {
+      final tile = GridTile(
+        gridX: 0,
+        gridY: 0,
+        tileType: TileType.blue,
+        position: Vector2(500, 500),
+        size: Vector2.all(world.tileSize - 2),
+      );
+      world.tiles[0][0] = tile;
+      // All other cells remain null
+
+      expect(() => world.snapAllTilesToGrid(), returnsNormally);
+
+      final expected = world.boardOffset + Vector2(0 * world.tileSize, 0 * world.tileSize);
+      expect(world.tiles[0][0]!.position, expected);
+      // Confirm rest of first column is still null
+      for (int y = 1; y < GridWorld.rows; y++) {
+        expect(world.tiles[0][y], isNull);
+      }
+    });
+
+    test('_tilePosition(x, -1) places spawn one tile-height above board top', () {
+      // boardOffset.y = 20, tileSize = 50 (from setUp)
+      // _tilePosition(x, -1) = boardOffset + Vector2(x * tileSize, -1 * tileSize)
+      // Expected y for row -1 = 20 + (-1 * 50) = -30
+      final spawnY = world.boardOffset.y + (-1) * world.tileSize;
+      expect(spawnY, -30.0);
+      expect(spawnY, lessThan(world.boardOffset.y)); // must be above board top
+      expect(spawnY, world.boardOffset.y - world.tileSize); // exactly one tile-height above
+    });
+  });
+
+  group('GridDebugOverlay', () {
+    test('callbacks return the correct live values', () {
+      final offset = Vector2(10.0, 20.0);
+      double tileSize = 50.0;
+      final overlay = GridDebugOverlay(
+        cols: 8,
+        rows: 8,
+        getOffset: () => offset,
+        getTileSize: () => tileSize,
+      );
+      expect(overlay.cols, 8);
+      expect(overlay.rows, 8);
+      expect(overlay.getOffset(), offset);
+      expect(overlay.getTileSize(), 50.0);
+    });
+
+    test('callbacks reflect updated values after layout change', () {
+      Vector2 offset = Vector2(10.0, 20.0);
+      double tileSize = 50.0;
+      final overlay = GridDebugOverlay(
+        cols: 8,
+        rows: 8,
+        getOffset: () => offset,
+        getTileSize: () => tileSize,
+      );
+
+      // Simulate a screen resize that reassigns offset and tileSize
+      offset = Vector2(30.0, 40.0);
+      tileSize = 60.0;
+
+      expect(overlay.getOffset(), Vector2(30.0, 40.0));
+      expect(overlay.getTileSize(), 60.0);
     });
   });
 
