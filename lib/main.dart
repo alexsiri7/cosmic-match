@@ -1,4 +1,3 @@
-import 'package:flame_riverpod/flame_riverpod.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -7,9 +6,14 @@ import 'package:package_info_plus/package_info_plus.dart';
 import 'package:sentry_flutter/sentry_flutter.dart';
 import 'core/logger.dart';
 import 'game/match3_game.dart';
+import 'game/theme/app_theme.dart';
+import 'screens/game_screen.dart';
+import 'screens/home_screen.dart';
+import 'screens/map_screen.dart';
 import 'services/key_service.dart';
 import 'services/progress_service.dart';
-import 'widgets/hud_overlay.dart';
+
+enum _Screen { home, game, map }
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -67,8 +71,8 @@ class CosmicMatchApp extends StatefulWidget {
 }
 
 class _CosmicMatchAppState extends State<CosmicMatchApp> {
-  final _gameKey = GlobalKey<RiverpodAwareGameWidgetState<Match3Game>>();
   late final Match3Game _game;
+  _Screen _screen = _Screen.home;
 
   @override
   void initState() {
@@ -76,22 +80,28 @@ class _CosmicMatchAppState extends State<CosmicMatchApp> {
     _game = Match3Game(progressService: widget.progressService);
   }
 
+  Widget _buildScreen() {
+    return switch (_screen) {
+      _Screen.home => HomeScreen(
+          onPlay: () => setState(() => _screen = _Screen.game),
+          onMap: () => setState(() => _screen = _Screen.map),
+        ),
+      _Screen.game => GameScreen(
+          game: _game,
+          onBack: () => setState(() => _screen = _Screen.home),
+        ),
+      _Screen.map => MapScreen(
+          onBack: () => setState(() => _screen = _Screen.home),
+        ),
+    };
+  }
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Cosmic Match',
-      theme: ThemeData.dark().copyWith(
-        scaffoldBackgroundColor: const Color(0xFF0D0A1A),
-      ),
-      home: SafeArea(
-        child: RiverpodAwareGameWidget(
-          key: _gameKey,
-          game: _game,
-          overlayBuilderMap: {
-            'hud': (context, game) => HudOverlay(game: game as Match3Game),
-          },
-        ),
-      ),
+      theme: cosmicTheme(),
+      home: _buildScreen(),
     );
   }
 }
