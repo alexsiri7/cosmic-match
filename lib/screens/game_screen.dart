@@ -17,8 +17,9 @@ String formatGameScore(int n) {
 class GameScreen extends StatefulWidget {
   final Match3Game game;
   final VoidCallback onBack;
+  final VoidCallback onFeedback;
 
-  const GameScreen({super.key, required this.game, required this.onBack});
+  const GameScreen({super.key, required this.game, required this.onBack, required this.onFeedback});
 
   @override
   State<GameScreen> createState() => _GameScreenState();
@@ -69,10 +70,17 @@ class _GameScreenState extends State<GameScreen> {
                   color: Colors.white.withValues(alpha: 0.55),
                 ),
               ),
-              _circleButton(
-                onTap: () {},
-                child: const Icon(Icons.pause, size: 14, color: Colors.white),
-              ),
+              Row(children: [
+                _circleButton(
+                  onTap: () {},
+                  child: const Icon(Icons.pause, size: 14, color: Colors.white),
+                ),
+                const SizedBox(width: 6),
+                _circleButton(
+                  onTap: widget.onFeedback,
+                  child: const Icon(Icons.mail_outline, size: 14, color: Colors.white),
+                ),
+              ]),
             ],
           ),
           const SizedBox(height: 10),

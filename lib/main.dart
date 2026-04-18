@@ -1,16 +1,20 @@
-import 'package:flame_riverpod/flame_riverpod.dart';
+import 'dart:io';
+import 'dart:ui' as ui;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:sentry_flutter/sentry_flutter.dart';
 import 'core/logger.dart';
 import 'game/match3_game.dart';
-import 'services/key_service.dart';
+import 'screens/feedback_sheet.dart';
+import 'screens/game_screen.dart';
+import 'screens/home_screen.dart';
 import 'services/feedback_service.dart';
+import 'services/key_service.dart';
 import 'services/progress_service.dart';
-import 'widgets/hud_overlay.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -70,6 +74,8 @@ Future<void> main() async {
   }
 }
 
+enum _Screen { home, game }
+
 class CosmicMatchApp extends StatefulWidget {
   final ProgressService progressService;
   final FeedbackService? feedbackService;
@@ -81,14 +87,89 @@ class CosmicMatchApp extends StatefulWidget {
 }
 
 class _CosmicMatchAppState extends State<CosmicMatchApp> {
-  final _gameKey = GlobalKey<RiverpodAwareGameWidgetState<Match3Game>>();
-  final _screenshotKey = GlobalKey();
+  _Screen _currentScreen = _Screen.home;
   late final Match3Game _game;
+  final _repaintBoundaryKey = GlobalKey();
 
   @override
   void initState() {
     super.initState();
     _game = Match3Game(progressService: widget.progressService);
+  }
+
+  Future<Uint8List> _captureScreenshot() async {
+    final context = _repaintBoundaryKey.currentContext;
+    if (context == null) {
+      gameLogger.w('_captureScreenshot: repaint boundary context is null');
+      throw StateError('RepaintBoundary not yet mounted');
+    }
+    final boundary = context.findRenderObject() as RenderRepaintBoundary;
+    final image = await boundary.toImage(pixelRatio: 2.0);
+    final data = await image.toByteData(format: ui.ImageByteFormat.png);
+    if (data == null) {
+      gameLogger.w('_captureScreenshot: toByteData returned null');
+      throw StateError('Failed to encode screenshot to PNG');
+    }
+    return data.buffer.asUint8List();
+  }
+
+  Future<void> _showFeedback() async {
+    if (widget.feedbackService == null) return;
+    Uint8List screenshotBytes;
+    try {
+      screenshotBytes = await _captureScreenshot();
+    } catch (e) {
+      gameLogger.w('_showFeedback: screenshot capture failed', error: e);
+      // Fall back to 1×1 transparent PNG so FeedbackSheet still opens.
+      screenshotBytes = Uint8List.fromList([
+        0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A,
+        0x00, 0x00, 0x00, 0x0D, 0x49, 0x48, 0x44, 0x52,
+        0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01,
+        0x08, 0x06, 0x00, 0x00, 0x00, 0x1F, 0x15, 0xC4,
+        0x89, 0x00, 0x00, 0x00, 0x0A, 0x49, 0x44, 0x41,
+        0x54, 0x78, 0x9C, 0x62, 0x00, 0x00, 0x00, 0x02,
+        0x00, 0x01, 0xE5, 0x27, 0xDE, 0xFC, 0x00, 0x00,
+        0x00, 0x00, 0x49, 0x45, 0x4E, 0x44, 0xAE, 0x42,
+        0x60, 0x82,
+      ]);
+    }
+    if (!mounted) return;
+    showFeedbackSheet(
+      context,
+      screenshotBytes: screenshotBytes,
+      onSubmit: ({
+        required String type,
+        required String message,
+        required String screenshotB64,
+      }) async {
+        final packageInfo = await PackageInfo.fromPlatform();
+        await widget.feedbackService!.submit(
+          type: type,
+          message: message,
+          screenshotB64: screenshotB64,
+          appVersion: '${packageInfo.version}+${packageInfo.buildNumber}',
+          os: Platform.operatingSystem,
+          device: Platform.operatingSystemVersion,
+        );
+      },
+    );
+  }
+
+  Widget _buildScreen() {
+    switch (_currentScreen) {
+      case _Screen.home:
+        return HomeScreen(
+          onPlay: () => setState(() => _currentScreen = _Screen.game),
+          onMap: () {}, // Map not yet implemented
+          onFeedback: _showFeedback,
+        );
+      case _Screen.game:
+        return GameScreen(
+          game: _game,
+          onBack: () => setState(() => _currentScreen = _Screen.home),
+          onFeedback: _showFeedback,
+        );
+    }
   }
 
   @override
@@ -100,18 +181,8 @@ class _CosmicMatchAppState extends State<CosmicMatchApp> {
       ),
       home: SafeArea(
         child: RepaintBoundary(
-          key: _screenshotKey,
-          child: RiverpodAwareGameWidget(
-            key: _gameKey,
-            game: _game,
-            overlayBuilderMap: {
-              'hud': (context, game) => HudOverlay(
-                game: game as Match3Game,
-                feedbackService: widget.feedbackService,
-                screenshotKey: _screenshotKey,
-              ),
-            },
-          ),
+          key: _repaintBoundaryKey,
+          child: _buildScreen(),
         ),
       ),
     );

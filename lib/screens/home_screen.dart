@@ -5,8 +5,9 @@ import '../game/theme/app_theme.dart';
 class HomeScreen extends StatelessWidget {
   final VoidCallback onPlay;
   final VoidCallback onMap;
+  final VoidCallback onFeedback;
 
-  const HomeScreen({super.key, required this.onPlay, required this.onMap});
+  const HomeScreen({super.key, required this.onPlay, required this.onMap, required this.onFeedback});
 
   @override
   Widget build(BuildContext context) {
@@ -179,6 +180,15 @@ class HomeScreen extends StatelessWidget {
                       ),
                       child: const Text('Galaxy Map'),
                     ),
+                  ),
+                  const SizedBox(height: 8),
+                  TextButton(
+                    onPressed: onFeedback,
+                    style: TextButton.styleFrom(
+                      foregroundColor: Colors.white.withValues(alpha: 0.45),
+                      textStyle: const TextStyle(fontSize: 12, letterSpacing: 0.3),
+                    ),
+                    child: const Text('Send feedback'),
                   ),
                 ],
               ),

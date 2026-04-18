@@ -75,20 +75,23 @@ Detection passes run in strict priority order. **Do NOT reorder**:
 Tiles consumed by a higher-priority pass are added to the `claimed` set and skipped by
 lower-priority passes, preventing double-counting.
 
-### CRC32 Persistence Contract (`lib/models/level_progress.dart`, `lib/services/progress_service.dart`)
+### CRC32 Persistence Contract (`lib/models/level_progress.dart`, `lib/services/progress_service.dart`; `lib/models/feedback_item.dart`, `lib/services/feedback_queue_service.dart`)
 
-`LevelProgress.toMap()` must always include a `crc` field computed over all other fields
-using `_canonicalize()` (key-sorted representation). `ProgressService._isValid()` rejects
-any map missing or mismatching the CRC and resets to `LevelProgress.initial()`.
+Any Hive-backed model must include a `crc` field in its `toMap()` output, computed over
+all other fields using a key-sorted canonical representation. The corresponding service's
+`_isValid()` must reject any map with a missing or mismatched CRC.
 
-When adding new fields to `LevelProgress`:
+- `LevelProgress.toMap()` / `ProgressService._isValid()` — resets to `LevelProgress.initial()` on tamper
+- `FeedbackItem.toMap()` / `FeedbackQueueService._isValid()` — skips the invalid queue entry on tamper
+
+When adding new fields to either model:
 - Include them in `toMap()` before computing the CRC
 - The canonicalized format sorts keys alphabetically, so insertion order does not matter
 
-**Cipher invariant**: `ProgressService` accepts an optional `HiveAesCipher` (SEC-004).
-A box opened with a cipher cannot later be opened without one (and vice-versa). For V1
-there are no existing users, so this is safe. In future migrations, ensure the cipher
-parameter is consistent across all `ProgressService` instantiation sites.
+**Cipher invariant**: `ProgressService` and `FeedbackQueueService` both accept an optional
+`HiveAesCipher` (SEC-004). A box opened with a cipher cannot later be opened without one
+(and vice-versa). For V1 there are no existing users, so this is safe. In future migrations,
+ensure the cipher parameter is consistent across all instantiation sites.
 
 ### SEC-008 Integrity Controls
 

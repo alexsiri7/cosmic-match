@@ -85,7 +85,6 @@ class Match3Game extends FlameGame<GridWorld> with RiverpodGameMixin {
       return;
     }
 
-    // Check adjacency
     final dx = (tile.gridX - _selectedTile!.gridX).abs();
     final dy = (tile.gridY - _selectedTile!.gridY).abs();
     if (dx + dy != 1) {
