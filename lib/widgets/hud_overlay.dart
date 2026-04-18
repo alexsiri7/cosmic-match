@@ -18,13 +18,11 @@ class HudOverlay extends StatelessWidget {
             children: [
               Expanded(flex: 2,
                   child: _StatCard(label: 'SCORE',
-                      value: scores.score.toString(),
-                      accent: kCosmicAccent)),
+                      value: scores.score.toString())),
               const SizedBox(width: 8),
               Expanded(flex: 1,
                   child: _StatCard(label: 'BEST',
-                      value: scores.best.toString(),
-                      accent: kCosmicAccent)),
+                      value: scores.best.toString())),
             ],
           ),
         );
@@ -36,8 +34,7 @@ class HudOverlay extends StatelessWidget {
 class _StatCard extends StatelessWidget {
   final String label;
   final String value;
-  final Color accent;
-  const _StatCard({required this.label, required this.value, required this.accent});
+  const _StatCard({required this.label, required this.value});
 
   @override
   Widget build(BuildContext context) {
@@ -60,7 +57,7 @@ class _StatCard extends StatelessWidget {
           Text(value,
               style: GoogleFonts.ibmPlexMono(
                 fontSize: 20, fontWeight: FontWeight.w500,
-                color: accent)),
+                color: kCosmicAccent)),
         ],
       ),
     );
