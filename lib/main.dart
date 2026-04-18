@@ -87,6 +87,7 @@ class _CosmicMatchAppState extends State<CosmicMatchApp> {
           onMap: () => setState(() => _screen = _Screen.map),
         ),
       _Screen.game => GameScreen(
+          // V1: single game instance persists across nav; revisit for level-complete flow
           game: _game,
           onBack: () => setState(() => _screen = _Screen.home),
         ),

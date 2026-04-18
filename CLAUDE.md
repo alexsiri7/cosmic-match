@@ -31,10 +31,15 @@ flutter pub get
 lib/
   game/           # Flame game, FSM, world, components
                   #   Input/FSM enums (GamePhase, SwipeDirection) defined in match3_game.dart
-    theme/        # Tile color palette constants (kTilePalette — derived from TileType.colorValue;
-                  #   kTileGlowPalette — derived from TileType.glowValue, used for selection border;
-                  #   kTileSelectedOverlay — transparent, selection drawn by _GlowBorder stroke;
-                  #   cosmic_theme.dart — Lyra galaxy tokens: kCosmicInk, kCosmicNebulaA/B, kCosmicAccent, kBoardBackdrop, kGridLine)
+    theme/        # Color palette and theme tokens
+                  #   Tile palette constants: kTilePalette (TileType.colorValue),
+                  #     kTileGlowPalette (TileType.glowValue, selection border),
+                  #     kTileSelectedOverlay (transparent; selection drawn by _GlowBorder stroke)
+                  #   cosmic_theme.dart — game-layer Lyra tokens: kCosmicInk, kCosmicNebulaA/B,
+                  #     kCosmicAccent, kBoardBackdrop, kGridLine (used in grid_world.dart)
+                  #   app_theme.dart — Flutter shell tokens: kLyraInk (bg), kLyraAccent (accent),
+                  #     kLyraNebulaA/B (nebula gradients), kLyraStroke, kLyraWarning;
+                  #     cosmicTheme() → MaterialApp.theme entry point (used in screens/)
   models/         # Pure data: Score, TileType, LevelProgress
   screens/        # Flutter screens: HomeScreen, MapScreen, GameScreen, modals
                   # Navigation: _Screen enum + _buildScreen() in main.dart

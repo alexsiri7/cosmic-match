@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../game/match3_game.dart';
-import '../game/theme/cosmic_theme.dart';
+import '../game/theme/app_theme.dart';
 
 class HudOverlay extends StatelessWidget {
   final Match3Game game;
@@ -57,7 +57,7 @@ class _StatCard extends StatelessWidget {
           Text(value,
               style: GoogleFonts.ibmPlexMono(
                 fontSize: 20, fontWeight: FontWeight.w500,
-                color: kCosmicAccent)),
+                color: kLyraAccent)),
         ],
       ),
     );
