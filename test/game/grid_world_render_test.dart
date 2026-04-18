@@ -145,6 +145,13 @@ void main() {
     });
 
     test('spawn origin regression: _tilePosition(x, -1) is above the board', () {
+      // LIMITATION: This test validates the mathematical property of the spawn
+      // formula (boardOffset + Vector2(x * tileSize, -1 * tileSize)) inline.
+      // It does NOT call _tilePosition() or _refillAllWithAnimation() directly
+      // because both are private. A regression in _tilePosition itself (e.g.,
+      // reverting to y-1 instead of -1) would NOT be caught here. A follow-up
+      // issue tracks adding a @visibleForTesting tilePositionForTest() accessor.
+      //
       // _tilePosition(x, -1) = boardOffset + Vector2(x * tileSize, -1 * tileSize)
       // For any x, y-coordinate must be < boardOffset.y (i.e., above the board top)
       for (int x = 0; x < GridWorld.cols; x++) {
@@ -152,6 +159,55 @@ void main() {
         expect(spawnPos.y, lessThan(world.boardOffset.y),
             reason: 'spawn origin must be above board top for column $x');
       }
+    });
+
+    test('snapAllTilesToGrid snaps all four corner tiles correctly', () {
+      final corners = [
+        (0, 0),
+        (GridWorld.cols - 1, 0),
+        (0, GridWorld.rows - 1),
+        (GridWorld.cols - 1, GridWorld.rows - 1),
+      ];
+      for (final (cx, cy) in corners) {
+        final tile = GridTile(
+          gridX: cx,
+          gridY: cy,
+          tileType: TileType.values.first,
+          position: Vector2(999, 999),
+          size: Vector2.all(48),
+        );
+        world.tiles[cx][cy] = tile;
+      }
+
+      world.snapAllTilesToGrid();
+
+      for (final (cx, cy) in corners) {
+        final tile = world.tiles[cx][cy]!;
+        final expectedX = world.boardOffset.x + cx * world.tileSize;
+        final expectedY = world.boardOffset.y + cy * world.tileSize;
+        expect(tile.position.x, closeTo(expectedX, 0.01),
+            reason: 'corner ($cx,$cy) x mismatch');
+        expect(tile.position.y, closeTo(expectedY, 0.01),
+            reason: 'corner ($cx,$cy) y mismatch');
+      }
+    });
+
+    test('snapAllTilesToGrid uses live boardOffset after reassignment', () {
+      final tile = GridTile(
+        gridX: 0,
+        gridY: 0,
+        tileType: TileType.values.first,
+        position: Vector2(999, 999),
+        size: Vector2.all(48),
+      );
+      world.tiles[0][0] = tile;
+
+      // Simulate onGameResize updating boardOffset after tile placement
+      world.boardOffset = Vector2(100, 200);
+      world.snapAllTilesToGrid();
+
+      expect(tile.position.x, closeTo(100.0, 0.01));
+      expect(tile.position.y, closeTo(200.0, 0.01));
     });
   });
 

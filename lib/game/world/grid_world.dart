@@ -29,6 +29,7 @@ class GridWorld extends World {
   // Render-layer parallel to grid
   late List<List<GridTile?>> tiles;
   late double tileSize;
+  @visibleForTesting
   late Vector2 boardOffset;
 
   late TextComponent _scoreText;
@@ -141,6 +142,7 @@ class GridWorld extends World {
       tileA.add(MoveEffect.to(posB, EffectController(duration: 0.2)));
       tileB.add(MoveEffect.to(posA, EffectController(duration: 0.2)));
       await Future<void>.delayed(const Duration(milliseconds: 220));
+      snapAllTilesToGrid(); // guarantee pixel-perfect snap after swap animation
 
       // Swap in logical grid
       _swapTiles(tileA, tileB);
@@ -152,6 +154,7 @@ class GridWorld extends World {
         tileA.add(MoveEffect.to(posA, EffectController(duration: 0.2)));
         tileB.add(MoveEffect.to(posB, EffectController(duration: 0.2)));
         await Future<void>.delayed(const Duration(milliseconds: 220));
+        snapAllTilesToGrid(); // guarantee pixel-perfect snap after revert animation
         _swapTiles(tileA, tileB);
         game.transitionTo(GamePhase.idle);
         return;
