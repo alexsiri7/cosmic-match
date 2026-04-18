@@ -58,10 +58,11 @@ class GridWorld extends World {
     add(_bgRef);
 
     // Compute layout
-    tileSize = min(game.size.x / cols, (game.size.y - 60) / rows);
+    final sz = game.canvasSize;
+    tileSize = sz.x / cols;
     _boardOffset = Vector2(
-      (game.size.x - tileSize * cols) / 2,
-      60 + (game.size.y - 60 - tileSize * rows) / 2,
+      (sz.x - tileSize * cols) / 2,
+      60 + (sz.y - 60 - tileSize * rows) / 2,
     );
 
     // Board backdrop panel
@@ -94,10 +95,11 @@ class GridWorld extends World {
     super.onGameResize(size);
     if (!isLoaded) return;
     final game = findGame() as Match3Game;
-    tileSize = min(game.size.x / cols, (game.size.y - 60) / rows);
+    final sz = game.canvasSize;
+    tileSize = sz.x / cols;
     _boardOffset = Vector2(
-      (game.size.x - tileSize * cols) / 2,
-      60 + (game.size.y - 60 - tileSize * rows) / 2,
+      (sz.x - tileSize * cols) / 2,
+      60 + (sz.y - 60 - tileSize * rows) / 2,
     );
     _bgRef.size = Vector2(game.size.x, game.size.y);
     _backdropRef.position = _boardOffset - Vector2(8, 8);
@@ -399,7 +401,7 @@ class GridWorld extends World {
   /// use [tilePositionAt] to verify expected positions instead.
   @visibleForTesting
   void initLayoutForTest(Vector2 gameSize) {
-    tileSize = min(gameSize.x / cols, (gameSize.y - 60) / rows);
+    tileSize = gameSize.x / cols;
     _boardOffset = Vector2(
       (gameSize.x - tileSize * cols) / 2,
       60 + (gameSize.y - 60 - tileSize * rows) / 2,
