@@ -384,4 +384,26 @@ class GridWorld extends World {
     tiles[ax][ay] = tiles[bx][by];
     tiles[bx][by] = tmpRef;
   }
+
+  /// Test-only: returns the world-space position for grid cell (x, y).
+  /// Exposes the private [_tilePosition] formula so tests can assert
+  /// component positions without duplicating the layout math.
+  /// Requires [initLayoutForTest] (or [onLoad]) to have been called first.
+  @visibleForTesting
+  Vector2 tilePositionAt(int x, int y) => _tilePosition(x, y);
+
+  /// Test-only: initialises layout fields ([tileSize], [_boardOffset])
+  /// directly from a given game size, bypassing the [onLoad] cast to [Match3Game].
+  /// Call this after setting [grid] to the desired test state.
+  /// Does not create [GridTile] components (which require [RiverpodGameMixin]);
+  /// use [tilePositionAt] to verify expected positions instead.
+  @visibleForTesting
+  void initLayoutForTest(Vector2 gameSize) {
+    tileSize = min(gameSize.x / cols, (gameSize.y - 60) / rows);
+    _boardOffset = Vector2(
+      (gameSize.x - tileSize * cols) / 2,
+      60 + (gameSize.y - 60 - tileSize * rows) / 2,
+    );
+    tiles = List.generate(cols, (_) => List.generate(rows, (_) => null));
+  }
 }
