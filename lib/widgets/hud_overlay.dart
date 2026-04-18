@@ -3,6 +3,9 @@ import 'package:google_fonts/google_fonts.dart';
 import '../game/match3_game.dart';
 import '../game/theme/app_theme.dart';
 
+const Color _kCardFill = Color(0x0FFFFFFF);
+const Color _kCardBorder = Color(0x1AFFFFFF);
+
 class HudOverlay extends StatelessWidget {
   final Match3Game game;
   const HudOverlay({required this.game, super.key});
@@ -41,8 +44,8 @@ class _StatCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
       decoration: BoxDecoration(
-        color: const Color(0x0FFFFFFF),
-        border: Border.all(color: const Color(0x1AFFFFFF)),
+        color: _kCardFill,
+        border: Border.all(color: _kCardBorder),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Column(
