@@ -1,3 +1,4 @@
+import 'dart:math';
 import 'package:flame/components.dart';
 import 'package:flame/game.dart';
 import 'package:flame_riverpod/flame_riverpod.dart';
@@ -19,7 +20,7 @@ const _validTransitions = <GamePhase, Set<GamePhase>>{
 class Match3Game extends FlameGame<GridWorld> with RiverpodGameMixin {
   final ProgressService? progressService;
 
-  Match3Game({this.progressService}) : super(world: GridWorld());
+  Match3Game({this.progressService, Random? rng}) : super(world: GridWorld(rng: rng));
 
   @override
   Future<void> onLoad() async {
