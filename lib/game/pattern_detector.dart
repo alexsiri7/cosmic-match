@@ -148,7 +148,7 @@ class PatternDetector {
             final positionsList = allPositions.toList();
             claimed.addAll(positionsList);
             results.add(MatchResult(
-              tiles: allPositions.toList(),
+              tiles: positionsList,
               bonusTile: BonusTileType.blackHole,
               bonusPosition: TilePosition(x, y),
             ));
