@@ -1,7 +1,7 @@
 import 'package:flame/components.dart';
 import 'package:flame/events.dart';
 import 'package:flame_riverpod/flame_riverpod.dart';
-import 'package:flutter/material.dart' show Canvas, Color, Colors, CustomPainter, Paint, PaintingStyle, RRect, Radius, Rect, visibleForTesting;
+import 'package:flutter/material.dart' show Canvas, Colors, CustomPainter, Paint, PaintingStyle, RRect, Radius, Rect, visibleForTesting;
 import '../../core/logger.dart';
 import '../../models/tile_type.dart';
 import '../match3_game.dart';
@@ -66,7 +66,7 @@ class GridTile extends RectangleComponent
     _painterReady = true;
 
     // Make the base rectangle transparent — tile body is drawn by the painter
-    paint.color = const Color(0x00000000);
+    paint.color = Colors.transparent;
   }
 
   void select() => _selected = true;

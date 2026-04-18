@@ -424,7 +424,7 @@ class _CosmicBackground extends PositionComponent {
       Rect.fromCenter(center: Offset(size.x / 2, size.y * 0.15),
           width: size.x * 1.2, height: size.y * 0.6),
       Paint()..shader = RadialGradient(
-        colors: [kCosmicNebulaA.withValues(alpha: 0.4), const Color(0x00000000)],
+        colors: [kCosmicNebulaA.withValues(alpha: 0.4), Colors.transparent],
       ).createShader(Rect.fromLTWH(0, 0, size.x, size.y * 0.4)),
     );
 
@@ -433,7 +433,7 @@ class _CosmicBackground extends PositionComponent {
       Rect.fromCenter(center: Offset(size.x * 0.85, size.y * 0.85),
           width: size.x * 0.9, height: size.y * 0.5),
       Paint()..shader = RadialGradient(
-        colors: [kCosmicNebulaB.withValues(alpha: 0.33), const Color(0x00000000)],
+        colors: [kCosmicNebulaB.withValues(alpha: 0.33), Colors.transparent],
       ).createShader(Rect.fromLTWH(size.x * 0.4, size.y * 0.55,
           size.x * 0.6, size.y * 0.45)),
     );
