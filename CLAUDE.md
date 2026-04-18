@@ -30,6 +30,7 @@ flutter pub get
 ```
 lib/
   game/           # Flame game, FSM, world, components
+                  #   Input/FSM enums (GamePhase, SwipeDirection) defined in match3_game.dart
     theme/        # Tile color palette constants (kTilePalette — derived from TileType.colorValue;
                   #   kTileGlowPalette — derived from TileType.glowValue, used for selection border;
                   #   kTileSelectedOverlay — transparent, selection drawn by _GlowBorder stroke;
@@ -91,7 +92,7 @@ Four mitigations protect against trivial client-side manipulation (see SECURITY.
 
 | Control | Location | Behaviour |
 |---------|----------|-----------|
-| FSM Input Gate | `GridTile.onTapDown` | Drops all taps when `phase != idle` |
+| FSM Input Gate | `GridTile.onTapDown`, `GridTile.onDragStart` | Drops all tap and swipe input when `phase != idle` |
 | Score Clamp | `Score.add()` | Clamps to 999,999,999; ignores negative inputs |
 | Cascade Depth Limit | `CascadeController.increment()` | Caps at 20; no-op beyond max |
 | CRC32 Save Integrity | `LevelProgress.toMap()` / `ProgressService._isValid()` | Resets tampered save data |

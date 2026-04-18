@@ -13,4 +13,4 @@ final Map<TileType, Color> kTileGlowPalette = {
 };
 
 // Selection now uses glow border — transparent fill (border drawn by _GlowBorder).
-const Color kTileSelectedOverlay = Color(0x00000000);
+const Color kTileSelectedOverlay = Colors.transparent;

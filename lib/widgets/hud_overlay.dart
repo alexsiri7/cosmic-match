@@ -20,7 +20,7 @@ class HudOverlay extends StatelessWidget {
                   child: _StatCard(label: 'SCORE',
                       value: scores.score.toString())),
               const SizedBox(width: 8),
-              Expanded(flex: 1,
+              Expanded(
                   child: _StatCard(label: 'BEST',
                       value: scores.best.toString())),
             ],
