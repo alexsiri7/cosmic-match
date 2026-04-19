@@ -3,22 +3,15 @@ import 'package:flame_test/flame_test.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:cosmic_match/game/world/grid_world.dart';
 import 'package:cosmic_match/models/tile_type.dart';
-
-/// Test GridWorld that skips onLoad's Match3Game cast.
-class _TestGridWorld extends GridWorld {
-  @override
-  Future<void> onLoad() async {}
-}
-
-const _epsilon = 0.5;
+import 'test_helpers.dart';
 
 void main() {
   group('GridWorld gravity visual sync', () {
     testWithGame<FlameGame>(
       'single tile falls one row — position updates to new cell',
-      () => FlameGame(world: _TestGridWorld()),
+      () => FlameGame(world: TestGridWorld()),
       (game) async {
-        final world = game.world as _TestGridWorld;
+        final world = game.world as TestGridWorld;
         world.grid = List.generate(
             GridWorld.cols, (_) => List.generate(GridWorld.rows, (_) => null));
         // Place tile at (0, 5) with null below at (0, 6)
@@ -42,9 +35,9 @@ void main() {
 
     testWithGame<FlameGame>(
       'tile settles to bottom row — position matches last row',
-      () => FlameGame(world: _TestGridWorld()),
+      () => FlameGame(world: TestGridWorld()),
       (game) async {
-        final world = game.world as _TestGridWorld;
+        final world = game.world as TestGridWorld;
         world.grid = List.generate(
             GridWorld.cols, (_) => List.generate(GridWorld.rows, (_) => null));
         world.grid[3][0] = TileType.yellow;
@@ -59,15 +52,15 @@ void main() {
         final topPos = world.tilePositionAt(3, 0);
         // Bottom row should be (rows-1) * tileSize below the top row
         expect(expected.y - topPos.y,
-            closeTo((GridWorld.rows - 1) * world.tileSize, _epsilon));
+            closeTo((GridWorld.rows - 1) * world.tileSize, kTestEpsilon));
       },
     );
 
     testWithGame<FlameGame>(
       'column of tiles preserves relative order — vertical spacing is tileSize',
-      () => FlameGame(world: _TestGridWorld()),
+      () => FlameGame(world: TestGridWorld()),
       (game) async {
-        final world = game.world as _TestGridWorld;
+        final world = game.world as TestGridWorld;
         world.grid = List.generate(
             GridWorld.cols, (_) => List.generate(GridWorld.rows, (_) => null));
         // Place 3 tiles in column 2: rows 0, 1, 2
@@ -89,11 +82,11 @@ void main() {
         final pos5 = world.tilePositionAt(2, 5);
         final pos6 = world.tilePositionAt(2, 6);
         final pos7 = world.tilePositionAt(2, 7);
-        expect(pos6.y - pos5.y, closeTo(world.tileSize, _epsilon));
-        expect(pos7.y - pos6.y, closeTo(world.tileSize, _epsilon));
+        expect(pos6.y - pos5.y, closeTo(world.tileSize, kTestEpsilon));
+        expect(pos7.y - pos6.y, closeTo(world.tileSize, kTestEpsilon));
         // Same column — x should match
-        expect(pos5.x, closeTo(pos6.x, _epsilon));
-        expect(pos6.x, closeTo(pos7.x, _epsilon));
+        expect(pos5.x, closeTo(pos6.x, kTestEpsilon));
+        expect(pos6.x, closeTo(pos7.x, kTestEpsilon));
       },
     );
   });
