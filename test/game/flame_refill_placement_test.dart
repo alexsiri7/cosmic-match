@@ -36,6 +36,10 @@ void main() {
             expect(pos.y, lessThan(gameSize.y));
           }
         }
+        // Verify the bottom edge of the last row doesn't overflow the viewport.
+        final lastRowBottom = world.tilePositionAt(0, GridWorld.rows - 1).y + world.tileSize;
+        expect(lastRowBottom, lessThanOrEqualTo(gameSize.y + kTestEpsilon),
+            reason: 'Bottom edge of last row must not overflow the viewport');
       },
     );
 
