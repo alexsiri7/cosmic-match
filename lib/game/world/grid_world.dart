@@ -55,8 +55,9 @@ class GridWorld extends World {
 
   @override
   Future<void> onLoad() async {
-    if (_testGrid != null) {
-      grid = List.generate(cols, (x) => List.of(_testGrid![x]));
+    final testGrid = _testGrid;
+    if (testGrid != null) {
+      grid = List.generate(cols, (x) => List.of(testGrid[x]));
     } else {
       _initGrid();
     }
