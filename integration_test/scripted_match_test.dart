@@ -11,12 +11,17 @@ import 'package:cosmic_match/services/progress_service.dart';
 import 'package:cosmic_match/main.dart';
 
 /// Build an 8×8 testGrid.
+/// Background is a checkerboard of orange/yellow (parity of x+y) to guarantee
+/// zero pre-existing 3-in-a-row matches across any row or column.
 /// Tiles [0][7], [1][7], [3][7] = red; [2][7] = blue.
 /// Swapping (2,7) ↔ (3,7) creates [0][7],[1][7],[2][7] = red → 3-match.
 List<List<TileType?>> _buildTestGrid() {
   final g = List.generate(
     GridWorld.cols,
-    (_) => List<TileType?>.generate(GridWorld.rows, (_) => TileType.orange),
+    (x) => List<TileType?>.generate(
+      GridWorld.rows,
+      (y) => (x + y).isEven ? TileType.orange : TileType.yellow,
+    ),
   );
   g[0][7] = TileType.red;
   g[1][7] = TileType.red;
@@ -70,20 +75,21 @@ void main() {
 
     final gameWidgetOrigin = tester.getTopLeft(gameWidgetFinder);
 
-    // Compute world-space centers for tiles (2,7) and (3,7).
+    // Get world-space top-left positions for tiles (2,7) and (3,7).
     final world = game.world;
-    final centerA = world.tilePositionAt(2, 7);
-    final centerB = world.tilePositionAt(3, 7);
+    final topLeftA = world.tilePositionAt(2, 7);
+    final topLeftB = world.tilePositionAt(3, 7);
 
-    // Convert to screen-space (tilePositionAt returns top-left of tile in world coords).
+    // Convert to screen-space tap targets at each tile's centre.
+    // tilePositionAt returns top-left; add tileSize / 2 for centre.
     final tileSize = world.tileSize;
     final screenA = Offset(
-      gameWidgetOrigin.dx + centerA.x + tileSize / 2,
-      gameWidgetOrigin.dy + centerA.y + tileSize / 2,
+      gameWidgetOrigin.dx + topLeftA.x + tileSize / 2,
+      gameWidgetOrigin.dy + topLeftA.y + tileSize / 2,
     );
     final screenB = Offset(
-      gameWidgetOrigin.dx + centerB.x + tileSize / 2,
-      gameWidgetOrigin.dy + centerB.y + tileSize / 2,
+      gameWidgetOrigin.dx + topLeftB.x + tileSize / 2,
+      gameWidgetOrigin.dy + topLeftB.y + tileSize / 2,
     );
 
     // Tap tile A, wait for FSM to register, tap tile B.
@@ -92,9 +98,13 @@ void main() {
     await tester.tapAt(screenB);
 
     // Pump through full cascade: swapping → matching → falling → cascading → idle.
-    for (int i = 0; i < 30; i++) {
+    // 60 iterations × 100 ms = 6 s; >7× headroom over minimum cascade cycle (~820 ms).
+    for (int i = 0; i < 60; i++) {
       await tester.pump(const Duration(milliseconds: 100));
     }
+
+    // Give _persistScore()'s async Hive write time to flush before asserting.
+    await tester.pump(const Duration(milliseconds: 500));
 
     // Assert score increased.
     expect(game.scoreNotifier.value.score, greaterThan(0));

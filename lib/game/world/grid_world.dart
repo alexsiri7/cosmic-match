@@ -42,7 +42,16 @@ class GridWorld extends World {
 
   GridWorld({Random? rng, List<List<TileType?>>? testGrid})
       : _rng = rng ?? Random(),
-        _testGrid = testGrid;
+        _testGrid = testGrid {
+    assert(
+      testGrid == null ||
+          (testGrid.length == cols &&
+              testGrid.every((col) => col.length == rows)),
+      'testGrid must be $cols×$rows; '
+      'received ${testGrid.length} columns with row lengths '
+      '${testGrid.map((c) => c.length).toList()}',
+    );
+  }
 
   @override
   Future<void> onLoad() async {
