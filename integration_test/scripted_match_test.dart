@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:flame/components.dart';
 import 'package:flame_riverpod/flame_riverpod.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -77,20 +78,15 @@ void main() {
 
     // Get world-space top-left positions for tiles (2,7) and (3,7).
     final world = game.world;
-    final topLeftA = world.tilePositionAt(2, 7);
-    final topLeftB = world.tilePositionAt(3, 7);
+    final half = world.tileSize / 2;
 
-    // Convert to screen-space tap targets at each tile's centre.
-    // tilePositionAt returns top-left; add tileSize / 2 for centre.
-    final tileSize = world.tileSize;
-    final screenA = Offset(
-      gameWidgetOrigin.dx + topLeftA.x + tileSize / 2,
-      gameWidgetOrigin.dy + topLeftA.y + tileSize / 2,
-    );
-    final screenB = Offset(
-      gameWidgetOrigin.dx + topLeftB.x + tileSize / 2,
-      gameWidgetOrigin.dy + topLeftB.y + tileSize / 2,
-    );
+    // Convert world top-left position to screen-space centre.
+    // tilePositionAt returns top-left; add half tileSize for centre.
+    Offset toScreenCentre(Vector2 pos) =>
+        Offset(gameWidgetOrigin.dx + pos.x + half, gameWidgetOrigin.dy + pos.y + half);
+
+    final screenA = toScreenCentre(world.tilePositionAt(2, 7));
+    final screenB = toScreenCentre(world.tilePositionAt(3, 7));
 
     // Tap tile A, wait for FSM to register, tap tile B.
     await tester.tapAt(screenA);
