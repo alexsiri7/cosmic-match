@@ -3,22 +3,15 @@ import 'package:flame_test/flame_test.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:cosmic_match/game/world/grid_world.dart';
 import 'package:cosmic_match/models/tile_type.dart';
-
-/// Test GridWorld that skips onLoad's Match3Game cast.
-class _TestGridWorld extends GridWorld {
-  @override
-  Future<void> onLoad() async {}
-}
-
-const _epsilon = 0.5;
+import 'test_helpers.dart';
 
 void main() {
   group('GridWorld refill placement', () {
     testWithGame<FlameGame>(
       'after refillAll on empty grid, every cell position matches tilePositionAt',
-      () => FlameGame(world: _TestGridWorld()),
+      () => FlameGame(world: TestGridWorld()),
       (game) async {
-        final world = game.world as _TestGridWorld;
+        final world = game.world as TestGridWorld;
         world.grid = List.generate(
             GridWorld.cols, (_) => List.generate(GridWorld.rows, (_) => null));
         // refillAll fills all null cells with random tiles
@@ -36,10 +29,10 @@ void main() {
         for (int x = 0; x < GridWorld.cols; x++) {
           for (int y = 0; y < GridWorld.rows; y++) {
             final pos = world.tilePositionAt(x, y);
-            // Position should be within game bounds
+            // Position should be within game bounds and below the header
             expect(pos.x, greaterThanOrEqualTo(0));
             expect(pos.x, lessThan(gameSize.x));
-            expect(pos.y, greaterThanOrEqualTo(60.0));
+            expect(pos.y, greaterThanOrEqualTo(GridWorld.headerHeight));
             expect(pos.y, lessThan(gameSize.y));
           }
         }
@@ -48,9 +41,9 @@ void main() {
 
     testWithGame<FlameGame>(
       'after partial clear and refillAll, refilled cells at correct positions',
-      () => FlameGame(world: _TestGridWorld()),
+      () => FlameGame(world: TestGridWorld()),
       (game) async {
-        final world = game.world as _TestGridWorld;
+        final world = game.world as TestGridWorld;
         // Start with a full grid
         world.grid = List.generate(GridWorld.cols,
             (_) => List.generate(GridWorld.rows, (_) => TileType.red));
@@ -72,16 +65,16 @@ void main() {
         for (int y = 0; y < 3; y++) {
           final pos = world.tilePositionAt(0, y);
           final origin = world.tilePositionAt(0, 0);
-          expect(pos.y - origin.y, closeTo(y * world.tileSize, _epsilon));
+          expect(pos.y - origin.y, closeTo(y * world.tileSize, kTestEpsilon));
         }
       },
     );
 
     testWithGame<FlameGame>(
       'tilePositionAt(x, -1) is above tilePositionAt(x, 0) — refill animation source',
-      () => FlameGame(world: _TestGridWorld()),
+      () => FlameGame(world: TestGridWorld()),
       (game) async {
-        final world = game.world as _TestGridWorld;
+        final world = game.world as TestGridWorld;
         world.grid = List.generate(
             GridWorld.cols, (_) => List.generate(GridWorld.rows, (_) => null));
         final gameSize = Vector2(400, 800);
@@ -93,17 +86,17 @@ void main() {
         expect(aboveRow0.y, lessThan(row0.y),
             reason: 'Animation source (y=-1) must be above the top row (y=0)');
         // The difference should be exactly one tileSize
-        expect(row0.y - aboveRow0.y, closeTo(world.tileSize, _epsilon));
+        expect(row0.y - aboveRow0.y, closeTo(world.tileSize, kTestEpsilon));
         // Same x coordinate
-        expect(aboveRow0.x, closeTo(row0.x, _epsilon));
+        expect(aboveRow0.x, closeTo(row0.x, kTestEpsilon));
       },
     );
 
     testWithGame<FlameGame>(
       'refill tiles for all target rows spawn above the board top regardless of target row',
-      () => FlameGame(world: _TestGridWorld()),
+      () => FlameGame(world: TestGridWorld()),
       (game) async {
-        final world = game.world as _TestGridWorld;
+        final world = game.world as TestGridWorld;
         world.grid = List.generate(
             GridWorld.cols, (_) => List.generate(GridWorld.rows, (_) => null));
         final gameSize = Vector2(400, 800);
@@ -124,8 +117,8 @@ void main() {
     );
 
     test('refill animation worst-case duration is under cascade await threshold', () {
-      // Cascade await in _runCascade is 300 ms.
-      // Duration for the deepest row (y = rows - 1): 0.035 * rows seconds.
+      // Source: grid_world.dart _refillAllWithAnimation EffectController(duration: 0.035 * (y + 1))
+      // Source: grid_world.dart _runCascade await Future.delayed(const Duration(milliseconds: 300))
       const cascadeAwaitSeconds = 0.300;
       final worstCase = 0.035 * GridWorld.rows;
       expect(worstCase, lessThan(cascadeAwaitSeconds),

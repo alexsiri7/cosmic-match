@@ -18,6 +18,12 @@ class GridWorld extends World {
   static const int cols = 8;
   static const int rows = 8;
 
+  /// Fixed height reserved for the HUD/header above the game board (pixels).
+  ///
+  /// Used by [_applyLayout] to compute tile size and board offset. Exported as
+  /// a public constant so tests can reference the same value without hardcoding.
+  static const double headerHeight = 60.0;
+
   final Score score = Score();
   final CascadeController cascade = CascadeController();
   final PatternDetector detector = PatternDetector();
@@ -103,10 +109,10 @@ class GridWorld extends World {
   }
 
   void _applyLayout(Vector2 gameSize) {
-    tileSize = min(gameSize.x / cols, (gameSize.y - 60) / rows);
+    tileSize = min(gameSize.x / cols, (gameSize.y - headerHeight) / rows);
     _boardOffset = Vector2(
       (gameSize.x - tileSize * cols) / 2,
-      60 + (gameSize.y - 60 - tileSize * rows) / 2,
+      headerHeight + (gameSize.y - headerHeight - tileSize * rows) / 2,
     );
   }
 

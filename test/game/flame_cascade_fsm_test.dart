@@ -46,8 +46,10 @@ void main() {
       final game = Match3Game(progressService: null);
       expect(game.phase, GamePhase.idle);
 
-      // In debug mode, transitionTo asserts on illegal transitions.
-      // The assert fires before _phase is reset to idle.
+      // flutter test always runs with asserts enabled (debug mode), so
+      // transitionTo() fires the AssertionError before resetting to idle.
+      // In release builds, the assert is absent and the phase silently resets
+      // to idle instead (see CLAUDE.md FSM Transitions invariant).
       expect(
         () => game.transitionTo(GamePhase.cascading),
         throwsA(isA<AssertionError>()),
