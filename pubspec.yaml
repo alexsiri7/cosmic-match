@@ -31,8 +31,25 @@ dev_dependencies:
     sdk: flutter
   flutter_lints: ^6.0.0
   flame_test: ^2.2.4
+  sentry_dart_plugin: ^2.0.0
 
 flutter:
   uses-material-design: true
   assets:
     - assets/images/
+
+# sentry_dart_plugin configuration.
+# Runs via `flutter pub run sentry_dart_plugin` after release builds in CI
+# to upload Dart debug symbols / obfuscation maps to Sentry so stack traces
+# can be symbolicated server-side.
+#
+# auth_token is NOT stored here — it's read from the SENTRY_AUTH_TOKEN env
+# var supplied by the CI job. The EU region still uses the sentry.io base
+# URL; the plugin auto-routes based on org.
+sentry:
+  upload_debug_symbols: true
+  upload_source_maps: true
+  upload_sources: true
+  project: cosmic-match
+  org: alex-siri
+  url: https://sentry.io/
