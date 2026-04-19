@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Adaptive launcher icon foreground for Cosmic Match.
+
+    Viewport: 108x108dp (standard adaptive icon). Safe zone is the centred
+    66x66dp circle — all critical shapes stay within it.
+
+    Composition:
+      - A soft radial nebula wash (kLyraNebulaA violet fading to transparent)
+        centred slightly off-centre, evoking the home-screen nebula gradient.
+      - A main 5-point star in kLyraAccent (#C070E8), centred at (54,54),
+        outer radius 30dp, inner radius 12dp.
+      - Three small sparkle dots to nod to the starfield motif.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- Soft nebula wash behind the star (violet -> transparent radial). -->
+    <path android:pathData="M0,0 L108,0 L108,108 L0,108 Z">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:type="radial"
+                android:centerX="54"
+                android:centerY="54"
+                android:gradientRadius="40"
+                android:startColor="#664A1F85"
+                android:endColor="#004A1F85" />
+        </aapt:attr>
+    </path>
+
+    <!-- Small cobalt nebula bloom, off-centre for depth. -->
+    <path android:pathData="M0,0 L108,0 L108,108 L0,108 Z">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:type="radial"
+                android:centerX="72"
+                android:centerY="70"
+                android:gradientRadius="22"
+                android:startColor="#4D1A4880"
+                android:endColor="#001A4880" />
+        </aapt:attr>
+    </path>
+
+    <!-- Main 5-point star, kLyraAccent. Centre (54,54), R=30, r=12. -->
+    <path
+        android:pathData="M54,24 L61.05,44.29 L82.53,44.73 L65.41,57.71 L71.63,78.27 L54,66 L36.37,78.27 L42.59,57.71 L25.47,44.73 L46.95,44.29 Z"
+        android:fillColor="#C070E8" />
+
+    <!-- Star inner glow highlight (lighter lavender overlay, smaller). -->
+    <path
+        android:pathData="M54,34 L58.23,46.57 L71.52,46.84 L60.74,54.63 L64.98,67.20 L54,59.50 L43.02,67.20 L47.26,54.63 L36.48,46.84 L49.77,46.57 Z"
+        android:fillColor="#80FFFFFF" />
+
+    <!-- Three small sparkles (starfield motif), semi-transparent white. -->
+    <path
+        android:pathData="M30,30 m-1.5,0 a1.5,1.5 0 1,0 3,0 a1.5,1.5 0 1,0 -3,0 Z"
+        android:fillColor="#B3FFFFFF" />
+    <path
+        android:pathData="M80,36 m-1,0 a1,1 0 1,0 2,0 a1,1 0 1,0 -2,0 Z"
+        android:fillColor="#99FFFFFF" />
+    <path
+        android:pathData="M34,80 m-1,0 a1,1 0 1,0 2,0 a1,1 0 1,0 -2,0 Z"
+        android:fillColor="#99FFFFFF" />
+</vector>
