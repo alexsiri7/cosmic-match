@@ -38,11 +38,19 @@ class GridWorld extends World {
   late _BoardBackdrop _backdropRef;
   late _CosmicBackground _bgRef;
 
-  GridWorld({Random? rng}) : _rng = rng ?? Random();
+  final List<List<TileType?>>? _testGrid;
+
+  GridWorld({Random? rng, List<List<TileType?>>? testGrid})
+      : _rng = rng ?? Random(),
+        _testGrid = testGrid;
 
   @override
   Future<void> onLoad() async {
-    _initGrid();
+    if (_testGrid != null) {
+      grid = List.generate(cols, (x) => List.of(_testGrid![x]));
+    } else {
+      _initGrid();
+    }
 
     final game = findGame() as Match3Game;
     _progressService = game.progressService;
