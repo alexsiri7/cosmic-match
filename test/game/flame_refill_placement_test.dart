@@ -34,6 +34,11 @@ void main() {
             expect(pos.x, lessThan(gameSize.x));
             expect(pos.y, greaterThanOrEqualTo(GridWorld.headerHeight));
             expect(pos.y, lessThan(gameSize.y));
+            // For the last row, verify the tile's bottom edge also fits on screen.
+            if (y == GridWorld.rows - 1) {
+              expect(pos.y + world.tileSize, lessThanOrEqualTo(gameSize.y + kTestEpsilon),
+                  reason: 'Bottom edge of last row must not overflow the viewport');
+            }
           }
         }
       },

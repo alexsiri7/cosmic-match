@@ -26,13 +26,13 @@ void main() {
     );
 
     testWithGame<FlameGame>(
-      'tileSize uses min(width/cols, height/rows) — height-constrained on square canvas',
+      'tileSize uses min(width/cols, (height−headerHeight)/rows) — height-constrained on square canvas',
       () => FlameGame(world: TestGridWorld()),
       (game) async {
         final world = game.world as TestGridWorld;
         world.grid = List.generate(
             GridWorld.cols, (_) => List.generate(GridWorld.rows, (_) => null));
-        // Square canvas: width/cols = 400/8 = 50; (height-headerHeight)/rows = (400-60)/8 = 42.5
+        // Square canvas: width/cols = 400/8 = 50; (height-headerHeight)/rows = (400-GridWorld.headerHeight)/8 = 42.5
         // min() picks 42.5 (height-constrained); a width-only formula would pick 50.
         final gameSize = Vector2(400, 400);
         world.initLayoutForTest(gameSize);
