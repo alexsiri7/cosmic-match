@@ -125,13 +125,30 @@ jobs:
         env:
           SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
           FEEDBACK_WORKER_URL: ${{ vars.FEEDBACK_WORKER_URL || 'https://feedback.alexsiri7.workers.dev/' }}
-        run: flutter build appbundle --release --dart-define=SENTRY_DSN=$SENTRY_DSN --dart-define=FEEDBACK_WORKER_URL=$FEEDBACK_WORKER_URL
+        # --split-debug-info + --obfuscate produce the Dart debug symbols that
+        # sentry_dart_plugin uploads in the next step, enabling server-side
+        # symbolication of release stack traces.
+        run: flutter build appbundle --release --split-debug-info=build/symbols --obfuscate --dart-define=SENTRY_DSN=$SENTRY_DSN --dart-define=FEEDBACK_WORKER_URL=$FEEDBACK_WORKER_URL
+
+      - name: Upload debug symbols to Sentry (AAB)
+        env:
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+        # Gate on SENTRY_AUTH_TOKEN so PRs from forks (no secret access)
+        # don't fail this step.
+        if: env.SENTRY_AUTH_TOKEN != ''
+        run: flutter pub run sentry_dart_plugin
 
       - name: Build release APK
         env:
           SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
           FEEDBACK_WORKER_URL: ${{ vars.FEEDBACK_WORKER_URL || 'https://feedback.alexsiri7.workers.dev/' }}
-        run: flutter build apk --release --dart-define=SENTRY_DSN=$SENTRY_DSN --dart-define=FEEDBACK_WORKER_URL=$FEEDBACK_WORKER_URL
+        run: flutter build apk --release --split-debug-info=build/symbols --obfuscate --dart-define=SENTRY_DSN=$SENTRY_DSN --dart-define=FEEDBACK_WORKER_URL=$FEEDBACK_WORKER_URL
+
+      - name: Upload debug symbols to Sentry (APK)
+        env:
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+        if: env.SENTRY_AUTH_TOKEN != ''
+        run: flutter pub run sentry_dart_plugin
 
       - name: Upload signed AAB
         if: steps.keystore.outputs.used_real == 'yes'
