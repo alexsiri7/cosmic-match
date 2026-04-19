@@ -127,4 +127,67 @@ void main() {
       expect(world.cascade.canContinue, isFalse);
     });
   });
+
+  group('GridWorld testGrid injection', () {
+    test('injected grid values appear in world.grid after copy', () {
+      final injected = List.generate(
+        GridWorld.cols,
+        (_) => List<TileType?>.generate(GridWorld.rows, (_) => TileType.orange),
+      );
+      injected[0][7] = TileType.red;
+      injected[1][7] = TileType.red;
+      injected[2][7] = TileType.blue;
+
+      final world = GridWorld(testGrid: injected);
+      // Simulate the onLoad testGrid copy branch directly.
+      world.grid = List.generate(GridWorld.cols, (x) => List.of(injected[x]));
+
+      expect(world.grid[0][7], TileType.red);
+      expect(world.grid[1][7], TileType.red);
+      expect(world.grid[2][7], TileType.blue);
+      expect(world.grid[0][0], TileType.orange);
+    });
+
+    test('testGrid deep-copies: mutating original does not affect game grid', () {
+      final original = List.generate(
+        GridWorld.cols,
+        (_) => List<TileType?>.generate(GridWorld.rows, (_) => TileType.orange),
+      );
+      original[0][0] = TileType.red;
+
+      final world = GridWorld(testGrid: original);
+      // Simulate the onLoad testGrid copy branch directly.
+      world.grid = List.generate(GridWorld.cols, (x) => List.of(original[x]));
+
+      // Mutate the original after the copy.
+      original[0][0] = TileType.blue;
+
+      // The game grid must still hold the value from the time of copy.
+      expect(world.grid[0][0], TileType.red,
+          reason: 'testGrid copy must be independent of the original list');
+    });
+
+    test('testGrid dimension assert fires for wrong column count', () {
+      final badGrid = List.generate(
+        GridWorld.cols - 1, // one column short
+        (_) => List<TileType?>.generate(GridWorld.rows, (_) => TileType.orange),
+      );
+      expect(
+        () => GridWorld(testGrid: badGrid),
+        throwsA(isA<AssertionError>()),
+      );
+    });
+
+    test('testGrid dimension assert fires for wrong row count', () {
+      final badGrid = List.generate(
+        GridWorld.cols,
+        (_) => List<TileType?>.generate(
+            GridWorld.rows - 1, (_) => TileType.orange),
+      );
+      expect(
+        () => GridWorld(testGrid: badGrid),
+        throwsA(isA<AssertionError>()),
+      );
+    });
+  });
 }

@@ -3,6 +3,7 @@ import 'package:flame/components.dart';
 import 'package:flame/game.dart';
 import 'package:flame_riverpod/flame_riverpod.dart';
 import 'package:flutter/foundation.dart';
+import '../models/tile_type.dart';
 import 'components/grid_tile.dart';
 import 'world/grid_world.dart';
 import '../core/logger.dart';
@@ -34,8 +35,8 @@ class Match3Game extends FlameGame<GridWorld> with RiverpodGameMixin {
   final ProgressService? progressService;
   final scoreNotifier = ValueNotifier<({int score, int best})>((score: 0, best: 0));
 
-  Match3Game({this.progressService, Random? rng})
-      : super(world: GridWorld(rng: rng));
+  Match3Game({this.progressService, Random? rng, List<List<TileType?>>? testGrid})
+      : super(world: GridWorld(rng: rng, testGrid: testGrid));
 
   @override
   Future<void> onLoad() async {

@@ -80,7 +80,17 @@ class CosmicMatchApp extends StatefulWidget {
   final ProgressService progressService;
   final FeedbackService? feedbackService;
 
-  const CosmicMatchApp({super.key, required this.progressService, this.feedbackService});
+  /// Overrides the [Match3Game] instance used by the app.
+  /// For testing only — bypasses Hive-backed [ProgressService] initialisation.
+  @visibleForTesting
+  final Match3Game? gameOverride;
+
+  const CosmicMatchApp({
+    super.key,
+    required this.progressService,
+    this.feedbackService,
+    this.gameOverride,
+  });
 
   @override
   State<CosmicMatchApp> createState() => _CosmicMatchAppState();
@@ -94,7 +104,7 @@ class _CosmicMatchAppState extends State<CosmicMatchApp> {
   @override
   void initState() {
     super.initState();
-    _game = Match3Game(progressService: widget.progressService);
+    _game = widget.gameOverride ?? Match3Game(progressService: widget.progressService);
   }
 
   Future<Uint8List> _captureScreenshot() async {
