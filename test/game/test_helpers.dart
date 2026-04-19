@@ -19,12 +19,8 @@ class TestGridWorld extends GridWorld {
   @override
   Future<void> onLoad() async {
     // Intentionally empty — skip Match3Game cast and all engine-dependent setup.
-    // Call initLayoutForTest(gameSize) to configure layout after construction.
   }
 }
 
 /// Tolerance for floating-point position comparisons (half a pixel).
-///
-/// Used in `closeTo(value, kTestEpsilon)` matchers where sub-pixel differences
-/// in floating-point arithmetic are acceptable.
 const double kTestEpsilon = 0.5;
