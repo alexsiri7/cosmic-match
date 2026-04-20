@@ -155,7 +155,7 @@ class _CosmicMatchAppState extends State<CosmicMatchApp> {
     }
     if (!mounted) return;
     final navContext = _navigatorKey.currentContext;
-    if (navContext == null) return;
+    if (navContext == null || !navContext.mounted) return;
     showFeedbackSheet(
       navContext,
       screenshotBytes: screenshotBytes,
