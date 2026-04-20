@@ -159,7 +159,10 @@ class _CosmicMatchAppState extends State<CosmicMatchApp> {
     // Navigator has mounted (e.g. during app startup). The .mounted check is an
     // extra defensive guard; GlobalKey.currentContext is non-null only while the
     // widget is in the tree, so it is effectively always true when non-null.
-    if (navContext == null || !navContext.mounted) return;
+    if (navContext == null || !navContext.mounted) {
+      gameLogger.w('_showFeedback: navigator context unavailable');
+      return;
+    }
     showFeedbackSheet(
       navContext,
       screenshotBytes: screenshotBytes,
