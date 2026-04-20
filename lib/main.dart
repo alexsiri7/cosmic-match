@@ -155,6 +155,10 @@ class _CosmicMatchAppState extends State<CosmicMatchApp> {
     }
     if (!mounted) return;
     final navContext = _navigatorKey.currentContext;
+    // navContext is null when _showFeedback is called before the MaterialApp's
+    // Navigator has mounted (e.g. during app startup). The .mounted check is an
+    // extra defensive guard; GlobalKey.currentContext is non-null only while the
+    // widget is in the tree, so it is effectively always true when non-null.
     if (navContext == null || !navContext.mounted) return;
     showFeedbackSheet(
       navContext,
