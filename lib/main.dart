@@ -109,6 +109,7 @@ class _CosmicMatchAppState extends State<CosmicMatchApp> {
   _Screen _currentScreen = _Screen.home;
   late final Match3Game _game;
   final _repaintBoundaryKey = GlobalKey();
+  final _navigatorKey = GlobalKey<NavigatorState>();
 
   @override
   void initState() {
@@ -153,8 +154,10 @@ class _CosmicMatchAppState extends State<CosmicMatchApp> {
       ]);
     }
     if (!mounted) return;
+    final navContext = _navigatorKey.currentContext;
+    if (navContext == null) return;
     showFeedbackSheet(
-      context,
+      navContext,
       screenshotBytes: screenshotBytes,
       onSubmit: ({
         required String type,
@@ -194,6 +197,7 @@ class _CosmicMatchAppState extends State<CosmicMatchApp> {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      navigatorKey: _navigatorKey,
       title: 'Cosmic Match',
       theme: ThemeData.dark().copyWith(
         scaffoldBackgroundColor: const Color(0xFF0D0A1A),
