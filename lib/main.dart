@@ -109,6 +109,7 @@ class _CosmicMatchAppState extends State<CosmicMatchApp> {
   _Screen _currentScreen = _Screen.home;
   late final Match3Game _game;
   final _repaintBoundaryKey = GlobalKey();
+  final _navigatorKey = GlobalKey<NavigatorState>();
 
   @override
   void initState() {
@@ -153,8 +154,17 @@ class _CosmicMatchAppState extends State<CosmicMatchApp> {
       ]);
     }
     if (!mounted) return;
+    final navContext = _navigatorKey.currentContext;
+    // navContext is null when _showFeedback is called before the MaterialApp's
+    // Navigator has mounted (e.g. during app startup). The .mounted check is an
+    // extra defensive guard; GlobalKey.currentContext is non-null only while the
+    // widget is in the tree, so it is effectively always true when non-null.
+    if (navContext == null || !navContext.mounted) {
+      gameLogger.w('_showFeedback: navigator context unavailable');
+      return;
+    }
     showFeedbackSheet(
-      context,
+      navContext,
       screenshotBytes: screenshotBytes,
       onSubmit: ({
         required String type,
@@ -194,6 +204,7 @@ class _CosmicMatchAppState extends State<CosmicMatchApp> {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      navigatorKey: _navigatorKey,
       title: 'Cosmic Match',
       theme: ThemeData.dark().copyWith(
         scaffoldBackgroundColor: const Color(0xFF0D0A1A),

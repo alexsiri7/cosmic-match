@@ -29,9 +29,8 @@ class SentrySmokeService {
   })  : _send = send ?? _defaultSend,
         _openBox = openBox ?? _defaultOpenBox;
 
-  static Future<void> _defaultSend(String message) async {
-    await Sentry.captureMessage(message);
-  }
+  static Future<void> _defaultSend(String message) =>
+      Sentry.captureMessage(message);
 
   static Future<Box<dynamic>> _defaultOpenBox(String name) =>
       Hive.openBox<dynamic>(name);
