@@ -182,6 +182,28 @@ jobs:
           path: build/app/outputs/flutter-apk/app-release.apk
           retention-days: 7
 
+      - name: Publish to Play Store internal track
+        if: steps.keystore.outputs.used_real == 'yes' && github.ref == 'refs/heads/main' && secrets.PLAY_SERVICE_ACCOUNT_JSON != ''
+        uses: r0adkll/upload-google-play@v1
+        with:
+          serviceAccountJsonPlainText: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+          packageName: net.interstellarai.cosmicmatch
+          releaseFiles: build/app/outputs/bundle/release/app-release.aab
+          track: internal
+          status: draft
+
+      - name: Notify prod landing
+        if: success() && github.ref == 'refs/heads/main' && steps.keystore.outputs.used_real == 'yes'
+        env:
+          NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
+        run: |
+          [ -z "$NTFY_TOPIC" ] && exit 0
+          curl -s -o /dev/null \
+            -H "Title: cosmic-match landed in prod" \
+            -H "Tags: tada" \
+            -d "Cosmic Match uploaded to Play Store internal track ✓" \
+            "ntfy.sh/$NTFY_TOPIC"
+
       - name: Clean up signing credentials
         if: always()
         run: rm -f android/cosmic-match-release.jks android/key.properties
