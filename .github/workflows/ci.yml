@@ -183,7 +183,7 @@ jobs:
           retention-days: 7
 
       - name: Publish to Play Store internal track
-        if: steps.keystore.outputs.used_real == 'yes' && github.ref == 'refs/heads/main' && secrets.PLAY_SERVICE_ACCOUNT_JSON != ''
+        if: steps.keystore.outputs.used_real == 'yes' && github.ref == 'refs/heads/main'
         uses: r0adkll/upload-google-play@v1
         with:
           serviceAccountJsonPlainText: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
