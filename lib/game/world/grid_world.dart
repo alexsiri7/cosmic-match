@@ -114,7 +114,10 @@ class GridWorld extends World {
     super.onGameResize(size);
     if (!isLoaded) return;
     final game = findGame() as Match3Game?;
-    if (game == null) return;
+    if (game == null) {
+      gameLogger.w('GridWorld.onGameResize: findGame() returned null — skipping resize');
+      return;
+    }
     _applyLayout(game.canvasSize);
     _bgRef.size = Vector2(game.size.x, game.size.y);
     _backdropRef.position = _boardOffset - Vector2(8, 8);
@@ -302,9 +305,18 @@ class GridWorld extends World {
           break;
         }
       }
-      if (!placed && tile.isMounted) {
-        // Tile was cleared by a match; removeFromParent is idempotent only when mounted
-        tile.removeFromParent();
+      if (!placed) {
+        // Tile was cleared by a match; removeFromParent is idempotent only when mounted.
+        // If unmounted, an upstream pass already detached it — log so we can detect
+        // lifecycle drift (e.g. animation completion racing the cascade reshuffle).
+        if (tile.isMounted) {
+          tile.removeFromParent();
+        } else {
+          gameLogger.w(
+            'GridWorld._applyGravityWithAnimation: unplaced tile already unmounted at '
+            '(${tile.gridX}, ${tile.gridY}) — upstream removal raced with gravity',
+          );
+        }
       }
     }
 

@@ -18,16 +18,24 @@ class GridTile extends RectangleComponent
   TileType get tileType => _tileType;
   set tileType(TileType value) {
     if (_tileType == value) return;
-    _tileType = value;
-    // Refresh cached painter and glow to reflect the new type.
-    // Only runs after onLoad; before that the cache is set by onLoad itself.
+    // Resolve palette before mutating _tileType so a missing entry leaves
+    // _tileType, _painter, and _glowPaint mutually consistent (otherwise
+    // the tile would report the new type while painting the old colour —
+    // a silent visual/logical mismatch in match-3 logic).
     if (_painterReady) {
-      final color = kTilePalette[_tileType];
+      final color = kTilePalette[value];
       assert(color != null,
-          'kTilePalette missing entry for TileType.$_tileType — update tile_type.dart');
-      if (color == null) return;
-      _painter = tilePainterFor(_tileType, color);
-      _glowPaint.color = kTileGlowPalette[_tileType] ?? Colors.white;
+          'kTilePalette missing entry for TileType.$value — update tile_type.dart');
+      if (color == null) {
+        gameLogger.e('GridTile.tileType setter: kTilePalette missing entry for $value — keeping previous type');
+        return;
+      }
+      _tileType = value;
+      _painter = tilePainterFor(value, color);
+      _glowPaint.color = kTileGlowPalette[value] ?? Colors.white;
+    } else {
+      // Pre-onLoad: defer painter construction; onLoad will resolve the palette.
+      _tileType = value;
     }
   }
 
@@ -57,6 +65,9 @@ class GridTile extends RectangleComponent
     final color = kTilePalette[_tileType];
     assert(color != null,
         'kTilePalette missing entry for TileType.$_tileType — update tile_type.dart');
+    if (color == null) {
+      gameLogger.e('GridTile.onLoad: kTilePalette missing entry for $_tileType — falling back to white');
+    }
 
     _painter = tilePainterFor(_tileType, color ?? const Color(0xFFFFFFFF));
 
