@@ -22,7 +22,6 @@ enum SwipeDirection {
   final int dy;
 }
 
-// Legal state transitions
 const _validTransitions = <GamePhase, Set<GamePhase>>{
   GamePhase.idle: {GamePhase.swapping},
   GamePhase.swapping: {GamePhase.matching, GamePhase.idle}, // idle on invalid swap
