@@ -274,6 +274,7 @@ class GridWorld extends World {
         if (grid[tile.gridX][y] == tile.tileType && newTiles[tile.gridX][y] == null) {
           newTiles[tile.gridX][y] = tile;
           if (tile.gridY != y) {
+            tile.position = _tilePosition(tile.gridX, tile.gridY);
             tile.gridY = y;
             tile.add(MoveEffect.to(
               _tilePosition(tile.gridX, y),

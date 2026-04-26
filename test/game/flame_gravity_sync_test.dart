@@ -34,6 +34,30 @@ void main() {
     );
 
     testWithGame<FlameGame>(
+      'gravity animation starts from canonical grid position — no positional drift',
+      () => FlameGame(world: TestGridWorld()),
+      (game) async {
+        final world = game.world as TestGridWorld;
+        world.grid = List.generate(
+            GridWorld.cols, (_) => List.generate(GridWorld.rows, (_) => null));
+        world.grid[0][0] = TileType.red;
+        final gameSize = Vector2(400, 800);
+        world.initLayoutForTest(gameSize);
+
+        world.applyGravity();
+        expect(world.grid[0][0], isNull);
+        expect(world.grid[0][1], TileType.red);
+
+        final canonicalRow0 = world.tilePositionAt(0, 0);
+        final canonicalRow1 = world.tilePositionAt(0, 1);
+        expect(canonicalRow1.y - canonicalRow0.y,
+            closeTo(world.tileSize, kTestEpsilon),
+            reason: 'Canonical row 1 must be exactly one tileSize below row 0 '
+                '— this is the origin used to anchor falling tiles before MoveEffect');
+      },
+    );
+
+    testWithGame<FlameGame>(
       'tile settles to bottom row — position matches last row',
       () => FlameGame(world: TestGridWorld()),
       (game) async {
