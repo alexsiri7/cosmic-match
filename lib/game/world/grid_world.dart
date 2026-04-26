@@ -256,9 +256,8 @@ class GridWorld extends World {
     final liveTiles = <GridTile>[];
     for (int x = 0; x < cols; x++) {
       for (int y = 0; y < rows; y++) {
-        if (tiles[x][y] != null) {
-          liveTiles.add(tiles[x][y]!);
-        }
+        final t = tiles[x][y];
+        if (t != null) liveTiles.add(t);
       }
     }
 

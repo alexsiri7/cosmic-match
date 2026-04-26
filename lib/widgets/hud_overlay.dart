@@ -27,12 +27,13 @@ class HudOverlay extends StatelessWidget {
 
   Future<void> _onFeedbackTap(BuildContext context) async {
     final service = feedbackService;
-    if (service == null || screenshotKey == null) return;
+    final key = screenshotKey;
+    if (service == null || key == null) return;
 
     // Capture screenshot from RepaintBoundary
     Uint8List? screenshotBytes;
     try {
-      final boundary = screenshotKey!.currentContext?.findRenderObject()
+      final boundary = key.currentContext?.findRenderObject()
           as RenderRepaintBoundary?;
       if (boundary != null) {
         final image = await boundary.toImage(pixelRatio: 2.0);

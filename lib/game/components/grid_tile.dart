@@ -109,20 +109,16 @@ class GridTile extends RectangleComponent
   }
 
   /// Thin wrapper exposed for unit testing without a Flame engine.
-  /// Consistent with the [selectionBorderVisible] pattern in this file.
   @visibleForTesting
   SwipeDirection? dominantDirectionForTest(Vector2 delta, double threshold) =>
       _dominantDirection(delta, threshold);
 
-  /// Restores all drag-mutated positions and clears drag state.
   /// Called from every drag exit path to prevent tiles staying displaced.
   void _resetDragState() {
     _dragging = false;
     position = _dragOriginPosition;
-    if (_dragPreviewNeighbor != null) {
-      _dragPreviewNeighbor!.position = _dragNeighborOrigin;
-      _dragPreviewNeighbor = null;
-    }
+    _dragPreviewNeighbor?.position = _dragNeighborOrigin;
+    _dragPreviewNeighbor = null;
   }
 
   @override
