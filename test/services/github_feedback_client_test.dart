@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
@@ -65,7 +66,7 @@ void main() {
           http.Response('{"message":"Bad credentials"}', 403));
 
       final client = GitHubFeedbackClient.withToken('ghp_bad', httpClient: mockHttp);
-      expect(
+      await expectLater(
         () => client.uploadImage('img-1', _minimalPng),
         throwsA(isA<FeedbackClientException>().having(
           (e) => e.message,
@@ -80,7 +81,7 @@ void main() {
           http.Response('{"message":"Unprocessable Entity"}', 422));
 
       final client = GitHubFeedbackClient.withToken('ghp_test', httpClient: mockHttp);
-      expect(
+      await expectLater(
         () => client.uploadImage('img-1', _minimalPng),
         throwsA(isA<FeedbackClientException>()),
       );
@@ -109,7 +110,7 @@ void main() {
           http.Response('{"message":"Bad credentials"}', 403));
 
       final client = GitHubFeedbackClient.withToken('ghp_bad', httpClient: mockHttp);
-      expect(
+      await expectLater(
         () => client.createIssue('desc', 'https://img.png'),
         throwsA(isA<FeedbackClientException>().having(
           (e) => e.message,
@@ -139,7 +140,7 @@ void main() {
           throw const SocketException('OS Error: syscall, errno = 0'));
 
       final client = GitHubFeedbackClient.withToken('ghp_test', httpClient: mockHttp);
-      expect(
+      await expectLater(
         () => client.uploadImage('img-1', _minimalPng),
         throwsA(isA<FeedbackClientException>()),
       );
@@ -150,7 +151,29 @@ void main() {
           throw const SocketException('OS Error: syscall, errno = 0'));
 
       final client = GitHubFeedbackClient.withToken('ghp_test', httpClient: mockHttp);
-      expect(
+      await expectLater(
+        () => client.createIssue('desc', 'https://img.png'),
+        throwsA(isA<FeedbackClientException>()),
+      );
+    });
+
+    test('uploadImage wraps TimeoutException as FeedbackClientException', () async {
+      final mockHttp = MockClient((_) async =>
+          throw TimeoutException('Connection timed out'));
+
+      final client = GitHubFeedbackClient.withToken('ghp_test', httpClient: mockHttp);
+      await expectLater(
+        () => client.uploadImage('img-1', _minimalPng),
+        throwsA(isA<FeedbackClientException>()),
+      );
+    });
+
+    test('createIssue wraps TimeoutException as FeedbackClientException', () async {
+      final mockHttp = MockClient((_) async =>
+          throw TimeoutException('Connection timed out'));
+
+      final client = GitHubFeedbackClient.withToken('ghp_test', httpClient: mockHttp);
+      await expectLater(
         () => client.createIssue('desc', 'https://img.png'),
         throwsA(isA<FeedbackClientException>()),
       );

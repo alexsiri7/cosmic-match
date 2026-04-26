@@ -59,7 +59,8 @@ class GitHubFeedbackClient {
             }),
           )
           .timeout(const Duration(seconds: 15));
-    } catch (e) {
+    } catch (e, stack) {
+      gameLogger.w('GitHubFeedbackClient.uploadImage: network error', error: e, stackTrace: stack);
       throw FeedbackClientException('Image upload network error: $e');
     }
 
@@ -98,7 +99,8 @@ class GitHubFeedbackClient {
             }),
           )
           .timeout(const Duration(seconds: 15));
-    } catch (e) {
+    } catch (e, stack) {
+      gameLogger.w('GitHubFeedbackClient.createIssue: network error', error: e, stackTrace: stack);
       throw FeedbackClientException('Issue creation network error: $e');
     }
 
