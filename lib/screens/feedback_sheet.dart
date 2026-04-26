@@ -53,6 +53,8 @@ class _FeedbackSheetState extends State<_FeedbackSheet> {
   String _selectedType = 'bug';
   final List<List<Offset?>> _drawPaths = [[]];
   bool _submitting = false;
+  bool _drawMode = true;
+  Offset _imageOffset = Offset.zero;
 
   @override
   void dispose() {
@@ -107,8 +109,10 @@ class _FeedbackSheetState extends State<_FeedbackSheet> {
       for (int i = 0; i < path.length - 1; i++) {
         if (path[i] != null && path[i + 1] != null) {
           canvas.drawLine(
-            Offset(path[i]!.dx * scaleX, path[i]!.dy * scaleY),
-            Offset(path[i + 1]!.dx * scaleX, path[i + 1]!.dy * scaleY),
+            Offset((path[i]!.dx - _imageOffset.dx) * scaleX,
+                   (path[i]!.dy - _imageOffset.dy) * scaleY),
+            Offset((path[i + 1]!.dx - _imageOffset.dx) * scaleX,
+                   (path[i + 1]!.dy - _imageOffset.dy) * scaleY),
             paint,
           );
         }
@@ -137,11 +141,10 @@ class _FeedbackSheetState extends State<_FeedbackSheet> {
     return Container(
       margin: EdgeInsets.only(bottom: bottomInset),
       decoration: BoxDecoration(
-        color: kLyraInk,
         gradient: RadialGradient(
           center: const Alignment(0.0, -1.0),
           radius: 1.2,
-          colors: [kLyraNebulaA.withValues(alpha: 0.6), Colors.transparent],
+          colors: [kLyraNebulaA.withValues(alpha: 0.6), kLyraInk],
         ),
         border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
         borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
@@ -181,36 +184,73 @@ class _FeedbackSheetState extends State<_FeedbackSheet> {
                   builder: (context, constraints) {
                     _previewWidth = constraints.maxWidth;
                     _previewHeight = _previewWidth * 0.6;
-                    return ClipRRect(
-                      borderRadius: BorderRadius.circular(12),
-                      child: SizedBox(
-                        width: _previewWidth,
-                        height: _previewHeight,
-                        child: GestureDetector(
-                          onPanStart: (d) {
-                            setState(() {
-                              _drawPaths.add([d.localPosition]);
-                            });
-                          },
-                          onPanUpdate: (d) {
-                            setState(() {
-                              _drawPaths.last.add(d.localPosition);
-                            });
-                          },
-                          onPanEnd: (_) {
-                            _drawPaths.last.add(null);
-                          },
-                          child: CustomPaint(
-                            foregroundPainter: _DrawPainter(_drawPaths),
-                            child: Image.memory(
-                              widget.screenshotBytes,
-                              fit: BoxFit.cover,
-                              width: _previewWidth,
-                              height: _previewHeight,
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.end,
+                          children: [
+                            IconButton(
+                              icon: Icon(
+                                _drawMode ? Icons.edit : Icons.pan_tool,
+                                color: _drawMode
+                                    ? kLyraAccent
+                                    : Colors.white.withValues(alpha: 0.6),
+                                size: 18,
+                              ),
+                              tooltip: _drawMode ? 'Switch to pan mode' : 'Switch to draw mode',
+                              onPressed: () => setState(() => _drawMode = !_drawMode),
+                              padding: EdgeInsets.zero,
+                              constraints: const BoxConstraints(),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 4),
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(12),
+                          child: SizedBox(
+                            width: _previewWidth,
+                            height: _previewHeight,
+                            child: GestureDetector(
+                              onPanStart: (d) {
+                                if (_drawMode) {
+                                  setState(() {
+                                    _drawPaths.add([d.localPosition]);
+                                  });
+                                }
+                              },
+                              onPanUpdate: (d) {
+                                if (_drawMode) {
+                                  setState(() {
+                                    _drawPaths.last.add(d.localPosition);
+                                  });
+                                } else {
+                                  setState(() {
+                                    _imageOffset += d.delta;
+                                  });
+                                }
+                              },
+                              onPanEnd: (_) {
+                                if (_drawMode) {
+                                  _drawPaths.last.add(null);
+                                }
+                              },
+                              child: CustomPaint(
+                                foregroundPainter: _DrawPainter(_drawPaths),
+                                child: Transform.translate(
+                                  offset: _imageOffset,
+                                  child: Image.memory(
+                                    widget.screenshotBytes,
+                                    fit: BoxFit.cover,
+                                    width: _previewWidth,
+                                    height: _previewHeight,
+                                  ),
+                                ),
+                              ),
                             ),
                           ),
                         ),
-                      ),
+                      ],
                     );
                   },
                 ),
