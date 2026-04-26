@@ -45,15 +45,23 @@ class GitHubFeedbackClient {
     final b64 = base64Encode(pngBytes);
     final uri = Uri.parse(
         'https://api.github.com/repos/$_repo/contents/docs/feedback/$id.png');
-    final response = await _client.put(
-      uri,
-      headers: _headers,
-      body: jsonEncode({
-        'message': 'feedback image $id',
-        'content': b64,
-        'branch': 'main',
-      }),
-    );
+
+    final http.Response response;
+    try {
+      response = await _client
+          .put(
+            uri,
+            headers: _headers,
+            body: jsonEncode({
+              'message': 'feedback image $id',
+              'content': b64,
+              'branch': 'main',
+            }),
+          )
+          .timeout(const Duration(seconds: 15));
+    } catch (e) {
+      throw FeedbackClientException('Image upload network error: $e');
+    }
 
     if (response.statusCode < 200 || response.statusCode >= 300) {
       final snippet = response.body.substring(0, response.body.length.clamp(0, 200));
@@ -76,15 +84,23 @@ class GitHubFeedbackClient {
     gameLogger.d('GitHubFeedbackClient.createIssue');
 
     final uri = Uri.parse('https://api.github.com/repos/$_repo/issues');
-    final response = await _client.post(
-      uri,
-      headers: _headers,
-      body: jsonEncode({
-        'title': 'In-app feedback',
-        'body': '$description\n\n![]($imageUrl)',
-        'labels': ['feedback'],
-      }),
-    );
+
+    final http.Response response;
+    try {
+      response = await _client
+          .post(
+            uri,
+            headers: _headers,
+            body: jsonEncode({
+              'title': 'In-app feedback',
+              'body': '$description\n\n![]($imageUrl)',
+              'labels': ['feedback'],
+            }),
+          )
+          .timeout(const Duration(seconds: 15));
+    } catch (e) {
+      throw FeedbackClientException('Issue creation network error: $e');
+    }
 
     if (response.statusCode < 200 || response.statusCode >= 300) {
       final snippet = response.body.substring(0, response.body.length.clamp(0, 200));

@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
@@ -131,6 +132,28 @@ void main() {
       final client = GitHubFeedbackClient.withToken('ghp_secret', httpClient: mockHttp);
       await client.createIssue('test', 'https://img.png');
       expect(capturedRequest?.headers['Authorization'], 'token ghp_secret');
+    });
+
+    test('uploadImage wraps SocketException as FeedbackClientException', () async {
+      final mockHttp = MockClient((_) async =>
+          throw const SocketException('OS Error: syscall, errno = 0'));
+
+      final client = GitHubFeedbackClient.withToken('ghp_test', httpClient: mockHttp);
+      expect(
+        () => client.uploadImage('img-1', _minimalPng),
+        throwsA(isA<FeedbackClientException>()),
+      );
+    });
+
+    test('createIssue wraps SocketException as FeedbackClientException', () async {
+      final mockHttp = MockClient((_) async =>
+          throw const SocketException('OS Error: syscall, errno = 0'));
+
+      final client = GitHubFeedbackClient.withToken('ghp_test', httpClient: mockHttp);
+      expect(
+        () => client.createIssue('desc', 'https://img.png'),
+        throwsA(isA<FeedbackClientException>()),
+      );
     });
   });
 }
