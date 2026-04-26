@@ -53,18 +53,18 @@ void main() {
 
     test('does not fire again for the same buildNumber', () async {
       await service.maybeFire(version: '1.0.0', buildNumber: '1');
-      final firedAgain =
-          await service.maybeFire(version: '1.0.0', buildNumber: '1');
-      expect(firedAgain, isFalse);
+      expect(
+          await service.maybeFire(version: '1.0.0', buildNumber: '1'),
+          isFalse);
       expect(sent, ['launch-smoke v1.0.0+1']);
       expect(box.closeCount, 2);
     });
 
     test('fires again when buildNumber changes', () async {
       await service.maybeFire(version: '1.0.0', buildNumber: '1');
-      final fired =
-          await service.maybeFire(version: '1.0.1', buildNumber: '2');
-      expect(fired, isTrue);
+      expect(
+          await service.maybeFire(version: '1.0.1', buildNumber: '2'),
+          isTrue);
       expect(sent, ['launch-smoke v1.0.0+1', 'launch-smoke v1.0.1+2']);
       expect(box.get('last_smoke_build_number'), '2');
       expect(box.closeCount, 2);

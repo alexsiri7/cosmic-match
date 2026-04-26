@@ -313,7 +313,7 @@ class GridWorld extends World {
 
   void _refillAllWithAnimation() {
     // Capture which cells were empty before filling, then fill all nulls at once.
-    final before = List.generate(cols, (x) => List<TileType?>.from(grid[x]));
+    final before = List.generate(cols, (x) => List.of(grid[x]));
     refillAll();
     for (int x = 0; x < cols; x++) {
       for (int y = 0; y < rows; y++) {
