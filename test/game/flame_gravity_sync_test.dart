@@ -34,7 +34,7 @@ void main() {
     );
 
     testWithGame<FlameGame>(
-      '_tilePosition formula: row N+1 is exactly one tileSize below row N',
+      '_tilePosition formula: row spacing is exactly tileSize',
       () => FlameGame(world: TestGridWorld()),
       (game) async {
         final world = game.world as TestGridWorld;
@@ -53,8 +53,7 @@ void main() {
         expect(canonicalRow1.y - canonicalRow0.y,
             closeTo(world.tileSize, kTestEpsilon),
             reason: 'tilePositionAt rows must be exactly tileSize apart — '
-                'the gravity anchor reads this formula to set tile.position '
-                'before MoveEffect starts, so a wrong formula causes visual drift');
+                'gravity-driven MoveEffects compute their start from this formula');
       },
     );
 
