@@ -34,6 +34,31 @@ void main() {
     );
 
     testWithGame<FlameGame>(
+      '_tilePosition formula: row N+1 is exactly one tileSize below row N',
+      () => FlameGame(world: TestGridWorld()),
+      (game) async {
+        final world = game.world as TestGridWorld;
+        world.grid = List.generate(
+            GridWorld.cols, (_) => List.generate(GridWorld.rows, (_) => null));
+        world.grid[0][0] = TileType.red;
+        final gameSize = Vector2(400, 800);
+        world.initLayoutForTest(gameSize);
+
+        world.applyGravity();
+        expect(world.grid[0][0], isNull);
+        expect(world.grid[0][1], TileType.red);
+
+        final canonicalRow0 = world.tilePositionAt(0, 0);
+        final canonicalRow1 = world.tilePositionAt(0, 1);
+        expect(canonicalRow1.y - canonicalRow0.y,
+            closeTo(world.tileSize, kTestEpsilon),
+            reason: 'tilePositionAt rows must be exactly tileSize apart — '
+                'the gravity anchor reads this formula to set tile.position '
+                'before MoveEffect starts, so a wrong formula causes visual drift');
+      },
+    );
+
+    testWithGame<FlameGame>(
       'tile settles to bottom row — position matches last row',
       () => FlameGame(world: TestGridWorld()),
       (game) async {
