@@ -229,9 +229,7 @@ class _FeedbackSheetState extends State<_FeedbackSheet> {
                                 });
                               },
                               onPanEnd: (_) {
-                                if (_drawMode) {
-                                  _drawPaths.last.add(null);
-                                }
+                                if (_drawMode) _drawPaths.last.add(null);
                               },
                               child: CustomPaint(
                                 foregroundPainter: _DrawPainter(_drawPaths),
