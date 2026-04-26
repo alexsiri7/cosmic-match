@@ -68,7 +68,11 @@ class GridWorld extends World {
       _initGrid();
     }
 
-    final game = findGame() as Match3Game;
+    final game = findGame() as Match3Game?;
+    if (game == null) {
+      gameLogger.w('GridWorld.onLoad: findGame() returned null — skipping setup');
+      return;
+    }
     _progressService = game.progressService;
 
     final progress =
@@ -109,7 +113,8 @@ class GridWorld extends World {
   void onGameResize(Vector2 size) {
     super.onGameResize(size);
     if (!isLoaded) return;
-    final game = findGame() as Match3Game;
+    final game = findGame() as Match3Game?;
+    if (game == null) return;
     _applyLayout(game.canvasSize);
     _bgRef.size = Vector2(game.size.x, game.size.y);
     _backdropRef.position = _boardOffset - Vector2(8, 8);
@@ -148,7 +153,11 @@ class GridWorld extends World {
   // --- Swap + Cascade Pipeline ---
 
   Future<void> runSwap(GridTile tileA, GridTile tileB) async {
-    final game = findGame() as Match3Game;
+    final game = findGame() as Match3Game?;
+    if (game == null) {
+      gameLogger.w('GridWorld.runSwap: findGame() returned null — aborting swap');
+      return;
+    }
     game.transitionTo(GamePhase.swapping);
     try {
       final posA = tileA.position.clone();
@@ -199,7 +208,11 @@ class GridWorld extends World {
   }
 
   Future<void> _runCascade(List<MatchResult> matches) async {
-    final game = findGame() as Match3Game;
+    final game = findGame() as Match3Game?;
+    if (game == null) {
+      gameLogger.w('GridWorld._runCascade: findGame() returned null — aborting cascade');
+      return;
+    }
     try {
       _clearMatches(matches);
 
@@ -290,6 +303,7 @@ class GridWorld extends World {
         }
       }
       if (!placed && tile.isMounted) {
+        // Tile was cleared by a match; removeFromParent is idempotent only when mounted
         tile.removeFromParent();
       }
     }

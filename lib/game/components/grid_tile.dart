@@ -23,6 +23,8 @@ class GridTile extends RectangleComponent
     // Only runs after onLoad; before that the cache is set by onLoad itself.
     if (_painterReady) {
       final color = kTilePalette[_tileType];
+      assert(color != null,
+          'kTilePalette missing entry for TileType.$_tileType — update tile_type.dart');
       if (color == null) return;
       _painter = tilePainterFor(_tileType, color);
       _glowPaint.color = kTileGlowPalette[_tileType] ?? Colors.white;

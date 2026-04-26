@@ -39,4 +39,18 @@ void main() {
       expect(tile.selectionBorderVisible, isFalse);
     });
   });
+
+  group('GridTile tileType setter', () {
+    test('tileType setter updates tileType after onLoad without throwing', () {
+      final tile = _tile(); // calls onLoad(), setting _painterReady = true
+      expect(() => tile.tileType = TileType.red, returnsNormally);
+      expect(tile.tileType, TileType.red);
+    });
+
+    test('tileType setter is a no-op when set to the same type', () {
+      final tile = _tile();
+      expect(() => tile.tileType = TileType.blue, returnsNormally);
+      expect(tile.tileType, TileType.blue); // unchanged
+    });
+  });
 }
