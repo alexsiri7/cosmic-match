@@ -26,7 +26,8 @@ class HudOverlay extends StatelessWidget {
   });
 
   Future<void> _onFeedbackTap(BuildContext context) async {
-    if (feedbackService == null || screenshotKey == null) return;
+    final service = feedbackService;
+    if (service == null || screenshotKey == null) return;
 
     // Capture screenshot from RepaintBoundary
     Uint8List? screenshotBytes;
@@ -69,7 +70,7 @@ class HudOverlay extends StatelessWidget {
         required String screenshotB64,
       }) async {
         final packageInfo = await PackageInfo.fromPlatform();
-        await feedbackService!.submit(
+        await service.submit(
           type: type,
           message: message,
           screenshotB64: screenshotB64,

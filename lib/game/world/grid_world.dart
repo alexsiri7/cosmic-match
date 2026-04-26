@@ -289,8 +289,7 @@ class GridWorld extends World {
           break;
         }
       }
-      if (!placed) {
-        // Tile was cleared — should have been removed already
+      if (!placed && tile.isMounted) {
         tile.removeFromParent();
       }
     }
