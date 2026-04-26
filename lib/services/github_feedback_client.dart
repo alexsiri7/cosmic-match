@@ -64,13 +64,7 @@ class GitHubFeedbackClient {
       throw FeedbackClientException('Image upload network error: $e');
     }
 
-    if (response.statusCode < 200 || response.statusCode >= 300) {
-      final snippet = response.body.substring(0, response.body.length.clamp(0, 200));
-      gameLogger.e(
-          'GitHubFeedbackClient.uploadImage failed: ${response.statusCode} — $snippet');
-      throw FeedbackClientException(
-          'Image upload failed with status ${response.statusCode}');
-    }
+    _throwIfError(response, method: 'uploadImage', label: 'Image upload');
 
     final json = jsonDecode(response.body) as Map<String, dynamic>;
     final content = json['content'] as Map<String, dynamic>;
@@ -104,15 +98,24 @@ class GitHubFeedbackClient {
       throw FeedbackClientException('Issue creation network error: $e');
     }
 
-    if (response.statusCode < 200 || response.statusCode >= 300) {
-      final snippet = response.body.substring(0, response.body.length.clamp(0, 200));
-      gameLogger.e(
-          'GitHubFeedbackClient.createIssue failed: ${response.statusCode} — $snippet');
-      throw FeedbackClientException(
-          'Issue creation failed with status ${response.statusCode}');
-    }
+    _throwIfError(response, method: 'createIssue', label: 'Issue creation');
 
     final json = jsonDecode(response.body) as Map<String, dynamic>;
     return json['html_url'] as String;
+  }
+
+  void _throwIfError(
+    http.Response response, {
+    required String method,
+    required String label,
+  }) {
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      final snippet =
+          response.body.substring(0, response.body.length.clamp(0, 200));
+      gameLogger.e(
+          'GitHubFeedbackClient.$method failed: ${response.statusCode} — $snippet');
+      throw FeedbackClientException(
+          '$label failed with status ${response.statusCode}');
+    }
   }
 }

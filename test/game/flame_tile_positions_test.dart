@@ -12,8 +12,7 @@ void main() {
       () => FlameGame(world: TestGridWorld()),
       (game) async {
         final world = game.world as TestGridWorld;
-        world.grid = List.generate(
-            GridWorld.cols, (_) => List.generate(GridWorld.rows, (_) => null));
+        world.grid = createEmptyGrid();
         world.grid[0][0] = TileType.red;
         final gameSize = Vector2(400, 800);
         world.initLayoutForTest(gameSize);
@@ -30,8 +29,7 @@ void main() {
       () => FlameGame(world: TestGridWorld()),
       (game) async {
         final world = game.world as TestGridWorld;
-        world.grid = List.generate(
-            GridWorld.cols, (_) => List.generate(GridWorld.rows, (_) => null));
+        world.grid = createEmptyGrid();
         // Square canvas: width/cols = 400/8 = 50; (height-headerHeight)/rows = (400-GridWorld.headerHeight)/8 = 42.5
         // min() picks 42.5 (height-constrained); a width-only formula would pick 50.
         final gameSize = Vector2(400, 400);
@@ -49,8 +47,7 @@ void main() {
       () => FlameGame(world: TestGridWorld()),
       (game) async {
         final world = game.world as TestGridWorld;
-        world.grid = List.generate(
-            GridWorld.cols, (_) => List.generate(GridWorld.rows, (_) => null));
+        world.grid = createEmptyGrid();
         world.grid[7][7] = TileType.blue;
         final gameSize = Vector2(400, 800);
         world.initLayoutForTest(gameSize);
@@ -67,8 +64,7 @@ void main() {
       () => FlameGame(world: TestGridWorld()),
       (game) async {
         final world = game.world as TestGridWorld;
-        world.grid = List.generate(
-            GridWorld.cols, (_) => List.generate(GridWorld.rows, (_) => null));
+        world.grid = createEmptyGrid();
         world.grid[2][3] = TileType.yellow;
         world.grid[3][3] = TileType.yellow;
         final gameSize = Vector2(400, 800);
@@ -85,8 +81,7 @@ void main() {
       () => FlameGame(world: TestGridWorld()),
       (game) async {
         final world = game.world as TestGridWorld;
-        world.grid = List.generate(
-            GridWorld.cols, (_) => List.generate(GridWorld.rows, (_) => null));
+        world.grid = createEmptyGrid();
         world.grid[4][1] = TileType.purple;
         world.grid[4][2] = TileType.purple;
         final gameSize = Vector2(400, 800);
