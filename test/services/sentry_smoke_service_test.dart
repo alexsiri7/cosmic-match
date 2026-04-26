@@ -16,6 +16,9 @@ class _FakeBox implements Box<dynamic> {
     _store[key] = value;
   }
 
+  @override
+  Future<void> close() async {}
+
   // Unused members — throwing signals a test-only drift if anything starts
   // calling them.
   @override
