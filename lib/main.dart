@@ -134,7 +134,8 @@ class _CosmicMatchAppState extends State<CosmicMatchApp> {
   }
 
   Future<void> _showFeedback() async {
-    if (widget.feedbackService == null) return;
+    final service = widget.feedbackService;
+    if (service == null) return;
     Uint8List screenshotBytes;
     try {
       screenshotBytes = await _captureScreenshot();
@@ -172,7 +173,7 @@ class _CosmicMatchAppState extends State<CosmicMatchApp> {
         required String screenshotB64,
       }) async {
         final packageInfo = await PackageInfo.fromPlatform();
-        await widget.feedbackService!.submit(
+        await service.submit(
           type: type,
           message: message,
           screenshotB64: screenshotB64,
