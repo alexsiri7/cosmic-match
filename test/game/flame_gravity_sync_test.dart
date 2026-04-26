@@ -1,6 +1,7 @@
 import 'package:flame/game.dart';
 import 'package:flame_test/flame_test.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:cosmic_match/game/components/grid_tile.dart';
 import 'package:cosmic_match/game/world/grid_world.dart';
 import 'package:cosmic_match/models/tile_type.dart';
 import 'test_helpers.dart';
@@ -112,6 +113,41 @@ void main() {
         // Same column — x should match
         expect(pos5.x, closeTo(pos6.x, kTestEpsilon));
         expect(pos6.x, closeTo(pos7.x, kTestEpsilon));
+      },
+    );
+
+    testWithGame<FlameGame>(
+      'tile with drifted position snaps to canonical cell before fall animation',
+      () => FlameGame(world: TestGridWorld()),
+      (game) async {
+        final world = game.world as TestGridWorld;
+        world.grid = List.generate(
+            GridWorld.cols, (_) => List.generate(GridWorld.rows, (_) => null));
+        world.grid[0][0] = TileType.red;
+        world.initLayoutForTest(Vector2(400, 800));
+
+        // Manually place a GridTile in tiles[][] to simulate what onLoad creates.
+        // GridTile is constructed but not mounted in the Flame tree — sufficient
+        // for testing the position snap; MoveEffect is queued but never runs.
+        final canonicalPos = world.tilePositionAt(0, 0);
+        final tile = GridTile(
+          gridX: 0,
+          gridY: 0,
+          tileType: TileType.red,
+          position: canonicalPos.clone(),
+          size: Vector2.all(world.tileSize - 2),
+        );
+        world.tiles[0][0] = tile;
+
+        // Simulate drift from a drag preview — shift the visual position off-grid
+        tile.position = Vector2(canonicalPos.x + 30, canonicalPos.y - 50);
+
+        // _applyGravityWithAnimation snaps tile.position to the canonical pre-fall
+        // cell before adding MoveEffect, preventing overshoot from the drifted start.
+        world.applyGravityWithAnimationForTest();
+
+        expect(tile.position.x, closeTo(canonicalPos.x, kTestEpsilon));
+        expect(tile.position.y, closeTo(canonicalPos.y, kTestEpsilon));
       },
     );
   });

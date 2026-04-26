@@ -418,6 +418,11 @@ class GridWorld extends World {
     _applyLayout(gameSize);
     tiles = List.generate(cols, (_) => List.generate(rows, (_) => null));
   }
+
+  /// Test-only: invokes [_applyGravityWithAnimation] directly so tests can
+  /// verify the snap-before-fall invariant without a full [Match3Game] context.
+  @visibleForTesting
+  void applyGravityWithAnimationForTest() => _applyGravityWithAnimation();
 }
 
 // Draws the cosmic ink background + nebula gradient overlays.
