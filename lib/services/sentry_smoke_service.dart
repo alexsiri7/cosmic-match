@@ -30,7 +30,12 @@ class SentrySmokeService {
         _openBox = openBox ?? _defaultOpenBox;
 
   static Future<void> _defaultSend(String message) =>
-      Sentry.captureMessage(message);
+      Sentry.captureMessage(
+        message,
+        withScope: (scope) {
+          scope.fingerprint = ['launch-smoke'];
+        },
+      );
 
   static Future<Box<dynamic>> _defaultOpenBox(String name) =>
       Hive.openBox<dynamic>(name);
@@ -46,16 +51,20 @@ class SentrySmokeService {
   }) async {
     try {
       final box = await _openBox(_boxName);
-      final last = box.get(_key);
-      if (last == buildNumber) {
-        gameLogger.d(
-            'SentrySmokeService: skipping, buildNumber=$buildNumber already smoke-tested');
-        return false;
+      try {
+        final last = box.get(_key);
+        if (last == buildNumber) {
+          gameLogger.d(
+              'SentrySmokeService: skipping, buildNumber=$buildNumber already smoke-tested');
+          return false;
+        }
+        await _send('launch-smoke v$version+$buildNumber');
+        await box.put(_key, buildNumber);
+        gameLogger.i('SentrySmokeService: fired for $version+$buildNumber');
+        return true;
+      } finally {
+        await box.close();
       }
-      await _send('launch-smoke v$version+$buildNumber');
-      await box.put(_key, buildNumber);
-      gameLogger.i('SentrySmokeService: fired for $version+$buildNumber');
-      return true;
     } catch (e, stack) {
       gameLogger.w('SentrySmokeService.maybeFire failed',
           error: e, stackTrace: stack);

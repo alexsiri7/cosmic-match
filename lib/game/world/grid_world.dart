@@ -71,12 +71,10 @@ class GridWorld extends World {
     final game = findGame() as Match3Game;
     _progressService = game.progressService;
 
-    // Load previous best score
     final progress =
         await _progressService?.load(1) ?? LevelProgress.initial(1);
     _bestScore = progress.bestScore;
 
-    // Cosmic background (behind everything)
     _bgRef = _CosmicBackground()
       ..size = Vector2(game.size.x, game.size.y);
     add(_bgRef);
@@ -84,13 +82,11 @@ class GridWorld extends World {
     // Compute layout — use canvasSize to prevent cropping on all viewports.
     _applyLayout(game.canvasSize);
 
-    // Board backdrop panel
     _backdropRef = _BoardBackdrop()
       ..position = _boardOffset - Vector2(8, 8)
       ..size = Vector2(tileSize * cols + 16, tileSize * rows + 16);
     add(_backdropRef);
 
-    // Build tiles matrix
     tiles = List.generate(cols, (_) => List.generate(rows, (_) => null));
     for (int x = 0; x < cols; x++) {
       for (int y = 0; y < rows; y++) {
@@ -155,23 +151,19 @@ class GridWorld extends World {
     final game = findGame() as Match3Game;
     game.transitionTo(GamePhase.swapping);
     try {
-      // Animate swap
       final posA = tileA.position.clone();
       final posB = tileB.position.clone();
       tileA.add(MoveEffect.to(posB, EffectController(duration: 0.2)));
       tileB.add(MoveEffect.to(posA, EffectController(duration: 0.2)));
       await Future<void>.delayed(const Duration(milliseconds: 220));
 
-      // Swap in logical grid
       _swapTiles(tileA, tileB);
 
       gameLogger.t('Swap attempted: (${tileA.gridX},${tileA.gridY}) ↔ (${tileB.gridX},${tileB.gridY})');
 
-      // Check for matches
       final matches = detector.detectAll(grid);
       gameLogger.t('${matches.length} match(es) found after swap');
       if (matches.isEmpty) {
-        // Revert swap
         tileA.add(MoveEffect.to(posA, EffectController(duration: 0.2)));
         tileB.add(MoveEffect.to(posB, EffectController(duration: 0.2)));
         await Future<void>.delayed(const Duration(milliseconds: 220));
@@ -180,7 +172,6 @@ class GridWorld extends World {
         return;
       }
 
-      // Valid match — run cascade
       game.transitionTo(GamePhase.matching);
       cascade.reset();
       await _runCascade(matches);
@@ -193,15 +184,12 @@ class GridWorld extends World {
   }
 
   void _swapTiles(GridTile tileA, GridTile tileB) {
-    // Swap grid entries
     grid[tileA.gridX][tileA.gridY] = tileB.tileType;
     grid[tileB.gridX][tileB.gridY] = tileA.tileType;
 
-    // Swap tiles matrix entries
     tiles[tileA.gridX][tileA.gridY] = tileB;
     tiles[tileB.gridX][tileB.gridY] = tileA;
 
-    // Swap grid coordinates on tile objects
     final tmpX = tileA.gridX;
     final tmpY = tileA.gridY;
     tileA.gridX = tileB.gridX;
@@ -260,14 +248,11 @@ class GridWorld extends World {
   }
 
   void _applyGravityWithAnimation() {
-    // Run gravity to completion
     while (applyGravity()) {}
 
-    // Sync tiles matrix to match new grid positions
     final newTiles =
         List.generate(cols, (_) => List<GridTile?>.generate(rows, (_) => null));
 
-    // Collect all live tiles
     final liveTiles = <GridTile>[];
     for (int x = 0; x < cols; x++) {
       for (int y = 0; y < rows; y++) {
@@ -348,7 +333,7 @@ class GridWorld extends World {
     }
   }
 
-  // --- Core grid logic (unchanged) ---
+  // --- Core grid logic ---
 
   void _initGrid() {
     var attempts = 0;
@@ -366,7 +351,6 @@ class GridWorld extends World {
     return TileType.values[_rng.nextInt(TileType.values.length)];
   }
 
-  /// Apply gravity: tiles fall down to fill nulls.
   /// Returns true if any tile moved.
   bool applyGravity() {
     bool moved = false;
@@ -382,7 +366,6 @@ class GridWorld extends World {
     return moved;
   }
 
-  /// Fill top row nulls with new random tiles.
   /// Kept as a unit-testable primitive; the cascade pipeline calls [refillAll].
   void refillTop() {
     for (int x = 0; x < cols; x++) {
@@ -390,10 +373,8 @@ class GridWorld extends World {
     }
   }
 
-  /// Fill ALL null cells in every column with new random tiles.
-  /// Called by the cascade pipeline after gravity settles to ensure the board
-  /// is fully packed before checking for new matches. Unlike [refillTop],
-  /// this covers multi-tile clears where rows 1-N can also be empty.
+  /// Called by the cascade pipeline after gravity settles; unlike [refillTop],
+  /// fills all rows so multi-tile clears are fully repacked.
   void refillAll() {
     for (int x = 0; x < cols; x++) {
       for (int y = 0; y < rows; y++) {

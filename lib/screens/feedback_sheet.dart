@@ -220,15 +220,13 @@ class _FeedbackSheetState extends State<_FeedbackSheet> {
                                 }
                               },
                               onPanUpdate: (d) {
-                                if (_drawMode) {
-                                  setState(() {
+                                setState(() {
+                                  if (_drawMode) {
                                     _drawPaths.last.add(d.localPosition);
-                                  });
-                                } else {
-                                  setState(() {
+                                  } else {
                                     _imageOffset += d.delta;
-                                  });
-                                }
+                                  }
+                                });
                               },
                               onPanEnd: (_) {
                                 if (_drawMode) {

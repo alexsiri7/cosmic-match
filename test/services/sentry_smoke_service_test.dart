@@ -6,6 +6,7 @@ import 'package:cosmic_match/services/sentry_smoke_service.dart';
 /// used by [SentrySmokeService] is implemented.
 class _FakeBox implements Box<dynamic> {
   final Map<dynamic, dynamic> _store = {};
+  int closeCount = 0;
 
   @override
   dynamic get(dynamic key, {dynamic defaultValue}) =>
@@ -14,6 +15,11 @@ class _FakeBox implements Box<dynamic> {
   @override
   Future<void> put(dynamic key, dynamic value) async {
     _store[key] = value;
+  }
+
+  @override
+  Future<void> close() async {
+    closeCount++;
   }
 
   // Unused members — throwing signals a test-only drift if anything starts
@@ -42,6 +48,7 @@ void main() {
       expect(fired, isTrue);
       expect(sent, ['launch-smoke v1.0.0+1']);
       expect(box.get('last_smoke_build_number'), '1');
+      expect(box.closeCount, 1);
     });
 
     test('does not fire again for the same buildNumber', () async {
@@ -50,6 +57,7 @@ void main() {
           await service.maybeFire(version: '1.0.0', buildNumber: '1');
       expect(firedAgain, isFalse);
       expect(sent, ['launch-smoke v1.0.0+1']);
+      expect(box.closeCount, 2);
     });
 
     test('fires again when buildNumber changes', () async {
@@ -59,9 +67,10 @@ void main() {
       expect(fired, isTrue);
       expect(sent, ['launch-smoke v1.0.0+1', 'launch-smoke v1.0.1+2']);
       expect(box.get('last_smoke_build_number'), '2');
+      expect(box.closeCount, 2);
     });
 
-    test('swallows send failures and reports not-fired', () async {
+    test('swallows send failures and closes box', () async {
       final throwing = SentrySmokeService(
         send: (_) async => throw StateError('sentry unavailable'),
         openBox: (_) async => box,
@@ -71,6 +80,7 @@ void main() {
       expect(fired, isFalse);
       // Nothing persisted, so a later successful call can still fire.
       expect(box.get('last_smoke_build_number'), isNull);
+      expect(box.closeCount, 1);
     });
   });
 }
