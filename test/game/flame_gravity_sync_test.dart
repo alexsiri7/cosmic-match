@@ -114,5 +114,25 @@ void main() {
         expect(pos6.x, closeTo(pos7.x, kTestEpsilon));
       },
     );
+
+    testWithGame<FlameGame>(
+      'tile with drifted position snaps to grid before fall animation',
+      () => FlameGame(world: TestGridWorld()),
+      (game) async {
+        final world = game.world as TestGridWorld;
+        world.grid = List.generate(
+            GridWorld.cols, (_) => List.generate(GridWorld.rows, (_) => null));
+        world.grid[0][0] = TileType.red;
+        final gameSize = Vector2(400, 800);
+        world.initLayoutForTest(gameSize);
+
+        final canonicalRow0 = world.tilePositionAt(0, 0);
+        while (world.applyGravity()) {}
+        final canonicalRow7 = world.tilePositionAt(0, GridWorld.rows - 1);
+
+        final travel = canonicalRow7.y - canonicalRow0.y;
+        expect(travel, closeTo((GridWorld.rows - 1) * world.tileSize, kTestEpsilon));
+      },
+    );
   });
 }
