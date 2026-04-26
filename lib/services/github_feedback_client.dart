@@ -45,23 +45,26 @@ class GitHubFeedbackClient {
     final b64 = base64Encode(pngBytes);
     final uri = Uri.parse(
         'https://api.github.com/repos/$_repo/contents/docs/feedback/$id.png');
-    final response = await _client.put(
-      uri,
-      headers: _headers,
-      body: jsonEncode({
-        'message': 'feedback image $id',
-        'content': b64,
-        'branch': 'main',
-      }),
-    );
 
-    if (response.statusCode < 200 || response.statusCode >= 300) {
-      final snippet = response.body.substring(0, response.body.length.clamp(0, 200));
-      gameLogger.e(
-          'GitHubFeedbackClient.uploadImage failed: ${response.statusCode} — $snippet');
-      throw FeedbackClientException(
-          'Image upload failed with status ${response.statusCode}');
+    final http.Response response;
+    try {
+      response = await _client
+          .put(
+            uri,
+            headers: _headers,
+            body: jsonEncode({
+              'message': 'feedback image $id',
+              'content': b64,
+              'branch': 'main',
+            }),
+          )
+          .timeout(const Duration(seconds: 15));
+    } catch (e, stack) {
+      gameLogger.w('GitHubFeedbackClient.uploadImage: network error', error: e, stackTrace: stack);
+      throw FeedbackClientException('Image upload network error: $e');
     }
+
+    _throwIfError(response, method: 'uploadImage', label: 'Image upload');
 
     final json = jsonDecode(response.body) as Map<String, dynamic>;
     final content = json['content'] as Map<String, dynamic>;
@@ -76,25 +79,43 @@ class GitHubFeedbackClient {
     gameLogger.d('GitHubFeedbackClient.createIssue');
 
     final uri = Uri.parse('https://api.github.com/repos/$_repo/issues');
-    final response = await _client.post(
-      uri,
-      headers: _headers,
-      body: jsonEncode({
-        'title': 'In-app feedback',
-        'body': '$description\n\n![]($imageUrl)',
-        'labels': ['feedback'],
-      }),
-    );
 
-    if (response.statusCode < 200 || response.statusCode >= 300) {
-      final snippet = response.body.substring(0, response.body.length.clamp(0, 200));
-      gameLogger.e(
-          'GitHubFeedbackClient.createIssue failed: ${response.statusCode} — $snippet');
-      throw FeedbackClientException(
-          'Issue creation failed with status ${response.statusCode}');
+    final http.Response response;
+    try {
+      response = await _client
+          .post(
+            uri,
+            headers: _headers,
+            body: jsonEncode({
+              'title': 'In-app feedback',
+              'body': '$description\n\n![]($imageUrl)',
+              'labels': ['feedback'],
+            }),
+          )
+          .timeout(const Duration(seconds: 15));
+    } catch (e, stack) {
+      gameLogger.w('GitHubFeedbackClient.createIssue: network error', error: e, stackTrace: stack);
+      throw FeedbackClientException('Issue creation network error: $e');
     }
+
+    _throwIfError(response, method: 'createIssue', label: 'Issue creation');
 
     final json = jsonDecode(response.body) as Map<String, dynamic>;
     return json['html_url'] as String;
+  }
+
+  void _throwIfError(
+    http.Response response, {
+    required String method,
+    required String label,
+  }) {
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      final snippet =
+          response.body.substring(0, response.body.length.clamp(0, 200));
+      gameLogger.e(
+          'GitHubFeedbackClient.$method failed: ${response.statusCode} — $snippet');
+      throw FeedbackClientException(
+          '$label failed with status ${response.statusCode}');
+    }
   }
 }

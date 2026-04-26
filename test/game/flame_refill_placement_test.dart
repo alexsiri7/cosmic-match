@@ -12,8 +12,7 @@ void main() {
       () => FlameGame(world: TestGridWorld()),
       (game) async {
         final world = game.world as TestGridWorld;
-        world.grid = List.generate(
-            GridWorld.cols, (_) => List.generate(GridWorld.rows, (_) => null));
+        world.grid = createEmptyGrid();
         // refillAll fills all null cells with random tiles
         world.refillAll();
         // Verify every cell is filled
@@ -79,8 +78,7 @@ void main() {
       () => FlameGame(world: TestGridWorld()),
       (game) async {
         final world = game.world as TestGridWorld;
-        world.grid = List.generate(
-            GridWorld.cols, (_) => List.generate(GridWorld.rows, (_) => null));
+        world.grid = createEmptyGrid();
         final gameSize = Vector2(400, 800);
         world.initLayoutForTest(gameSize);
 
@@ -101,8 +99,7 @@ void main() {
       () => FlameGame(world: TestGridWorld()),
       (game) async {
         final world = game.world as TestGridWorld;
-        world.grid = List.generate(
-            GridWorld.cols, (_) => List.generate(GridWorld.rows, (_) => null));
+        world.grid = createEmptyGrid();
         final gameSize = Vector2(400, 800);
         world.initLayoutForTest(gameSize);
 

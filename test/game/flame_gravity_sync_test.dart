@@ -13,8 +13,7 @@ void main() {
       () => FlameGame(world: TestGridWorld()),
       (game) async {
         final world = game.world as TestGridWorld;
-        world.grid = List.generate(
-            GridWorld.cols, (_) => List.generate(GridWorld.rows, (_) => null));
+        world.grid = createEmptyGrid();
         // Place tile at (0, 5) with null below at (0, 6)
         world.grid[0][5] = TileType.red;
         final gameSize = Vector2(400, 800);
@@ -39,8 +38,7 @@ void main() {
       () => FlameGame(world: TestGridWorld()),
       (game) async {
         final world = game.world as TestGridWorld;
-        world.grid = List.generate(
-            GridWorld.cols, (_) => List.generate(GridWorld.rows, (_) => null));
+        world.grid = createEmptyGrid();
         world.grid[0][0] = TileType.red;
         final gameSize = Vector2(400, 800);
         world.initLayoutForTest(gameSize);
@@ -64,8 +62,7 @@ void main() {
       () => FlameGame(world: TestGridWorld()),
       (game) async {
         final world = game.world as TestGridWorld;
-        world.grid = List.generate(
-            GridWorld.cols, (_) => List.generate(GridWorld.rows, (_) => null));
+        world.grid = createEmptyGrid();
         world.grid[3][0] = TileType.yellow;
         final gameSize = Vector2(400, 800);
 
@@ -87,8 +84,7 @@ void main() {
       () => FlameGame(world: TestGridWorld()),
       (game) async {
         final world = game.world as TestGridWorld;
-        world.grid = List.generate(
-            GridWorld.cols, (_) => List.generate(GridWorld.rows, (_) => null));
+        world.grid = createEmptyGrid();
         // Place 3 tiles in column 2: rows 0, 1, 2
         world.grid[2][0] = TileType.blue;
         world.grid[2][1] = TileType.orange;
@@ -121,8 +117,7 @@ void main() {
       () => FlameGame(world: TestGridWorld()),
       (game) async {
         final world = game.world as TestGridWorld;
-        world.grid = List.generate(
-            GridWorld.cols, (_) => List.generate(GridWorld.rows, (_) => null));
+        world.grid = createEmptyGrid();
         world.grid[0][0] = TileType.red;
         world.initLayoutForTest(Vector2(400, 800));
 

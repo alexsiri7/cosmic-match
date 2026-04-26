@@ -22,11 +22,16 @@ class FeedbackService {
 
   /// Start listening for connectivity changes to flush queued feedback.
   void listenConnectivity() {
-    _connectivitySub = Connectivity().onConnectivityChanged.listen((results) {
-      if (!results.contains(ConnectivityResult.none)) {
-        flushQueue();
-      }
-    });
+    _connectivitySub = Connectivity().onConnectivityChanged.listen(
+      (results) {
+        if (!results.contains(ConnectivityResult.none)) {
+          flushQueue();
+        }
+      },
+      onError: (Object e, StackTrace s) {
+        gameLogger.w('FeedbackService: connectivity stream error', error: e, stackTrace: s);
+      },
+    );
   }
 
   /// Cancel connectivity listener.
