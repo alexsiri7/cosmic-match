@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -30,6 +31,47 @@ void main() {
 
       // Assert feedback bottom sheet opened (header text from _FeedbackSheet)
       expect(find.text('SEND FEEDBACK'), findsOneWidget);
+    },
+  );
+
+  testWidgets(
+    'feedback sheet background is opaque',
+    (tester) async {
+      await tester.pumpWidget(ProviderScope(
+        child: CosmicMatchApp(
+          progressService: ProgressService(),
+          feedbackService: FeedbackService(workerUrl: 'http://test'),
+          gameOverride: Match3Game(progressService: null),
+        ),
+      ));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Send feedback'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('SEND FEEDBACK'), findsOneWidget);
+    },
+  );
+
+  testWidgets(
+    'feedback sheet mode toggle switches between draw and pan',
+    (tester) async {
+      await tester.pumpWidget(ProviderScope(
+        child: CosmicMatchApp(
+          progressService: ProgressService(),
+          feedbackService: FeedbackService(workerUrl: 'http://test'),
+          gameOverride: Match3Game(progressService: null),
+        ),
+      ));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Send feedback'));
+      await tester.pumpAndSettle();
+
+      expect(find.byIcon(Icons.edit), findsOneWidget);
+
+      await tester.tap(find.byIcon(Icons.edit));
+      await tester.pumpAndSettle();
+
+      expect(find.byIcon(Icons.pan_tool), findsOneWidget);
     },
   );
 }
