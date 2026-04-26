@@ -34,7 +34,7 @@ void main() {
     );
 
     testWithGame<FlameGame>(
-      'gravity animation starts from canonical grid position — no positional drift',
+      '_tilePosition formula: row N+1 is exactly one tileSize below row N',
       () => FlameGame(world: TestGridWorld()),
       (game) async {
         final world = game.world as TestGridWorld;
@@ -52,8 +52,9 @@ void main() {
         final canonicalRow1 = world.tilePositionAt(0, 1);
         expect(canonicalRow1.y - canonicalRow0.y,
             closeTo(world.tileSize, kTestEpsilon),
-            reason: 'Canonical row 1 must be exactly one tileSize below row 0 '
-                '— this is the origin used to anchor falling tiles before MoveEffect');
+            reason: 'tilePositionAt rows must be exactly tileSize apart — '
+                'the gravity anchor reads this formula to set tile.position '
+                'before MoveEffect starts, so a wrong formula causes visual drift');
       },
     );
 
