@@ -203,7 +203,7 @@ jobs:
           packageName: net.interstellarai.cosmicmatch
           releaseFiles: build/app/outputs/bundle/release/app-release.aab
           track: internal
-          status: completed
+          status: draft
           releaseName: ${{ env.BUILD_NAME }}
 
       - name: Publish to Play Store production (tag release)
