@@ -14,6 +14,7 @@ import 'screens/feedback_sheet.dart';
 import 'screens/game_screen.dart';
 import 'screens/home_screen.dart';
 import 'services/feedback_service.dart';
+import 'services/in_app_update_service.dart';
 import 'services/key_service.dart';
 import 'services/progress_service.dart';
 import 'services/sentry_smoke_service.dart';
@@ -110,11 +111,33 @@ class _CosmicMatchAppState extends State<CosmicMatchApp> {
   late final Match3Game _game;
   final _repaintBoundaryKey = GlobalKey();
   final _navigatorKey = GlobalKey<NavigatorState>();
+  final _scaffoldMessengerKey = GlobalKey<ScaffoldMessengerState>();
+  final _updateService = InAppUpdateService();
 
   @override
   void initState() {
     super.initState();
     _game = widget.gameOverride ?? Match3Game(progressService: widget.progressService);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _updateService.checkAndStartFlexibleUpdate(
+        onUpdateDownloaded: _onUpdateDownloaded,
+      );
+    });
+  }
+
+  void _onUpdateDownloaded() {
+    final messenger = _scaffoldMessengerKey.currentState;
+    if (messenger == null) return;
+    messenger.showSnackBar(
+      SnackBar(
+        content: const Text('Update ready'),
+        duration: const Duration(days: 1),
+        action: SnackBarAction(
+          label: 'Restart',
+          onPressed: () => _updateService.completeFlexibleUpdate(),
+        ),
+      ),
+    );
   }
 
   Future<Uint8List> _captureScreenshot() async {
@@ -206,14 +229,18 @@ class _CosmicMatchAppState extends State<CosmicMatchApp> {
   Widget build(BuildContext context) {
     return MaterialApp(
       navigatorKey: _navigatorKey,
+      scaffoldMessengerKey: _scaffoldMessengerKey,
       title: 'Cosmic Match',
       theme: ThemeData.dark().copyWith(
         scaffoldBackgroundColor: const Color(0xFF0D0A1A),
       ),
-      home: SafeArea(
-        child: RepaintBoundary(
-          key: _repaintBoundaryKey,
-          child: _buildScreen(),
+      home: Scaffold(
+        backgroundColor: Colors.transparent,
+        body: SafeArea(
+          child: RepaintBoundary(
+            key: _repaintBoundaryKey,
+            child: _buildScreen(),
+          ),
         ),
       ),
     );
