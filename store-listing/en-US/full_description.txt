@@ -1,0 +1,23 @@
+Swap gems. Match three. Create cosmic cascades.
+
+Cosmic Match is a space-themed match-3 puzzle game where you swap adjacent tiles to create matches of three or more. Chain your matches for explosive cascade combos that send your score into the stratosphere.
+
+GAMEPLAY
+• Tap two adjacent gems to swap their positions
+• Match 3 or more gems of the same color to clear them
+• Gems fall under gravity after each clear, setting up new matches
+• Chain multiple matches in a row for cascade bonuses
+• Beat your personal best — score is saved automatically
+
+FEATURES
+🌌 Space-themed board with colorful gem tiles
+⭐ Smooth animations and physics-based cascades
+💾 Auto-save — pick up exactly where you left off
+🔒 No account required — just download and play
+📵 Full offline support — no internet needed
+🎮 Simple controls, satisfying depth
+
+BUILT WITH LOVE
+Cosmic Match is built using Flutter and the Flame game engine. Simple to pick up, with the depth to keep you coming back — a game you can play for 2 minutes or 2 hours.
+
+No ads. No in-app purchases. No account. Just a great match-3 puzzle with a cosmic twist.
