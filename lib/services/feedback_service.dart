@@ -35,9 +35,7 @@ class FeedbackService {
   }
 
   /// Cancel connectivity listener.
-  void dispose() {
-    _connectivitySub?.cancel();
-  }
+  void dispose() => _connectivitySub?.cancel();
 
   /// Submit feedback — attempts an immediate POST; queues locally on failure
   /// (network error or non-400 HTTP error) for retry on next connectivity event.
