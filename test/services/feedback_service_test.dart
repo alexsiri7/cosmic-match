@@ -81,7 +81,7 @@ void main() {
     });
 
     tearDown(() async {
-      await Hive.deleteBoxFromDisk('feedback_queue');
+      await Hive.deleteBoxFromDisk('feedback_worker_queue');
       await Hive.close();
       if (tempDir.existsSync()) {
         tempDir.deleteSync(recursive: true);
@@ -89,7 +89,7 @@ void main() {
     });
 
     test('enqueue and read back items from Hive box', () async {
-      final box = await Hive.openBox('feedback_queue');
+      final box = await Hive.openBox('feedback_worker_queue');
       final item = PendingFeedback(
         id: 'q-1',
         type: 'bug',
@@ -111,7 +111,7 @@ void main() {
     });
 
     test('multiple items can be stored and iterated', () async {
-      final box = await Hive.openBox('feedback_queue');
+      final box = await Hive.openBox('feedback_worker_queue');
 
       for (int i = 0; i < 5; i++) {
         final item = PendingFeedback(
@@ -142,7 +142,7 @@ void main() {
     });
 
     tearDown(() async {
-      await Hive.deleteBoxFromDisk('feedback_queue');
+      await Hive.deleteBoxFromDisk('feedback_worker_queue');
       await Hive.close();
       if (tempDir.existsSync()) {
         tempDir.deleteSync(recursive: true);
@@ -150,7 +150,7 @@ void main() {
     });
 
     test('does not enqueue when POST succeeds (201)', () async {
-      final client = MockClient((_) async => http.Response('', 201));
+      final client = MockClient((_) async => http.Response('{"url": "https://github.com/issue/1"}', 201));
       final service = FeedbackService(
         workerUrl: 'https://example.com/feedback',
         httpClient: client,
@@ -165,7 +165,7 @@ void main() {
         device: 'Pixel',
       );
 
-      final box = await Hive.openBox('feedback_queue');
+      final box = await Hive.openBox('feedback_worker_queue');
       expect(box.length, 0);
     });
 
@@ -185,7 +185,7 @@ void main() {
         device: 'Pixel',
       );
 
-      final box = await Hive.openBox('feedback_queue');
+      final box = await Hive.openBox('feedback_worker_queue');
       expect(box.length, 1);
     });
 
@@ -205,7 +205,7 @@ void main() {
         device: 'test',
       );
 
-      final box = await Hive.openBox('feedback_queue');
+      final box = await Hive.openBox('feedback_worker_queue');
       expect(box.length, 0); // dropped, not queued
     });
 
@@ -221,7 +221,7 @@ void main() {
         device: 'Pixel',
       );
 
-      final box = await Hive.openBox('feedback_queue');
+      final box = await Hive.openBox('feedback_worker_queue');
       expect(box.length, 0);
     });
 
@@ -244,7 +244,7 @@ void main() {
         );
       }
 
-      final box = await Hive.openBox('feedback_queue');
+      final box = await Hive.openBox('feedback_worker_queue');
       expect(box.length, 20);
       final firstMsg = (box.getAt(0) as Map)['message'] as String;
 
@@ -273,7 +273,7 @@ void main() {
     });
 
     tearDown(() async {
-      await Hive.deleteBoxFromDisk('feedback_queue');
+      await Hive.deleteBoxFromDisk('feedback_worker_queue');
       await Hive.close();
       if (tempDir.existsSync()) {
         tempDir.deleteSync(recursive: true);
@@ -281,7 +281,7 @@ void main() {
     });
 
     test('removes successfully sent items from queue', () async {
-      final box = await Hive.openBox('feedback_queue');
+      final box = await Hive.openBox('feedback_worker_queue');
       final item = PendingFeedback(
         id: 'flush-1',
         type: 'bug',
@@ -295,7 +295,7 @@ void main() {
       await box.put(item.id, item.toMap());
       expect(box.length, 1);
 
-      final client = MockClient((_) async => http.Response('', 201));
+      final client = MockClient((_) async => http.Response('{"url": "https://github.com/issue/1"}', 201));
       final service = FeedbackService(
         workerUrl: 'https://example.com/',
         httpClient: client,
@@ -306,7 +306,7 @@ void main() {
     });
 
     test('retains items in queue when POST fails', () async {
-      final box = await Hive.openBox('feedback_queue');
+      final box = await Hive.openBox('feedback_worker_queue');
       final item = PendingFeedback(
         id: 'flush-2',
         type: 'bug',

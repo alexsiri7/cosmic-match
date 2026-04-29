@@ -9,7 +9,7 @@ import '../core/logger.dart';
 import '../models/pending_feedback.dart';
 
 class FeedbackService {
-  static const _boxName = 'feedback_queue';
+  static const _boxName = 'feedback_worker_queue';
   static const _maxQueueSize = 20;
 
   final String workerUrl;
@@ -125,7 +125,8 @@ class FeedbackService {
           .timeout(const Duration(seconds: 15));
 
       if (response.statusCode == 201) {
-        gameLogger.d('FeedbackService: posted successfully');
+        final respBody = jsonDecode(response.body);
+        gameLogger.i('FeedbackService: posted successfully. Issue: ${respBody['url']}');
         return true;
       }
 
