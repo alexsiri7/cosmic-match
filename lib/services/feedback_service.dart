@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:archive/archive.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:hive/hive.dart';
 import 'package:http/http.dart' as http;
@@ -9,7 +10,7 @@ import '../core/logger.dart';
 import '../models/pending_feedback.dart';
 
 class FeedbackService {
-  static const _boxName = 'feedback_queue';
+  static const _boxName = 'feedback_worker_queue';
   static const _maxQueueSize = 20;
 
   final String workerUrl;
@@ -35,9 +36,7 @@ class FeedbackService {
   }
 
   /// Cancel connectivity listener.
-  void dispose() {
-    _connectivitySub?.cancel();
-  }
+  void dispose() => _connectivitySub?.cancel();
 
   /// Submit feedback — attempts an immediate POST; queues locally on failure
   /// (network error or non-400 HTTP error) for retry on next connectivity event.
@@ -82,15 +81,28 @@ class FeedbackService {
       final box = await Hive.openBox(_boxName);
       final keys = box.keys.toList();
       for (final key in keys) {
-        final raw = box.get(key);
-        if (raw == null || raw is! Map) {
-          await box.delete(key);
-          continue;
-        }
-        final item = PendingFeedback.fromMap(Map<String, dynamic>.from(raw));
-        final sent = await _postToWorker(item);
-        if (sent) {
-          await box.delete(key);
+        // Per-item try/catch: a single bad row must not strand the rest of the queue.
+        try {
+          final raw = box.get(key);
+          if (raw == null || raw is! Map) {
+            await box.delete(key);
+            continue;
+          }
+          final map = Map<String, dynamic>.from(raw);
+          if (!_isValid(map)) {
+            gameLogger.w('FeedbackService.flushQueue: dropping invalid item key=$key');
+            await box.delete(key);
+            continue;
+          }
+          final item = PendingFeedback.fromMap(map);
+          final sent = await _postToWorker(item);
+          if (sent) {
+            await box.delete(key);
+          }
+        } catch (e, stack) {
+          gameLogger.w('FeedbackService.flushQueue: per-item error key=$key',
+              error: e, stackTrace: stack);
+          // Do not abort the loop — continue with the next key.
         }
       }
     } on HiveError catch (e, stack) {
@@ -100,6 +112,16 @@ class FeedbackService {
     } finally {
       _flushing = false;
     }
+  }
+
+  /// CRC32 integrity check (CLAUDE.md "CRC32 Persistence Contract"):
+  /// rejects any map missing a `crc` field or whose canonicalised payload
+  /// does not match the stored CRC.
+  bool _isValid(Map raw) {
+    final storedCrc = raw['crc'] as int?;
+    if (storedCrc == null) return false;
+    final data = Map<String, dynamic>.from(raw)..remove('crc');
+    return getCrc32(PendingFeedback.canonicalize(data).codeUnits) == storedCrc;
   }
 
   Future<bool> _postToWorker(PendingFeedback item) async {
@@ -125,7 +147,17 @@ class FeedbackService {
           .timeout(const Duration(seconds: 15));
 
       if (response.statusCode == 201) {
-        gameLogger.d('FeedbackService: posted successfully');
+        // Best-effort: extract issue URL for logs, but never let a body-parse
+        // failure flip a confirmed 201 success into a retry (would create
+        // duplicate GitHub issues on the next flush).
+        String? issueUrl;
+        try {
+          final decoded = jsonDecode(response.body);
+          if (decoded is Map) issueUrl = decoded['url'] as String?;
+        } catch (_) {
+          // worker returned 201 but body was not parseable JSON
+        }
+        gameLogger.i('FeedbackService: posted successfully. Issue: ${issueUrl ?? '(url unavailable)'}');
         return true;
       }
 

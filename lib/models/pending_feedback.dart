@@ -1,6 +1,8 @@
+import 'package:archive/archive.dart';
+
 /// Data class for a queued feedback submission.
 ///
-/// Stored in Hive box 'feedback_queue' as a Map (no Hive adapter needed).
+/// Stored in Hive box 'feedback_worker_queue' as a Map (no Hive adapter needed).
 class PendingFeedback {
   final String id;
   final String type; // 'bug' | 'feature' | 'other'
@@ -23,7 +25,7 @@ class PendingFeedback {
   });
 
   Map<String, dynamic> toMap() {
-    return {
+    final data = <String, dynamic>{
       'id': id,
       'type': type,
       'message': message,
@@ -33,6 +35,8 @@ class PendingFeedback {
       'device': device,
       'createdAt': createdAt.toIso8601String(),
     };
+    data['crc'] = getCrc32(canonicalize(data).codeUnits);
+    return data;
   }
 
   factory PendingFeedback.fromMap(Map<String, dynamic> map) {
@@ -46,5 +50,10 @@ class PendingFeedback {
       device: map['device'] as String,
       createdAt: DateTime.parse(map['createdAt'] as String),
     );
+  }
+
+  static String canonicalize(Map<String, dynamic> data) {
+    final keys = data.keys.toList()..sort();
+    return keys.map((k) => '$k:${data[k]}').join(',');
   }
 }

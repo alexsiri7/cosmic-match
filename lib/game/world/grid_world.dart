@@ -141,8 +141,10 @@ class GridWorld extends World {
   }
 
   void _updateScoreNotifier() {
-    (findGame() as Match3Game?)?.scoreNotifier.value =
-        (score: score.value, best: _bestScore);
+    final game = findGame() as Match3Game?;
+    if (game != null) {
+      game.scoreNotifier.value = (score: score.value, best: _bestScore);
+    }
   }
 
   // --- Swap + Cascade Pipeline ---
