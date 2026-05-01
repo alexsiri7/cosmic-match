@@ -74,13 +74,19 @@ jobs:
       - run: flutter pub get
 
       - name: Resolve version
+        env:
+          GH_RUN_NUMBER: ${{ github.run_number }}
         run: |
           if [[ "${GITHUB_REF}" == refs/tags/v* ]]; then
             BUILD_NAME="${GITHUB_REF#refs/tags/v}"
           else
             BUILD_NAME="$(grep '^version:' pubspec.yaml | sed 's/version: //;s/+.*//')"
           fi
-          BUILD_NUMBER=$(git rev-list --count HEAD)
+          # github.run_number is monotonically increasing per workflow per repo and
+          # is unaffected by history rewrites. The +1000 offset vaults past version
+          # codes (incl. 1, 64, 66) already consumed in Play Console under the prior
+          # `git rev-list --count HEAD` scheme. See issue #134.
+          BUILD_NUMBER=$((GH_RUN_NUMBER + 1000))
           echo "BUILD_NAME=$BUILD_NAME" >> "$GITHUB_ENV"
           echo "BUILD_NUMBER=$BUILD_NUMBER" >> "$GITHUB_ENV"
 
