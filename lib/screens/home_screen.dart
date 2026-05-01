@@ -82,11 +82,14 @@ class HomeScreen extends StatelessWidget {
                         ),
                       ),
                       const SizedBox(width: 8),
-                      Text(
-                        '50 levels · 5 galaxies · portrait only',
-                        style: GoogleFonts.ibmPlexMono(
-                          fontSize: 11,
-                          color: Colors.white.withValues(alpha: 0.7),
+                      Expanded(
+                        child: Text(
+                          '50 levels · 5 galaxies · portrait only',
+                          overflow: TextOverflow.ellipsis,
+                          style: GoogleFonts.ibmPlexMono(
+                            fontSize: 11,
+                            color: Colors.white.withValues(alpha: 0.7),
+                          ),
                         ),
                       ),
                     ],
