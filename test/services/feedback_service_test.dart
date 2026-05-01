@@ -169,6 +169,69 @@ void main() {
       expect(box.length, 0);
     });
 
+    test('treats 201 with empty body as success — does not enqueue', () async {
+      // Regression guard: a 201 means the worker accepted the request, regardless
+      // of body shape. If body parsing flipped a 201 to "failed", flushQueue would
+      // re-POST and create a duplicate GitHub issue.
+      final client = MockClient((_) async => http.Response('', 201));
+      final service = FeedbackService(
+        workerUrl: 'https://example.com/feedback',
+        httpClient: client,
+      );
+
+      await service.submit(
+        type: 'bug',
+        message: 'test',
+        screenshotB64: '',
+        appVersion: '1.0.0+1',
+        os: 'android',
+        device: 'Pixel',
+      );
+
+      final box = await Hive.openBox('feedback_worker_queue');
+      expect(box.length, 0);
+    });
+
+    test('treats 201 with non-JSON body as success — does not enqueue', () async {
+      final client = MockClient((_) async => http.Response('<html>OK</html>', 201));
+      final service = FeedbackService(
+        workerUrl: 'https://example.com/feedback',
+        httpClient: client,
+      );
+
+      await service.submit(
+        type: 'bug',
+        message: 'test',
+        screenshotB64: '',
+        appVersion: '1.0.0+1',
+        os: 'android',
+        device: 'Pixel',
+      );
+
+      final box = await Hive.openBox('feedback_worker_queue');
+      expect(box.length, 0);
+    });
+
+    test('treats 201 with JSON missing url key as success — does not enqueue', () async {
+      final client = MockClient((_) async => http.Response('{"id": 42}', 201));
+      final service = FeedbackService(
+        workerUrl: 'https://example.com/feedback',
+        httpClient: client,
+      );
+
+      await service.submit(
+        type: 'bug',
+        message: 'test',
+        screenshotB64: '',
+        appVersion: '1.0.0+1',
+        os: 'android',
+        device: 'Pixel',
+      );
+
+      final box = await Hive.openBox('feedback_worker_queue');
+      expect(box.length, 0);
+    });
+
     test('enqueues when POST fails (5xx)', () async {
       final client = MockClient((_) async => http.Response('', 503));
       final service = FeedbackService(

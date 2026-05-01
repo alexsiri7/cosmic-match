@@ -1,6 +1,6 @@
 /// Data class for a queued feedback submission.
 ///
-/// Stored in Hive box 'feedback_queue' as a Map (no Hive adapter needed).
+/// Stored in Hive box 'feedback_worker_queue' as a Map (no Hive adapter needed).
 class PendingFeedback {
   final String id;
   final String type; // 'bug' | 'feature' | 'other'

@@ -123,8 +123,17 @@ class FeedbackService {
           .timeout(const Duration(seconds: 15));
 
       if (response.statusCode == 201) {
-        final respBody = jsonDecode(response.body);
-        gameLogger.i('FeedbackService: posted successfully. Issue: ${respBody['url']}');
+        // Best-effort: extract issue URL for logs, but never let a body-parse
+        // failure flip a confirmed 201 success into a retry (would create
+        // duplicate GitHub issues on the next flush).
+        String? issueUrl;
+        try {
+          final decoded = jsonDecode(response.body);
+          if (decoded is Map) issueUrl = decoded['url'] as String?;
+        } catch (_) {
+          // worker returned 201 but body was not parseable JSON
+        }
+        gameLogger.i('FeedbackService: posted successfully. Issue: ${issueUrl ?? '(url unavailable)'}');
         return true;
       }
 
