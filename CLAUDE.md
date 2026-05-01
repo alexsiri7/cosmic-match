@@ -31,6 +31,9 @@ flutter pub get
 
 ```
 lib/
+  core/           # Cross-cutting primitives shared across layers
+                  #   logger.dart — `gameLogger` (single project-wide logger instance)
+                  #   constants.dart — `kTransparentPng` (1×1 PNG fallback for screenshot capture)
   game/           # Flame game, FSM, world, components
                   #   Input/FSM enums (GamePhase, SwipeDirection) defined in match3_game.dart
     theme/        # Tile color palette constants (kTilePalette — derived from TileType.colorValue;
@@ -75,7 +78,7 @@ Detection passes run in strict priority order. **Do NOT reorder**:
 Tiles consumed by a higher-priority pass are added to the `claimed` set and skipped by
 lower-priority passes, preventing double-counting.
 
-### CRC32 Persistence Contract (`lib/models/level_progress.dart`, `lib/services/progress_service.dart`; `lib/models/feedback_item.dart`, `lib/services/feedback_queue_service.dart`)
+### CRC32 Persistence Contract (`lib/models/level_progress.dart`, `lib/services/progress_service.dart`; `lib/models/feedback_item.dart`, `lib/services/feedback_queue_service.dart`; `lib/models/pending_feedback.dart`, `lib/services/feedback_service.dart`)
 
 Any Hive-backed model must include a `crc` field in its `toMap()` output, computed over
 all other fields using a key-sorted canonical representation. The corresponding service's
@@ -83,6 +86,7 @@ all other fields using a key-sorted canonical representation. The corresponding 
 
 - `LevelProgress.toMap()` / `ProgressService._isValid()` — resets to `LevelProgress.initial()` on tamper
 - `FeedbackItem.toMap()` / `FeedbackQueueService._isValid()` — skips the invalid queue entry on tamper
+- `PendingFeedback.toMap()` / `FeedbackService._isValid()` — drops the invalid worker-queue entry on tamper
 
 When adding new fields to either model:
 - Include them in `toMap()` before computing the CRC

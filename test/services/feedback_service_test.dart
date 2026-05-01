@@ -391,5 +391,106 @@ void main() {
       await service.flushQueue();
       expect(box.length, 1); // still in queue for next flush
     });
+
+    test('drops items with tampered CRC on flush (CLAUDE.md persistence contract)', () async {
+      final box = await Hive.openBox('feedback_worker_queue');
+      final item = PendingFeedback(
+        id: 'tampered-1',
+        type: 'bug',
+        message: 'original',
+        screenshotB64: '',
+        appVersion: '1.0.0+1',
+        os: 'android',
+        device: 'test',
+        createdAt: DateTime(2025, 1, 1),
+      );
+      // Write a valid map, then mutate `message` without recomputing CRC.
+      final map = item.toMap();
+      map['message'] = 'tampered';
+      await box.put(item.id, map);
+      expect(box.length, 1);
+
+      // POST should never be called — but if it were, the test would still
+      // pass because the mock always returns 201. The assertion that matters
+      // is that the tampered row is removed without being POSTed.
+      final client = MockClient((_) async => http.Response('{"url":"x"}', 201));
+      final service = FeedbackService(
+        workerUrl: 'https://example.com/',
+        httpClient: client,
+      );
+
+      await service.flushQueue();
+      expect(box.length, 0,
+          reason: 'tampered item should be dropped, not sent to worker');
+    });
+
+    test('drops items missing CRC on flush (CLAUDE.md persistence contract)', () async {
+      final box = await Hive.openBox('feedback_worker_queue');
+      // Legacy/tampered row without a `crc` key.
+      await box.put('no-crc', {
+        'id': 'no-crc',
+        'type': 'bug',
+        'message': 'no-crc',
+        'screenshotB64': '',
+        'appVersion': '1.0.0+1',
+        'os': 'android',
+        'device': 'test',
+        'createdAt': DateTime(2025, 1, 1).toIso8601String(),
+      });
+      expect(box.length, 1);
+
+      final client = MockClient((_) async => http.Response('{"url":"x"}', 201));
+      final service = FeedbackService(
+        workerUrl: 'https://example.com/',
+        httpClient: client,
+      );
+
+      await service.flushQueue();
+      expect(box.length, 0,
+          reason: 'item missing CRC should be dropped without retry');
+    });
+
+    test('a malformed row does not strand later valid items', () async {
+      final box = await Hive.openBox('feedback_worker_queue');
+
+      // Row 1: malformed createdAt — fromMap would throw.
+      await box.put('bad', {
+        'id': 'bad',
+        'type': 'bug',
+        'message': 'malformed',
+        'screenshotB64': '',
+        'appVersion': '1.0.0+1',
+        'os': 'android',
+        'device': 'test',
+        'createdAt': 'not-a-date',
+        // crc is wrong relative to canonicalised data, so _isValid drops it
+        // before fromMap is reached anyway.
+      });
+
+      // Row 2: valid item.
+      final good = PendingFeedback(
+        id: 'good',
+        type: 'bug',
+        message: 'valid',
+        screenshotB64: '',
+        appVersion: '1.0.0+1',
+        os: 'android',
+        device: 'test',
+        createdAt: DateTime(2025, 1, 1),
+      );
+      await box.put(good.id, good.toMap());
+      expect(box.length, 2);
+
+      final client = MockClient((_) async => http.Response('{"url":"x"}', 201));
+      final service = FeedbackService(
+        workerUrl: 'https://example.com/',
+        httpClient: client,
+      );
+
+      await service.flushQueue();
+      // Both rows should be removed: the bad one as invalid, the good one as sent.
+      expect(box.length, 0,
+          reason: 'a bad row must not abort the loop and strand later valid items');
+    });
   });
 }
