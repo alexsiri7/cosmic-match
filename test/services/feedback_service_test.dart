@@ -93,7 +93,7 @@ void main() {
       final item = PendingFeedback(
         id: 'q-1',
         type: 'bug',
-        message: 'test',
+        message: 'test message',
         screenshotB64: 'img',
         appVersion: '1.0.0+1',
         os: 'android',
@@ -107,7 +107,7 @@ void main() {
       final raw = box.get('q-1') as Map;
       final restored = PendingFeedback.fromMap(Map<String, dynamic>.from(raw));
       expect(restored.id, 'q-1');
-      expect(restored.message, 'test');
+      expect(restored.message, 'test message');
     });
 
     test('multiple items can be stored and iterated', () async {
@@ -117,7 +117,7 @@ void main() {
         final item = PendingFeedback(
           id: 'item-$i',
           type: 'bug',
-          message: 'msg $i',
+          message: 'queued msg $i',
           screenshotB64: '',
           appVersion: '1.0.0+1',
           os: 'android',
@@ -158,7 +158,7 @@ void main() {
 
       await service.submit(
         type: 'bug',
-        message: 'test',
+        message: 'test message',
         screenshotB64: '',
         appVersion: '1.0.0+1',
         os: 'android',
@@ -181,7 +181,7 @@ void main() {
 
       await service.submit(
         type: 'bug',
-        message: 'test',
+        message: 'test message',
         screenshotB64: '',
         appVersion: '1.0.0+1',
         os: 'android',
@@ -201,7 +201,7 @@ void main() {
 
       await service.submit(
         type: 'bug',
-        message: 'test',
+        message: 'test message',
         screenshotB64: '',
         appVersion: '1.0.0+1',
         os: 'android',
@@ -221,7 +221,7 @@ void main() {
 
       await service.submit(
         type: 'bug',
-        message: 'test',
+        message: 'test message',
         screenshotB64: '',
         appVersion: '1.0.0+1',
         os: 'android',
@@ -261,7 +261,7 @@ void main() {
 
       await service.submit(
         type: 'bug',
-        message: 'test',
+        message: 'test message',
         screenshotB64: '',
         appVersion: '1.0.0+1',
         os: 'android',
@@ -277,7 +277,7 @@ void main() {
 
       await service.submit(
         type: 'bug',
-        message: 'test',
+        message: 'test message',
         screenshotB64: '',
         appVersion: '1.0.0+1',
         os: 'android',
@@ -299,7 +299,7 @@ void main() {
       for (int i = 0; i < 20; i++) {
         await service.submit(
           type: 'bug',
-          message: 'msg $i',
+          message: 'queued msg $i',
           screenshotB64: '',
           appVersion: '1.0.0+1',
           os: 'android',
@@ -314,7 +314,7 @@ void main() {
       // Submit one more — oldest should be evicted
       await service.submit(
         type: 'bug',
-        message: 'overflow',
+        message: 'overflow item',
         screenshotB64: '',
         appVersion: '1.0.0+1',
         os: 'android',
@@ -323,7 +323,32 @@ void main() {
 
       expect(box.length, 20);
       expect((box.getAt(0) as Map)['message'], isNot(firstMsg)); // oldest gone
-      expect((box.getAt(box.length - 1) as Map)['message'], 'overflow');
+      expect((box.getAt(box.length - 1) as Map)['message'], 'overflow item');
+    });
+
+    test('skips POST and does not enqueue when message is too short', () async {
+      var posted = false;
+      final client = MockClient((_) async {
+        posted = true;
+        return http.Response('', 201);
+      });
+      final service = FeedbackService(
+        workerUrl: 'https://example.com/feedback',
+        httpClient: client,
+      );
+
+      await service.submit(
+        type: 'bug',
+        message: 'too short', // 9 chars after trim
+        screenshotB64: '',
+        appVersion: '1.0.0+1',
+        os: 'android',
+        device: 'Pixel',
+      );
+
+      expect(posted, isFalse);
+      final box = await Hive.openBox('feedback_worker_queue');
+      expect(box.length, 0);
     });
   });
 

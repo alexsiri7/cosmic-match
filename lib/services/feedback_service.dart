@@ -6,6 +6,7 @@ import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:hive/hive.dart';
 import 'package:http/http.dart' as http;
 
+import '../core/constants.dart';
 import '../core/logger.dart';
 import '../models/pending_feedback.dart';
 
@@ -50,6 +51,14 @@ class FeedbackService {
   }) async {
     if (workerUrl.isEmpty) {
       gameLogger.w('FeedbackService.submit: workerUrl is empty — skipping');
+      return;
+    }
+
+    if (message.trim().length < kMinFeedbackMessageLength) {
+      gameLogger.w(
+        'FeedbackService.submit: message too short '
+        '(${message.trim().length} < $kMinFeedbackMessageLength) — skipping',
+      );
       return;
     }
 

@@ -74,4 +74,36 @@ void main() {
       expect(find.byIcon(Icons.pan_tool), findsOneWidget);
     },
   );
+
+  testWidgets(
+    'feedback sheet Submit button is disabled until description meets minimum length',
+    (tester) async {
+      await tester.pumpWidget(ProviderScope(
+        child: CosmicMatchApp(
+          progressService: ProgressService(),
+          feedbackService: FeedbackService(workerUrl: 'http://test'),
+          gameOverride: Match3Game(progressService: null),
+        ),
+      ));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Send feedback'));
+      await tester.pumpAndSettle();
+
+      final submitFinder = find.widgetWithText(ElevatedButton, 'Submit');
+      expect(submitFinder, findsOneWidget);
+
+      // Initially disabled (empty description).
+      expect(tester.widget<ElevatedButton>(submitFinder).onPressed, isNull);
+
+      // 9 chars — still below threshold (10).
+      await tester.enterText(find.byType(TextField), 'too short');
+      await tester.pump();
+      expect(tester.widget<ElevatedButton>(submitFinder).onPressed, isNull);
+
+      // 10 chars — now enabled.
+      await tester.enterText(find.byType(TextField), 'just right');
+      await tester.pump();
+      expect(tester.widget<ElevatedButton>(submitFinder).onPressed, isNotNull);
+    },
+  );
 }
