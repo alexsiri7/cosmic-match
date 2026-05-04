@@ -117,5 +117,60 @@ void main() {
       final event = SentryEvent();
       expect(dropUnactionableAbort(event, hint), isNotNull);
     });
+
+    test('passes through Abort with null stackTrace', () {
+      final event = SentryEvent(
+        exceptions: [SentryException(type: 'Exception', value: 'Abort')],
+      );
+      expect(dropUnactionableAbort(event, hint), isNotNull);
+    });
+
+    test('passes through Abort with empty frames list', () {
+      final event = _eventWith(value: 'Abort', frames: const []);
+      expect(dropUnactionableAbort(event, hint), isNotNull);
+    });
+
+    test('drops Abort with two engine-only frames', () {
+      final event = _eventWith(
+        value: 'Abort',
+        frames: [
+          SentryStackFrame(
+            function: '_ChannelCallbackRecord.invoke',
+            fileName: 'channel_buffers.dart',
+          ),
+          SentryStackFrame(
+            function: '_ChannelCallbackRecord.invoke',
+            fileName: 'channel_buffers.dart',
+          ),
+        ],
+      );
+      expect(dropUnactionableAbort(event, hint), isNull);
+    });
+
+    test('passes through 2-frame Abort where one frame is user code', () {
+      final event = _eventWith(
+        value: 'Abort',
+        frames: [
+          SentryStackFrame(
+            function: '_ChannelCallbackRecord.invoke',
+            fileName: 'channel_buffers.dart',
+          ),
+          SentryStackFrame(
+            function: 'PluginX.handler',
+            fileName: 'plugin_x.dart',
+          ),
+        ],
+      );
+      expect(dropUnactionableAbort(event, hint), isNotNull);
+    });
+
+    test('passes through Abort whose only frame has null function and fileName',
+        () {
+      final event = _eventWith(
+        value: 'Abort',
+        frames: [SentryStackFrame()],
+      );
+      expect(dropUnactionableAbort(event, hint), isNotNull);
+    });
   });
 }
