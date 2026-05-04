@@ -1,7 +1,7 @@
 import 'package:flame/components.dart';
 import 'package:flame/events.dart';
 import 'package:flame_riverpod/flame_riverpod.dart';
-import 'package:flutter/material.dart' show Canvas, Color, Colors, CustomPainter, Paint, PaintingStyle, RRect, Radius, Rect, visibleForTesting;
+import 'package:flutter/material.dart' show Canvas, Colors, CustomPainter, Paint, PaintingStyle, RRect, Radius, Rect, visibleForTesting;
 import '../../core/logger.dart';
 import '../../models/tile_type.dart';
 import '../match3_game.dart';
@@ -57,7 +57,7 @@ class GridTile extends RectangleComponent
     assert(color != null,
         'kTilePalette missing entry for TileType.$_tileType — update tile_type.dart');
 
-    _painter = tilePainterFor(_tileType, color ?? const Color(0xFFFFFFFF));
+    _painter = tilePainterFor(_tileType, color ?? Colors.white);
 
     _glowPaint = Paint()
       ..style = PaintingStyle.stroke
