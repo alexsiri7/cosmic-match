@@ -9,6 +9,7 @@ import 'package:package_info_plus/package_info_plus.dart';
 import 'package:sentry_flutter/sentry_flutter.dart';
 import 'core/constants.dart';
 import 'core/logger.dart';
+import 'core/sentry_filters.dart';
 import 'game/match3_game.dart';
 import 'screens/feedback_sheet.dart';
 import 'screens/game_screen.dart';
@@ -66,6 +67,7 @@ Future<void> main() async {
         options.tracesSampleRate = 0.0;
         options.sendDefaultPii = false;
         options.attachScreenshot = false;
+        options.beforeSend = dropUnactionableAbort;
       },
       appRunner: launch,
     );
