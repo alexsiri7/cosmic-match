@@ -146,6 +146,12 @@ jobs:
         env:
           SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
           FEEDBACK_WORKER_URL: ${{ vars.FEEDBACK_WORKER_URL || 'https://feedback.alexsiri7.workers.dev/' }}
+          # Read by the Sentry Android Gradle Plugin (android/app/build.gradle.kts)
+          # to upload the R8 mapping.txt to Sentry mid-build. Empty values disable
+          # the upload but the build still succeeds (PR runs from forks).
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+          SENTRY_ORG: alex-siri
+          SENTRY_PROJECT: cosmic-match
         # --split-debug-info + --obfuscate produce the Dart debug symbols that
         # sentry_dart_plugin uploads in the next step, enabling server-side
         # symbolication of release stack traces.
@@ -210,6 +216,10 @@ jobs:
           serviceAccountJsonPlainText: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
           packageName: net.interstellarai.cosmicmatch
           releaseFiles: build/app/outputs/bundle/release/app-release.aab
+          # Cleared the Play Console "no deobfuscation file" warning — see issue #136.
+          # Native debug symbols are embedded in the AAB itself via ndk.debugSymbolLevel,
+          # so we don't pass `debugSymbols:` here.
+          mappingFile: build/app/outputs/mapping/release/mapping.txt
           track: internal
           status: draft
           releaseName: ${{ env.BUILD_NAME }}
@@ -221,6 +231,10 @@ jobs:
           serviceAccountJsonPlainText: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
           packageName: net.interstellarai.cosmicmatch
           releaseFiles: build/app/outputs/bundle/release/app-release.aab
+          # Cleared the Play Console "no deobfuscation file" warning — see issue #136.
+          # Native debug symbols are embedded in the AAB itself via ndk.debugSymbolLevel,
+          # so we don't pass `debugSymbols:` here.
+          mappingFile: build/app/outputs/mapping/release/mapping.txt
           track: production
           status: completed
           releaseName: ${{ env.BUILD_NAME }}
