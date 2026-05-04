@@ -54,10 +54,11 @@ class FeedbackService {
       return;
     }
 
-    if (message.trim().length < kMinFeedbackMessageLength) {
+    final trimmedLen = message.trim().length;
+    if (trimmedLen < kMinFeedbackMessageLength) {
       gameLogger.w(
         'FeedbackService.submit: message too short '
-        '(${message.trim().length} < $kMinFeedbackMessageLength) — skipping',
+        '($trimmedLen < $kMinFeedbackMessageLength) — skipping',
       );
       return;
     }

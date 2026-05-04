@@ -350,6 +350,61 @@ void main() {
       final box = await Hive.openBox('feedback_worker_queue');
       expect(box.length, 0);
     });
+
+    test('skips POST and does not enqueue when message is whitespace-only', () async {
+      // Pins the trim() contract: 10 spaces trim to 0 chars and must be
+      // rejected. Without this test, swapping `.trim().length` for `.length`
+      // in the guard would slip past the suite.
+      var posted = false;
+      final client = MockClient((_) async {
+        posted = true;
+        return http.Response('', 201);
+      });
+      final service = FeedbackService(
+        workerUrl: 'https://example.com/feedback',
+        httpClient: client,
+      );
+
+      await service.submit(
+        type: 'bug',
+        message: '          ', // 10 spaces — trims to 0
+        screenshotB64: '',
+        appVersion: '1.0.0+1',
+        os: 'android',
+        device: 'Pixel',
+      );
+
+      expect(posted, isFalse);
+      final box = await Hive.openBox('feedback_worker_queue');
+      expect(box.length, 0);
+    });
+
+    test('accepts message at the exact minimum length boundary', () async {
+      // Pins the `<` boundary: an off-by-one regression to `<=` would silently
+      // drop 10-char submissions that the UI accepts.
+      var posted = false;
+      final client = MockClient((_) async {
+        posted = true;
+        return http.Response('{"url": "https://github.com/issue/1"}', 201);
+      });
+      final service = FeedbackService(
+        workerUrl: 'https://example.com/feedback',
+        httpClient: client,
+      );
+
+      await service.submit(
+        type: 'bug',
+        message: 'just right', // exactly 10 chars
+        screenshotB64: '',
+        appVersion: '1.0.0+1',
+        os: 'android',
+        device: 'Pixel',
+      );
+
+      expect(posted, isTrue);
+      final box = await Hive.openBox('feedback_worker_queue');
+      expect(box.length, 0);
+    });
   });
 
   group('FeedbackService.flushQueue', () {
