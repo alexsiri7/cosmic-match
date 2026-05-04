@@ -5,6 +5,7 @@ import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import '../core/constants.dart';
 import '../core/logger.dart';
 import '../game/theme/app_theme.dart';
 
@@ -62,7 +63,9 @@ class _FeedbackSheetState extends State<_FeedbackSheet> {
     super.dispose();
   }
 
-  bool get _canSubmit => _descController.text.trim().isNotEmpty && !_submitting;
+  bool get _canSubmit =>
+      _descController.text.trim().length >= kMinFeedbackMessageLength &&
+      !_submitting;
 
   Future<void> _handleSubmit() async {
     if (!_canSubmit) return;
@@ -279,6 +282,11 @@ class _FeedbackSheetState extends State<_FeedbackSheet> {
                     hintStyle: GoogleFonts.ibmPlexMono(
                       fontSize: 13,
                       color: Colors.white.withValues(alpha: 0.4),
+                    ),
+                    helperText: 'At least $kMinFeedbackMessageLength characters',
+                    helperStyle: GoogleFonts.ibmPlexMono(
+                      fontSize: 11,
+                      color: Colors.white.withValues(alpha: 0.5),
                     ),
                     filled: true,
                     fillColor: Colors.white.withValues(alpha: 0.06),

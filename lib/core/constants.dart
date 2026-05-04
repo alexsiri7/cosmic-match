@@ -12,3 +12,8 @@ final kTransparentPng = Uint8List.fromList([
   0x00, 0x00, 0x49, 0x45, 0x4E, 0x44, 0xAE, 0x42,
   0x60, 0x82,
 ]);
+
+/// Minimum length (after trim) for a user-supplied feedback description.
+/// Enforced both in the UI (`FeedbackSheet`) and the service (`FeedbackService`)
+/// to keep low-signal reports out of the GitHub pipeline.
+const int kMinFeedbackMessageLength = 10;
