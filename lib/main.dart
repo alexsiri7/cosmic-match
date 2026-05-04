@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'dart:io';
 import 'dart:ui' as ui;
 import 'package:flutter/foundation.dart';
@@ -18,7 +17,6 @@ import 'services/feedback_service.dart';
 import 'services/in_app_update_service.dart';
 import 'services/key_service.dart';
 import 'services/progress_service.dart';
-import 'services/sentry_smoke_service.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -71,13 +69,6 @@ Future<void> main() async {
       },
       appRunner: launch,
     );
-    // Fire a one-shot launch-smoke message so we can confirm — per install
-    // per buildNumber — that the release launched and symbolication is wired.
-    // Runs after init so the event actually has a DSN to ship to.
-    unawaited(SentrySmokeService().maybeFire(
-      version: packageInfo.version,
-      buildNumber: packageInfo.buildNumber,
-    ));
   } catch (e, stack) {
     // Sentry init failure must not prevent the app from launching.
     gameLogger.w('Sentry init failed — crash reporting disabled', error: e, stackTrace: stack);
