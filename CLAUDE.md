@@ -34,6 +34,7 @@ lib/
   core/           # Cross-cutting primitives shared across layers
                   #   logger.dart — `gameLogger` (single project-wide logger instance)
                   #   constants.dart — `kTransparentPng` (1×1 PNG fallback for screenshot capture)
+                  #   sentry_filters.dart — `dropUnactionableAbort` (Sentry beforeSend filter for #145)
   game/           # Flame game, FSM, world, components
                   #   Input/FSM enums (GamePhase, SwipeDirection) defined in match3_game.dart
     theme/        # Tile color palette constants (kTilePalette — derived from TileType.colorValue;
