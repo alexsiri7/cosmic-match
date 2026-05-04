@@ -146,6 +146,15 @@ jobs:
         env:
           SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
           FEEDBACK_WORKER_URL: ${{ vars.FEEDBACK_WORKER_URL || 'https://feedback.alexsiri7.workers.dev/' }}
+          # Read by the Sentry Android Gradle Plugin (android/app/build.gradle.kts);
+          # org/project are configured in the gradle `sentry { }` block, which the
+          # plugin prefers over env vars, so they are not duplicated here.
+          # Empty token (PR runs from forks, where secrets are masked) disables the
+          # upload but the build still succeeds. When the token IS set, the plugin
+          # uploads mapping.txt as part of the Gradle build graph — Sentry API
+          # availability is therefore a hard release-build dependency on main and
+          # tag pushes (a Sentry outage blocks the AAB build).
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
         # --split-debug-info + --obfuscate produce the Dart debug symbols that
         # sentry_dart_plugin uploads in the next step, enabling server-side
         # symbolication of release stack traces.
@@ -210,6 +219,10 @@ jobs:
           serviceAccountJsonPlainText: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
           packageName: net.interstellarai.cosmicmatch
           releaseFiles: build/app/outputs/bundle/release/app-release.aab
+          # Cleared the Play Console "no deobfuscation file" warning — see issue #136.
+          # Native debug symbols are embedded in the AAB itself via ndk.debugSymbolLevel,
+          # so we don't pass `debugSymbols:` here.
+          mappingFile: build/app/outputs/mapping/release/mapping.txt
           track: internal
           status: draft
           releaseName: ${{ env.BUILD_NAME }}
@@ -221,6 +234,10 @@ jobs:
           serviceAccountJsonPlainText: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
           packageName: net.interstellarai.cosmicmatch
           releaseFiles: build/app/outputs/bundle/release/app-release.aab
+          # Cleared the Play Console "no deobfuscation file" warning — see issue #136.
+          # Native debug symbols are embedded in the AAB itself via ndk.debugSymbolLevel,
+          # so we don't pass `debugSymbols:` here.
+          mappingFile: build/app/outputs/mapping/release/mapping.txt
           track: production
           status: completed
           releaseName: ${{ env.BUILD_NAME }}

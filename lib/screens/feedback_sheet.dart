@@ -187,23 +187,18 @@ class _FeedbackSheetState extends State<_FeedbackSheet> {
                     return Column(
                       crossAxisAlignment: CrossAxisAlignment.end,
                       children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.end,
-                          children: [
-                            IconButton(
-                              icon: Icon(
-                                _drawMode ? Icons.edit : Icons.pan_tool,
-                                color: _drawMode
-                                    ? kLyraAccent
-                                    : Colors.white.withValues(alpha: 0.6),
-                                size: 18,
-                              ),
-                              tooltip: _drawMode ? 'Switch to pan mode' : 'Switch to draw mode',
-                              onPressed: () => setState(() => _drawMode = !_drawMode),
-                              padding: EdgeInsets.zero,
-                              constraints: const BoxConstraints(),
-                            ),
-                          ],
+                        IconButton(
+                          icon: Icon(
+                            _drawMode ? Icons.edit : Icons.pan_tool,
+                            color: _drawMode
+                                ? kLyraAccent
+                                : Colors.white.withValues(alpha: 0.6),
+                            size: 18,
+                          ),
+                          tooltip: _drawMode ? 'Switch to pan mode' : 'Switch to draw mode',
+                          onPressed: () => setState(() => _drawMode = !_drawMode),
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(),
                         ),
                         const SizedBox(height: 4),
                         ClipRRect(
