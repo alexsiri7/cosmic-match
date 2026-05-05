@@ -1,8 +1,8 @@
 @Tags(['screenshots'])
+library;
 
 import 'dart:async' show unawaited;
 import 'dart:math';
-import 'dart:ui' show Size;
 import 'package:flame_riverpod/flame_riverpod.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -78,6 +78,12 @@ void main() {
     unawaited(game.world.runSwap(tileA, tileB));
     await tester.pump(const Duration(milliseconds: 500));
 
+    expect(
+      game.phase,
+      isNot(GamePhase.idle),
+      reason: 'phone_2 must capture mid-cascade, not a settled board',
+    );
+
     await expectLater(
       find.byKey(gameKey),
       matchesGoldenFile('goldens/phone_2.png'),
@@ -117,6 +123,12 @@ void main() {
     final (tileA, tileB) = setupForcedMatch(game);
     unawaited(game.world.runSwap(tileA, tileB));
     await tester.pump(const Duration(milliseconds: 1500));
+
+    expect(
+      game.phase,
+      GamePhase.idle,
+      reason: 'phone_3 must capture a settled board, not mid-cascade',
+    );
 
     await expectLater(
       find.byKey(gameKey),
