@@ -19,9 +19,10 @@ jobs:
           # We never auto-stale arbitrary issues — only ones flagged as low-content.
           only-issue-labels: needs-more-info
 
-          # 7 days after the label is applied, post the warning comment + add `stale`.
+          # 7 days of inactivity after labeling: post the warning comment + add `stale`.
+          # (actions/stale measures from updated_at, so any new activity resets the clock.)
           days-before-issue-stale: 7
-          # 7 more days after that, close. Total grace window: 14 days.
+          # 7 more days of inactivity after that: close. Total grace window: 14 days.
           days-before-issue-close: 7
 
           stale-issue-label: stale
