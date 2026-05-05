@@ -1,0 +1,47 @@
+name: Stale issue triage
+
+on:
+  schedule:
+    # 06:00 UTC daily — quiet window for this repo
+    - cron: '0 6 * * *'
+  workflow_dispatch:
+
+permissions:
+  issues: write
+
+jobs:
+  stale:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/stale@5bef64f19d7facfb25b37b414482c7164d639639 # v9.1.0
+        with:
+          # Operate ONLY on issues already labeled by a maintainer.
+          # We never auto-stale arbitrary issues — only ones flagged as low-content.
+          only-issue-labels: needs-more-info
+
+          # 7 days of inactivity after labeling: post the warning comment + add `stale`.
+          # (actions/stale measures from updated_at, so any new activity resets the clock.)
+          days-before-issue-stale: 7
+          # 7 more days of inactivity after that: close. Total grace window: 14 days.
+          days-before-issue-close: 7
+
+          stale-issue-label: stale
+          stale-issue-message: |
+            This issue was labeled `needs-more-info` because it appears to lack the
+            reproduction details needed to investigate (e.g., steps to reproduce,
+            expected vs actual behaviour, screenshot or annotation showing the
+            problem). It will be closed in 7 days unless updated.
+
+            If this was a test submission, no action is required — it will be
+            cleaned up automatically.
+          close-issue-message: |
+            Closing due to no further details. If this is still affecting you,
+            please re-open with reproduction steps and we'll take another look.
+
+          # Hands-off on PRs and on protected categories.
+          days-before-pr-stale: -1
+          days-before-pr-close: -1
+          exempt-issue-labels: 'security,human-needed,pinned'
+
+          # Predictability cap — this repo gets <100 issues/day, so this is generous.
+          operations-per-run: 100
