@@ -173,4 +173,171 @@ void main() {
       expect(dropUnactionableAbort(event, hint), isNotNull);
     });
   });
+
+  group('dropGoogleFontsFetchFailure', () {
+    test('drops event with non-200 message variant ("with url:")', () {
+      final event = _eventWith(
+        value:
+            'Failed to load font with url: https://fonts.gstatic.com/s/a/abc123.ttf',
+        frames: [
+          SentryStackFrame(
+            function: '_httpFetchFontAndSaveToDevice',
+            fileName: 'google_fonts_base.dart',
+          ),
+        ],
+      );
+      expect(dropGoogleFontsFetchFailure(event, hint), isNull);
+    });
+
+    test('drops event with http.get catch message variant ("with url ")', () {
+      final event = _eventWith(
+        value:
+            'Failed to load font with url https://fonts.gstatic.com/s/a/abc123.ttf: SocketException: Failed host lookup',
+        frames: [
+          SentryStackFrame(
+            function: '_httpFetchFontAndSaveToDevice',
+            fileName: 'google_fonts_base.dart',
+          ),
+        ],
+      );
+      expect(dropGoogleFontsFetchFailure(event, hint), isNull);
+    });
+
+    test('drops event when google_fonts_base.dart frame is not the top frame',
+        () {
+      final event = _eventWith(
+        value:
+            'Failed to load font with url: https://fonts.gstatic.com/s/a/abc123.ttf',
+        frames: [
+          SentryStackFrame(
+            function: 'someAsyncWrapper',
+            fileName: 'zone.dart',
+          ),
+          SentryStackFrame(
+            function: '_httpFetchFontAndSaveToDevice',
+            fileName: 'google_fonts_base.dart',
+          ),
+        ],
+      );
+      expect(dropGoogleFontsFetchFailure(event, hint), isNull);
+    });
+
+    test('passes through events with a different exception value', () {
+      final event = _eventWith(
+        value: 'StateError: bad state',
+        frames: [
+          SentryStackFrame(
+            function: '_httpFetchFontAndSaveToDevice',
+            fileName: 'google_fonts_base.dart',
+          ),
+        ],
+      );
+      expect(dropGoogleFontsFetchFailure(event, hint), isNotNull);
+    });
+
+    test(
+        'passes through events whose value matches but no frame is in google_fonts_base.dart',
+        () {
+      final event = _eventWith(
+        value:
+            'Failed to load font with url: https://example.com/some.ttf',
+        frames: [
+          SentryStackFrame(
+            function: 'MyFontLoader.load',
+            fileName: 'my_font_loader.dart',
+          ),
+        ],
+      );
+      expect(dropGoogleFontsFetchFailure(event, hint), isNotNull);
+    });
+
+    test('passes through events with multiple exceptions', () {
+      final event = SentryEvent(
+        exceptions: [
+          SentryException(
+            type: 'Exception',
+            value:
+                'Failed to load font with url: https://fonts.gstatic.com/s/a/abc.ttf',
+            stackTrace: SentryStackTrace(frames: [
+              SentryStackFrame(
+                function: '_httpFetchFontAndSaveToDevice',
+                fileName: 'google_fonts_base.dart',
+              ),
+            ]),
+          ),
+          SentryException(type: 'Exception', value: 'Other'),
+        ],
+      );
+      expect(dropGoogleFontsFetchFailure(event, hint), isNotNull);
+    });
+
+    test('passes through events with no exceptions', () {
+      final event = SentryEvent();
+      expect(dropGoogleFontsFetchFailure(event, hint), isNotNull);
+    });
+
+    test('passes through font-failure with null stackTrace', () {
+      final event = SentryEvent(
+        exceptions: [
+          SentryException(
+            type: 'Exception',
+            value:
+                'Failed to load font with url: https://fonts.gstatic.com/s/a/abc.ttf',
+          ),
+        ],
+      );
+      expect(dropGoogleFontsFetchFailure(event, hint), isNotNull);
+    });
+
+    test('passes through font-failure with empty frames list', () {
+      final event = _eventWith(
+        value:
+            'Failed to load font with url: https://fonts.gstatic.com/s/a/abc.ttf',
+        frames: const [],
+      );
+      expect(dropGoogleFontsFetchFailure(event, hint), isNotNull);
+    });
+  });
+
+  group('dropUnactionableEvents (composite)', () {
+    test('drops events matching the Abort filter', () {
+      final event = _eventWith(
+        value: 'Abort',
+        frames: [
+          SentryStackFrame(
+            function: '_ChannelCallbackRecord.invoke',
+            fileName: 'channel_buffers.dart',
+          ),
+        ],
+      );
+      expect(dropUnactionableEvents(event, hint), isNull);
+    });
+
+    test('drops events matching the GoogleFonts filter', () {
+      final event = _eventWith(
+        value:
+            'Failed to load font with url: https://fonts.gstatic.com/s/a/abc.ttf',
+        frames: [
+          SentryStackFrame(
+            function: '_httpFetchFontAndSaveToDevice',
+            fileName: 'google_fonts_base.dart',
+          ),
+        ],
+      );
+      expect(dropUnactionableEvents(event, hint), isNull);
+    });
+
+    test('passes through events that match neither filter', () {
+      final event = _eventWith(
+        value: 'StateError: bad state',
+        frames: [
+          SentryStackFrame(
+            function: 'MyService.doThing',
+            fileName: 'my_service.dart',
+          ),
+        ],
+      );
+      expect(dropUnactionableEvents(event, hint), isNotNull);
+    });
+  });
 }
