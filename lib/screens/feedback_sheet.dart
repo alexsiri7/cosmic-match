@@ -110,15 +110,14 @@ class _FeedbackSheetState extends State<_FeedbackSheet> {
     final scaleY = image.height.toDouble() / _previewHeight;
     for (final path in _drawPaths) {
       for (int i = 0; i < path.length - 1; i++) {
-        if (path[i] != null && path[i + 1] != null) {
-          canvas.drawLine(
-            Offset((path[i]!.dx - _imageOffset.dx) * scaleX,
-                   (path[i]!.dy - _imageOffset.dy) * scaleY),
-            Offset((path[i + 1]!.dx - _imageOffset.dx) * scaleX,
-                   (path[i + 1]!.dy - _imageOffset.dy) * scaleY),
-            paint,
-          );
-        }
+        final a = path[i];
+        final b = path[i + 1];
+        if (a == null || b == null) continue;
+        canvas.drawLine(
+          Offset((a.dx - _imageOffset.dx) * scaleX, (a.dy - _imageOffset.dy) * scaleY),
+          Offset((b.dx - _imageOffset.dx) * scaleX, (b.dy - _imageOffset.dy) * scaleY),
+          paint,
+        );
       }
     }
 
