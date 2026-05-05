@@ -40,3 +40,52 @@ SentryEvent? dropUnactionableAbort(SentryEvent event, Hint hint) {
 
   return hasOnlyEngineFrame ? null : event;
 }
+
+/// Drops Sentry events from `package:google_fonts` that report a failed font
+/// download from fonts.gstatic.com. The package's `_httpFetchFontAndSaveToDevice`
+/// throws `Exception('Failed to load font with url[:] <url>[: <inner>]')` whenever
+/// the HTTP request fails (DNS, TLS, transient 5xx, ISP blocking) or returns a
+/// non-200 status. The package then falls back to the platform default font, so
+/// there is no crash and no functional regression — only a typographic fallback —
+/// but the rethrown exception escapes as an unhandled async error and Sentry
+/// captures it.
+///
+/// These events are unactionable from app code: the maintainers themselves treat
+/// network failures as out of scope (google_fonts issue #534 closed "not planned").
+/// Dropping them here prevents sentry-bridge from re-filing the same GitHub issue
+/// every time a device hiccups (see issue #140).
+///
+/// Match shape (all conditions required):
+///   - exactly one exception in the event,
+///   - exception value contains `Failed to load font with url`
+///     (covers both message variants: `with url:` from non-200 path,
+///     `with url ` from the http.get catch path),
+///   - at least one stack frame whose file is `google_fonts_base.dart`.
+///
+/// Pass-through for any event that does not match this exact shape.
+SentryEvent? dropGoogleFontsFetchFailure(SentryEvent event, Hint hint) {
+  final exceptions = event.exceptions ?? const <SentryException>[];
+  if (exceptions.length != 1) return event;
+
+  final exception = exceptions.first;
+  final value = exception.value ?? '';
+  if (!value.contains('Failed to load font with url')) return event;
+
+  final frames = exception.stackTrace?.frames ?? const <SentryStackFrame>[];
+  final hasGoogleFontsFrame = frames.any(
+    (f) => (f.fileName ?? '').contains('google_fonts_base.dart'),
+  );
+  return hasGoogleFontsFrame ? null : event;
+}
+
+/// Composite Sentry `beforeSend` filter that runs every per-pattern unactionable
+/// filter in sequence. Returns `null` (drop) if any filter drops the event,
+/// otherwise passes the event through untouched.
+///
+/// Sentry only allows one `beforeSend` callback, so all filters must compose
+/// here. Add new filters by inserting a `dropX(event, hint) == null` short-circuit.
+SentryEvent? dropUnactionableEvents(SentryEvent event, Hint hint) {
+  if (dropUnactionableAbort(event, hint) == null) return null;
+  if (dropGoogleFontsFetchFailure(event, hint) == null) return null;
+  return event;
+}

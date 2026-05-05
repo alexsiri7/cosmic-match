@@ -67,7 +67,7 @@ Future<void> main() async {
         options.tracesSampleRate = 0.0;
         options.sendDefaultPii = false;
         options.attachScreenshot = false;
-        options.beforeSend = dropUnactionableAbort;
+        options.beforeSend = dropUnactionableEvents;
       },
       appRunner: launch,
     );
