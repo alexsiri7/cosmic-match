@@ -45,14 +45,15 @@ SentryEvent? dropUnactionableAbort(SentryEvent event, Hint hint) {
 /// download from fonts.gstatic.com. The package's `_httpFetchFontAndSaveToDevice`
 /// throws `Exception('Failed to load font with url[:] <url>[: <inner>]')` whenever
 /// the HTTP request fails (DNS, TLS, transient 5xx, ISP blocking) or returns a
-/// non-200 status. Flutter falls back to the default platform font, so the
-/// user-visible impact is zero — but the rethrown exception escapes as an
-/// unhandled async error and Sentry captures it.
+/// non-200 status. The package then falls back to the platform default font, so
+/// there is no crash and no functional regression — only a typographic fallback —
+/// but the rethrown exception escapes as an unhandled async error and Sentry
+/// captures it.
 ///
 /// These events are unactionable from app code: the maintainers themselves treat
-/// network failures as out of scope (issue #534 closed "not planned"). Dropping
-/// them here prevents sentry-bridge from re-filing the same GitHub issue every
-/// time a device hiccups (see issue #140).
+/// network failures as out of scope (google_fonts issue #534 closed "not planned").
+/// Dropping them here prevents sentry-bridge from re-filing the same GitHub issue
+/// every time a device hiccups (see issue #140).
 ///
 /// Match shape (all conditions required):
 ///   - exactly one exception in the event,

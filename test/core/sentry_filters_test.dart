@@ -222,6 +222,23 @@ void main() {
       expect(dropGoogleFontsFetchFailure(event, hint), isNull);
     });
 
+    // Pins substring (not equality) semantics on `fileName`: real Sentry
+    // frames carry a package-qualified path, not the bare basename.
+    test('drops event whose google_fonts frame uses a package-qualified path',
+        () {
+      final event = _eventWith(
+        value:
+            'Failed to load font with url: https://fonts.gstatic.com/s/a/abc123.ttf',
+        frames: [
+          SentryStackFrame(
+            function: '_httpFetchFontAndSaveToDevice',
+            fileName: 'package:google_fonts/src/google_fonts_base.dart',
+          ),
+        ],
+      );
+      expect(dropGoogleFontsFetchFailure(event, hint), isNull);
+    });
+
     test('passes through events with a different exception value', () {
       final event = _eventWith(
         value: 'StateError: bad state',
