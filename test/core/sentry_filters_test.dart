@@ -203,10 +203,9 @@ void main() {
       expect(dropGoogleFontsFetchFailure(event, hint), isNull);
     });
 
-    // Pins the exact shape reported in issue #150: http.get catch path with
-    // a ClientException inner and a trailing `uri=` parameter. Differs from
-    // the SocketException test above only in the inner-exception type, but
-    // we want a regression anchor for this specific Sentry grouping.
+    // Pins the http.get catch path: a ClientException inner with a trailing
+    // `uri=` parameter. This is its own Sentry grouping (distinct from the
+    // SocketException variant above), so we want an explicit regression anchor.
     test(
         'drops event with ClientException inner ("Connection closed", trailing uri=)',
         () {
