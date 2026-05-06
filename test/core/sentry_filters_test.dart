@@ -203,6 +203,28 @@ void main() {
       expect(dropGoogleFontsFetchFailure(event, hint), isNull);
     });
 
+    // Pins the exact shape reported in issue #150: http.get catch path with
+    // a ClientException inner and a trailing `uri=` parameter. Differs from
+    // the SocketException test above only in the inner-exception type, but
+    // we want a regression anchor for this specific Sentry grouping.
+    test(
+        'drops event with ClientException inner ("Connection closed", trailing uri=)',
+        () {
+      final event = _eventWith(
+        value:
+            'Failed to load font with url https://fonts.gstatic.com/s/a/abc123.ttf: '
+            'ClientException: Connection closed before full header was received, '
+            'uri=https://fonts.gstatic.com/s/a/abc123.ttf',
+        frames: [
+          SentryStackFrame(
+            function: '_httpFetchFontAndSaveToDevice',
+            fileName: 'google_fonts_base.dart',
+          ),
+        ],
+      );
+      expect(dropGoogleFontsFetchFailure(event, hint), isNull);
+    });
+
     test('drops event when google_fonts_base.dart frame is not the top frame',
         () {
       final event = _eventWith(
