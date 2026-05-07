@@ -1,3 +1,4 @@
+import 'package:flame/effects.dart';
 import 'package:flame/game.dart';
 import 'package:flame_test/flame_test.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -141,6 +142,54 @@ void main() {
         // cell before adding MoveEffect, preventing overshoot from the drifted start.
         world.applyGravityWithAnimationForTest();
 
+        expect(tile.position.x, closeTo(canonicalPos.x, kTestEpsilon));
+        expect(tile.position.y, closeTo(canonicalPos.y, kTestEpsilon));
+      },
+    );
+
+    testWithGame<FlameGame>(
+      'stale MoveEffect on tile is cancelled before fall animation — '
+      'prevents cascade overshoot (issue #153)',
+      () => FlameGame(world: TestGridWorld()),
+      (game) async {
+        final world = game.world as TestGridWorld;
+        world.grid = createEmptyGrid();
+        world.grid[0][0] = TileType.red;
+        world.initLayoutForTest(Vector2(400, 800));
+
+        final canonicalPos = world.tilePositionAt(0, 0);
+        final tile = GridTile(
+          gridX: 0,
+          gridY: 0,
+          tileType: TileType.red,
+          position: canonicalPos.clone(),
+          size: Vector2.all(world.tileSize - 2),
+        );
+        world.tiles[0][0] = tile;
+
+        // Simulate a stale refill MoveEffect that's still mounted on the tile
+        // (the 300ms cascade wait resolved before the last animation frame ran
+        // on a low-fps device). Without cancellation, its remaining apply()
+        // would push the tile past the canonical cell after the snap, and the
+        // new fall MoveEffect.onStart() would read the drifted position.
+        final staleEffect = MoveEffect.to(
+          canonicalPos.clone(),
+          EffectController(duration: 0.5),
+        );
+        tile.add(staleEffect);
+
+        // applyGravityWithAnimation must cancel the stale effect before adding
+        // the new fall MoveEffect — otherwise the stale delta corrupts onStart().
+        world.applyGravityWithAnimationForTest();
+
+        final remainingEffects = tile.children.whereType<MoveEffect>().toList();
+        expect(remainingEffects.contains(staleEffect), isFalse,
+            reason:
+                'stale refill MoveEffect must be cancelled before fall snap');
+        expect(remainingEffects.length, 1,
+            reason: 'only the new fall MoveEffect should remain on the tile');
+
+        // Snap position must still be canonical regardless of stale effect.
         expect(tile.position.x, closeTo(canonicalPos.x, kTestEpsilon));
         expect(tile.position.y, closeTo(canonicalPos.y, kTestEpsilon));
       },

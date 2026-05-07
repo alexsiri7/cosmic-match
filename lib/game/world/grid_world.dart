@@ -277,6 +277,15 @@ class GridWorld extends World {
         if (grid[tile.gridX][y] == tile.tileType && newTiles[tile.gridX][y] == null) {
           newTiles[tile.gridX][y] = tile;
           if (tile.gridY != y) {
+            // Cancel any stale MoveEffect (e.g., a refill animation that hasn't
+            // fully completed when the next cascade fires on a low-fps device).
+            // Its remaining delta would apply after the snap below, pushing the
+            // tile past the canonical cell and corrupting onStart() in the new
+            // MoveEffect (which reads target.position lazily on first update).
+            tile.children
+                .whereType<MoveEffect>()
+                .toList()
+                .forEach((e) => e.removeFromParent());
             // Anchor to old canonical position before overwriting gridY — MoveEffect
             // reads tile.position as its start point; without this, a mid-animation tile
             // starts from a stale visual position and overshoots the target cell.
