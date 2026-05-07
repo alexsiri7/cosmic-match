@@ -82,8 +82,7 @@ SentryEvent? dropGoogleFontsFetchFailure(SentryEvent event, Hint hint) {
 /// filter in sequence. Returns `null` (drop) if any filter drops the event,
 /// otherwise passes the event through untouched.
 ///
-/// Sentry only allows one `beforeSend` callback, so all filters must compose
-/// here. Add new filters by inserting a `dropX(event, hint) == null` short-circuit.
+/// Sentry only allows one `beforeSend` callback, so all filters must compose here.
 SentryEvent? dropUnactionableEvents(SentryEvent event, Hint hint) {
   if (dropUnactionableAbort(event, hint) == null) return null;
   if (dropGoogleFontsFetchFailure(event, hint) == null) return null;

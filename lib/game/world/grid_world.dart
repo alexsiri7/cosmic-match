@@ -269,8 +269,7 @@ class GridWorld extends World {
     // ordering, so top-to-bottom sweep correctly maps each component to its
     // post-gravity cell. Matching is by tile type within the original column —
     // two same-coloured tiles in the same column can be mis-assigned, which is
-    // acceptable (rare and visually indistinguishable; a future refactor could
-    // assign by component identity rather than tile type to eliminate this).
+    // acceptable (rare and visually indistinguishable).
     for (final tile in liveTiles) {
       bool placed = false;
       for (int y = 0; y < rows; y++) {
