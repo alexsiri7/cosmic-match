@@ -282,10 +282,9 @@ class GridWorld extends World {
             // Its remaining delta would apply after the snap below, pushing the
             // tile past the canonical cell and corrupting onStart() in the new
             // MoveEffect (which reads target.position lazily on first update).
-            tile.children
-                .whereType<MoveEffect>()
-                .toList()
-                .forEach((e) => e.removeFromParent());
+            for (final e in tile.children.whereType<MoveEffect>().toList()) {
+              e.removeFromParent();
+            }
             // Anchor to old canonical position before overwriting gridY — MoveEffect
             // reads tile.position as its start point; without this, a mid-animation tile
             // starts from a stale visual position and overshoots the target cell.
