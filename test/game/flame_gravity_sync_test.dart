@@ -1,3 +1,4 @@
+import 'package:flame/effects.dart';
 import 'package:flame/game.dart';
 import 'package:flame_test/flame_test.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -143,6 +144,127 @@ void main() {
 
         expect(tile.position.x, closeTo(canonicalPos.x, kTestEpsilon));
         expect(tile.position.y, closeTo(canonicalPos.y, kTestEpsilon));
+      },
+    );
+
+    testWithGame<FlameGame>(
+      'stale MoveEffect on tile is cancelled before fall animation — '
+      'prevents cascade overshoot (issue #153)',
+      () => FlameGame(world: TestGridWorld()),
+      (game) async {
+        final world = game.world as TestGridWorld;
+        world.grid = createEmptyGrid();
+        world.grid[0][0] = TileType.red;
+        world.initLayoutForTest(Vector2(400, 800));
+
+        final canonicalPos = world.tilePositionAt(0, 0);
+        final tile = GridTile(
+          gridX: 0,
+          gridY: 0,
+          tileType: TileType.red,
+          position: canonicalPos.clone(),
+          size: Vector2.all(world.tileSize - 2),
+        );
+        world.tiles[0][0] = tile;
+
+        // Simulate a stale refill MoveEffect still mounted on the tile when a
+        // cascade fires — the real bug occurs when this effect hasn't completed
+        // on a low-fps device and its remaining delta corrupts the snap.
+        // This test verifies the cancellation mechanism fires; the production
+        // comment on the fix explains the full timing race.
+        final staleEffect = MoveEffect.to(
+          canonicalPos.clone(),
+          EffectController(duration: 0.5),
+        );
+        tile.add(staleEffect);
+        expect(tile.children.whereType<MoveEffect>().length, 1,
+            reason: 'stale effect must be in tile.children before gravity runs — '
+                'verifies that Flame add() is synchronous for unmounted components');
+
+        // applyGravityWithAnimation must cancel the stale effect before adding
+        // the new fall MoveEffect — otherwise the stale delta corrupts onStart().
+        world.applyGravityWithAnimationForTest();
+
+        final remainingEffects = tile.children.whereType<MoveEffect>().toList();
+        expect(remainingEffects.contains(staleEffect), isFalse,
+            reason:
+                'stale refill MoveEffect must be cancelled before fall snap');
+        expect(remainingEffects.length, 1,
+            reason: 'only the new fall MoveEffect should remain on the tile');
+
+        // Snap position must still be canonical regardless of stale effect.
+        expect(tile.position.x, closeTo(canonicalPos.x, kTestEpsilon));
+        expect(tile.position.y, closeTo(canonicalPos.y, kTestEpsilon));
+      },
+    );
+
+    testWithGame<FlameGame>(
+      'multiple stale MoveEffects on tile are all cancelled before fall animation',
+      () => FlameGame(world: TestGridWorld()),
+      (game) async {
+        final world = game.world as TestGridWorld;
+        world.grid = createEmptyGrid();
+        world.grid[0][0] = TileType.red;
+        world.initLayoutForTest(Vector2(400, 800));
+
+        final canonicalPos = world.tilePositionAt(0, 0);
+        final tile = GridTile(
+          gridX: 0,
+          gridY: 0,
+          tileType: TileType.red,
+          position: canonicalPos.clone(),
+          size: Vector2.all(world.tileSize - 2),
+        );
+        world.tiles[0][0] = tile;
+
+        final stale1 = MoveEffect.to(canonicalPos.clone(), EffectController(duration: 0.5));
+        final stale2 = MoveEffect.to(canonicalPos.clone(), EffectController(duration: 0.3));
+        tile.add(stale1);
+        tile.add(stale2);
+
+        world.applyGravityWithAnimationForTest();
+
+        final remaining = tile.children.whereType<MoveEffect>().toList();
+        expect(remaining.contains(stale1), isFalse,
+            reason: 'first stale MoveEffect must be cancelled');
+        expect(remaining.contains(stale2), isFalse,
+            reason: 'second stale MoveEffect must be cancelled');
+        expect(remaining.length, 1,
+            reason: 'only the new fall MoveEffect should remain');
+      },
+    );
+
+    testWithGame<FlameGame>(
+      'MoveEffect on stationary tile is preserved when tile does not fall',
+      () => FlameGame(world: TestGridWorld()),
+      (game) async {
+        final world = game.world as TestGridWorld;
+        world.grid = createEmptyGrid();
+        // Tile at bottom row — gravity leaves it in place; cancellation must not fire
+        world.grid[0][GridWorld.rows - 1] = TileType.red;
+        world.initLayoutForTest(Vector2(400, 800));
+
+        final canonicalPos = world.tilePositionAt(0, GridWorld.rows - 1);
+        final tile = GridTile(
+          gridX: 0,
+          gridY: GridWorld.rows - 1,
+          tileType: TileType.red,
+          position: canonicalPos.clone(),
+          size: Vector2.all(world.tileSize - 2),
+        );
+        world.tiles[0][GridWorld.rows - 1] = tile;
+
+        final existingEffect = MoveEffect.to(
+          canonicalPos.clone(),
+          EffectController(duration: 0.5),
+        );
+        tile.add(existingEffect);
+
+        world.applyGravityWithAnimationForTest();
+
+        expect(tile.children.whereType<MoveEffect>().contains(existingEffect), isTrue,
+            reason: 'MoveEffect on a stationary tile must not be cancelled — '
+                'only falling tiles (gridY != new row) have stale effects removed');
       },
     );
   });

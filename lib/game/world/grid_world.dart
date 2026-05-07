@@ -269,14 +269,21 @@ class GridWorld extends World {
     // ordering, so top-to-bottom sweep correctly maps each component to its
     // post-gravity cell. Matching is by tile type within the original column —
     // two same-coloured tiles in the same column can be mis-assigned, which is
-    // acceptable (rare and visually indistinguishable; a future refactor could
-    // assign by component identity rather than tile type to eliminate this).
+    // acceptable (rare and visually indistinguishable).
     for (final tile in liveTiles) {
       bool placed = false;
       for (int y = 0; y < rows; y++) {
         if (grid[tile.gridX][y] == tile.tileType && newTiles[tile.gridX][y] == null) {
           newTiles[tile.gridX][y] = tile;
           if (tile.gridY != y) {
+            // Cancel any stale MoveEffect (e.g., a refill animation that hasn't
+            // fully completed when the next cascade fires on a low-fps device).
+            // Its remaining delta would apply after the snap below, pushing the
+            // tile past the canonical cell and corrupting onStart() in the new
+            // MoveEffect (which reads target.position lazily on first update).
+            for (final e in tile.children.whereType<MoveEffect>().toList()) {
+              e.removeFromParent();
+            }
             // Anchor to old canonical position before overwriting gridY — MoveEffect
             // reads tile.position as its start point; without this, a mid-animation tile
             // starts from a stale visual position and overshoots the target cell.
