@@ -2,7 +2,6 @@
 id: "001"
 title: "Core match-3 game loop (M1)"
 status: "done"
-github_issue: 39
 updated: 2026-05-12
 ---
 

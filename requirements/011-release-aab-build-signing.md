@@ -2,7 +2,6 @@
 id: "011"
 title: "Release AAB build and signing"
 status: "done"
-github_issue: 31
 updated: 2026-05-12
 ---
 
