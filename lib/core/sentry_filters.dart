@@ -53,7 +53,7 @@ SentryEvent? dropUnactionableAbort(SentryEvent event, Hint hint) {
 /// These events are unactionable from app code: the maintainers themselves treat
 /// network failures as out of scope (google_fonts issue #534 closed "not planned").
 /// Dropping them here prevents sentry-bridge from re-filing the same GitHub issue
-/// every time a device hiccups (see issue #140).
+/// every time a device hiccups (see issues #140, #141).
 ///
 /// Match shape (all conditions required):
 ///   - exactly one exception in the event,
