@@ -1,22 +1,23 @@
 import 'package:sentry_flutter/sentry_flutter.dart';
 
 /// Drops Sentry events that are clearly symbolication artifacts:
-/// a single exception with value "Abort" (case-insensitive) whose stack
-/// trace has 1 or 2 frames, all of which point at the engine dispatch
-/// site `_ChannelCallbackRecord.invoke` in `channel_buffers.dart`.
+/// a single exception with value "Abort" (case-insensitive) whose entire
+/// stack trace consists only of engine frames from `channel_buffers.dart`.
 ///
-/// The 1-or-2-frame window covers the two observed Sentry encodings of
-/// the same crash: (a) just the dispatch frame, or (b) the dispatch
-/// frame plus one adjacent synthetic frame inserted by the reporter.
-/// Anything with three or more frames — or with an empty/missing stack
-/// trace — is treated as a real crash and passes through.
+/// Three observed Sentry encodings of the same crash are all covered:
+///   (a) 1-frame: just `_ChannelCallbackRecord.invoke`
+///   (b) 2-frame: dispatch frame + one adjacent synthetic frame
+///   (c) 58+-frame: full engine dispatch chain including `_Channel.push`,
+///       `ChannelBuffers.push`, etc. — all in `channel_buffers.dart`
+///       (see issue #144)
 ///
-/// These events carry no actionable signal — the user-code frames have
-/// been stripped by obfuscation/missing symbols. Dropping them here
-/// prevents sentry-bridge from re-filing the same GitHub issue every
-/// time the shape reoccurs (see issue #145).
+/// These events carry no actionable signal — all frames are engine
+/// internals with no user-code context. Dropping them here prevents
+/// sentry-bridge from re-filing the same GitHub issue every time the
+/// shape reoccurs (see issues #144, #145).
 ///
-/// Pass-through for any event that does not match this exact shape.
+/// Pass-through for: empty/null frame lists, any frame not in
+/// `channel_buffers.dart`, or events that don't match this exact shape.
 SentryEvent? dropUnactionableAbort(SentryEvent event, Hint hint) {
   final exceptions = event.exceptions ?? const <SentryException>[];
   if (exceptions.length != 1) return event;
@@ -29,16 +30,13 @@ SentryEvent? dropUnactionableAbort(SentryEvent event, Hint hint) {
   // Empty/null frames must not match: Iterable.every is vacuously true on []
   // and would otherwise silently drop frameless Abort events the filter was
   // never meant to suppress.
-  if (frames.isEmpty || frames.length > 2) return event;
+  if (frames.isEmpty) return event;
 
-  final hasOnlyEngineFrame = frames.every((f) {
-    final fn = f.function ?? '';
-    final file = f.fileName ?? '';
-    return fn.contains('_ChannelCallbackRecord') &&
-        file.contains('channel_buffers.dart');
-  });
+  final hasOnlyEngineFrames = frames.every(
+    (f) => (f.fileName ?? '').contains('channel_buffers.dart'),
+  );
 
-  return hasOnlyEngineFrame ? null : event;
+  return hasOnlyEngineFrames ? null : event;
 }
 
 /// Drops Sentry events from `package:google_fonts` that report a failed font

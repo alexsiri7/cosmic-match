@@ -34,6 +34,32 @@ void main() {
       expect(dropUnactionableAbort(event, hint), isNull);
     });
 
+    test('drops single-frame Abort when function is not _ChannelCallbackRecord', () {
+      final event = _eventWith(
+        value: 'Abort',
+        frames: [
+          SentryStackFrame(
+            function: '_Channel.push',
+            fileName: 'channel_buffers.dart',
+          ),
+        ],
+      );
+      expect(dropUnactionableAbort(event, hint), isNull);
+    });
+
+    test('drops Abort whose channel_buffers frame uses a package-qualified path', () {
+      final event = _eventWith(
+        value: 'Abort',
+        frames: [
+          SentryStackFrame(
+            function: '_ChannelCallbackRecord.invoke',
+            fileName: 'package:flutter/src/services/channel_buffers.dart',
+          ),
+        ],
+      );
+      expect(dropUnactionableAbort(event, hint), isNull);
+    });
+
     test('drops case-insensitive "abort" with surrounding whitespace', () {
       final event = _eventWith(
         value: '  abort  ',
@@ -145,6 +171,48 @@ void main() {
         ],
       );
       expect(dropUnactionableAbort(event, hint), isNull);
+    });
+
+    test('drops Abort matching issue #144: 3-frame all-channel_buffers variant', () {
+      final event = _eventWith(
+        value: 'Abort',
+        frames: [
+          SentryStackFrame(
+            function: '_ChannelCallbackRecord.invoke',
+            fileName: 'channel_buffers.dart',
+          ),
+          SentryStackFrame(
+            function: '_Channel.push',
+            fileName: 'channel_buffers.dart',
+          ),
+          SentryStackFrame(
+            function: 'ChannelBuffers.push',
+            fileName: 'channel_buffers.dart',
+          ),
+        ],
+      );
+      expect(dropUnactionableAbort(event, hint), isNull);
+    });
+
+    test('passes through Abort when any frame is outside channel_buffers.dart', () {
+      final event = _eventWith(
+        value: 'Abort',
+        frames: [
+          SentryStackFrame(
+            function: 'MyWidget.onPressed',
+            fileName: 'my_widget.dart',
+          ),
+          SentryStackFrame(
+            function: '_ChannelCallbackRecord.invoke',
+            fileName: 'channel_buffers.dart',
+          ),
+          SentryStackFrame(
+            function: '_Channel.push',
+            fileName: 'channel_buffers.dart',
+          ),
+        ],
+      );
+      expect(dropUnactionableAbort(event, hint), isNotNull);
     });
 
     test('passes through 2-frame Abort where one frame is user code', () {
