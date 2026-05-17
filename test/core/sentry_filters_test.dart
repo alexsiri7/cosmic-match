@@ -147,6 +147,48 @@ void main() {
       expect(dropUnactionableAbort(event, hint), isNull);
     });
 
+    test('drops Abort matching issue #144: 3-frame all-channel_buffers variant', () {
+      final event = _eventWith(
+        value: 'Abort',
+        frames: [
+          SentryStackFrame(
+            function: '_ChannelCallbackRecord.invoke',
+            fileName: 'channel_buffers.dart',
+          ),
+          SentryStackFrame(
+            function: '_Channel.push',
+            fileName: 'channel_buffers.dart',
+          ),
+          SentryStackFrame(
+            function: 'ChannelBuffers.push',
+            fileName: 'channel_buffers.dart',
+          ),
+        ],
+      );
+      expect(dropUnactionableAbort(event, hint), isNull);
+    });
+
+    test('passes through Abort with many frames including one user frame', () {
+      final event = _eventWith(
+        value: 'Abort',
+        frames: [
+          SentryStackFrame(
+            function: 'MyWidget.onPressed',
+            fileName: 'my_widget.dart',
+          ),
+          SentryStackFrame(
+            function: '_ChannelCallbackRecord.invoke',
+            fileName: 'channel_buffers.dart',
+          ),
+          SentryStackFrame(
+            function: '_Channel.push',
+            fileName: 'channel_buffers.dart',
+          ),
+        ],
+      );
+      expect(dropUnactionableAbort(event, hint), isNotNull);
+    });
+
     test('passes through 2-frame Abort where one frame is user code', () {
       final event = _eventWith(
         value: 'Abort',
