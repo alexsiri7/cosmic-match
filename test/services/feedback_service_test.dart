@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
@@ -309,7 +310,7 @@ void main() {
 
       final box = await Hive.openBox('feedback_worker_queue');
       expect(box.length, 20);
-      final firstMsg = (box.getAt(0) as Map)['message'] as String;
+      final firstKey = box.keys.first;
 
       // Submit one more — oldest should be evicted
       await service.submit(
@@ -322,8 +323,9 @@ void main() {
       );
 
       expect(box.length, 20);
-      expect((box.getAt(0) as Map)['message'], isNot(firstMsg)); // oldest gone
-      expect((box.getAt(box.length - 1) as Map)['message'], 'overflow item');
+      expect(box.get(firstKey), isNull); // oldest key evicted
+      final lastKey = box.keys.last;
+      expect((box.get(lastKey) as Map)['message'], 'overflow item');
     });
 
     test('skips POST and does not enqueue when message is too short', () async {
@@ -405,6 +407,36 @@ void main() {
       final box = await Hive.openBox('feedback_worker_queue');
       expect(box.length, 0);
     });
+    test('sends correct POST body structure to worker', () async {
+      Map<String, dynamic>? capturedBody;
+      final client = MockClient((request) async {
+        capturedBody = jsonDecode(request.body) as Map<String, dynamic>;
+        return http.Response('{"url": "https://github.com/issue/1"}', 201);
+      });
+      final service = FeedbackService(
+        workerUrl: 'https://example.com/feedback',
+        httpClient: client,
+      );
+
+      await service.submit(
+        type: 'bug',
+        message: 'detailed bug report here',
+        screenshotB64: 'base64img',
+        appVersion: '2.0.0+3',
+        os: 'android',
+        device: 'Pixel 8',
+      );
+
+      expect(capturedBody, isNotNull);
+      expect(capturedBody!['repo'], 'alexsiri7/cosmic-match');
+      expect(capturedBody!['type'], 'bug');
+      expect(capturedBody!['message'], 'detailed bug report here');
+      expect(capturedBody!['screenshot'], 'base64img');
+      final context = capturedBody!['context'] as Map<String, dynamic>;
+      expect(context['appVersion'], '2.0.0+3');
+      expect(context['os'], 'android');
+      expect(context['device'], 'Pixel 8');
+    });
   });
 
   group('FeedbackService.flushQueue', () {
@@ -433,7 +465,7 @@ void main() {
         appVersion: '1.0.0+1',
         os: 'android',
         device: 'test',
-        createdAt: DateTime.now(),
+        createdAt: DateTime(2025, 6, 1),
       );
       await box.put(item.id, item.toMap());
       expect(box.length, 1);
@@ -458,7 +490,7 @@ void main() {
         appVersion: '1.0.0+1',
         os: 'android',
         device: 'test',
-        createdAt: DateTime.now(),
+        createdAt: DateTime(2025, 6, 1),
       );
       await box.put(item.id, item.toMap());
 

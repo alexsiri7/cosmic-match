@@ -178,5 +178,58 @@ void main() {
         throwsA(isA<FeedbackClientException>()),
       );
     });
+
+    test('_throwIfError throws on 500 with empty body', () async {
+      final mockHttp = MockClient((_) async => http.Response('', 500));
+
+      final client = GitHubFeedbackClient.withToken('ghp_test', httpClient: mockHttp);
+      await expectLater(
+        () => client.uploadImage('img-1', _minimalPng),
+        throwsA(isA<FeedbackClientException>().having(
+          (e) => e.message,
+          'message',
+          contains('500'),
+        )),
+      );
+    });
+
+    test('_throwIfError throws on 500 with body longer than 200 chars', () async {
+      final longBody = 'x' * 300;
+      final mockHttp = MockClient((_) async => http.Response(longBody, 500));
+
+      final client = GitHubFeedbackClient.withToken('ghp_test', httpClient: mockHttp);
+      await expectLater(
+        () => client.uploadImage('img-1', _minimalPng),
+        throwsA(isA<FeedbackClientException>().having(
+          (e) => e.message,
+          'message',
+          contains('500'),
+        )),
+      );
+    });
+
+    test('uploadImage sends correct request body structure', () async {
+      Map<String, dynamic>? capturedBody;
+      final mockHttp = MockClient((request) async {
+        capturedBody = jsonDecode(request.body) as Map<String, dynamic>;
+        return http.Response(
+          jsonEncode({
+            'content': {
+              'download_url': 'https://raw.githubusercontent.com/test/img.png'
+            },
+          }),
+          201,
+        );
+      });
+
+      final client = GitHubFeedbackClient.withToken('ghp_test', httpClient: mockHttp);
+      await client.uploadImage('img-1', _minimalPng);
+
+      expect(capturedBody, isNotNull);
+      expect(capturedBody!.keys, containsAll(['message', 'content', 'branch']));
+      expect(capturedBody!['branch'], 'main');
+      // Verify content is valid base64
+      expect(() => base64Decode(capturedBody!['content'] as String), returnsNormally);
+    });
   });
 }
