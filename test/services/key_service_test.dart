@@ -66,5 +66,12 @@ void main() {
       final encoded = KeyService.encodeKey([]);
       expect(encoded, equals(''));
     });
+
+    test('encodeKey produces URL-safe output (no + or / characters)', () {
+      final key = Hive.generateSecureKey();
+      final encoded = KeyService.encodeKey(key);
+
+      expect(encoded, matches(RegExp(r'^[A-Za-z0-9_-]+={0,2}$')));
+    });
   });
 }
