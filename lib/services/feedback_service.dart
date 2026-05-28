@@ -1,12 +1,12 @@
 import 'dart:async';
 import 'dart:convert';
 
-import 'package:archive/archive.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:hive/hive.dart';
 import 'package:http/http.dart' as http;
 
 import '../core/constants.dart';
+import '../core/crc_integrity.dart';
 import '../core/logger.dart';
 import '../models/pending_feedback.dart';
 
@@ -127,12 +127,8 @@ class FeedbackService {
   /// CRC32 integrity check (CLAUDE.md "CRC32 Persistence Contract"):
   /// rejects any map missing a `crc` field or whose canonicalised payload
   /// does not match the stored CRC.
-  bool _isValid(Map raw) {
-    final storedCrc = raw['crc'] as int?;
-    if (storedCrc == null) return false;
-    final data = Map<String, dynamic>.from(raw)..remove('crc');
-    return getCrc32(PendingFeedback.canonicalize(data).codeUnits) == storedCrc;
-  }
+  bool _isValid(Map raw) =>
+      isValidCrc(raw, canonicalize: PendingFeedback.canonicalize);
 
   Future<bool> _postToWorker(PendingFeedback item) async {
     try {

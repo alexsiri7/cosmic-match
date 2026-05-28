@@ -1,4 +1,5 @@
 import 'package:archive/archive.dart';
+import '../core/crc_integrity.dart';
 
 /// Data class for a queued feedback submission.
 ///
@@ -52,8 +53,5 @@ class PendingFeedback {
     );
   }
 
-  static String canonicalize(Map<String, dynamic> data) {
-    final keys = data.keys.toList()..sort();
-    return keys.map((k) => '$k:${data[k]}').join(',');
-  }
+  static String canonicalize(Map<String, dynamic> data) => canonicalizeMap(data);
 }

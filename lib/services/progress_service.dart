@@ -1,5 +1,5 @@
-import 'package:archive/archive.dart';
 import 'package:hive/hive.dart';
+import '../core/crc_integrity.dart';
 import '../core/logger.dart';
 import '../models/level_progress.dart';
 
@@ -49,10 +49,6 @@ class ProgressService {
     }
   }
 
-  bool _isValid(Map raw) {
-    final storedCrc = raw['crc'] as int?;
-    if (storedCrc == null) return false;
-    final data = Map<String, dynamic>.from(raw)..remove('crc');
-    return getCrc32(LevelProgress.canonicalize(data).codeUnits) == storedCrc;
-  }
+  bool _isValid(Map raw) =>
+      isValidCrc(raw, canonicalize: LevelProgress.canonicalize);
 }

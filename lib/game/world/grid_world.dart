@@ -11,6 +11,7 @@ import '../../core/logger.dart';
 import '../../services/progress_service.dart';
 import '../cascade_controller.dart';
 import '../components/grid_tile.dart';
+import '../grid_logic.dart';
 import '../match3_game.dart';
 import '../pattern_detector.dart';
 
@@ -27,13 +28,16 @@ class GridWorld extends World {
   final Score score = Score();
   final CascadeController cascade = CascadeController();
   final PatternDetector detector = PatternDetector();
-  final Random _rng;
 
-  // Logical grid — null means empty (tile is falling)
-  late List<List<TileType?>> grid;
+  late GridLogic gridLogic;
+
+  /// Forwarding getter so existing call sites (including tests) still compile.
+  List<List<TileType?>> get grid => gridLogic.grid;
+  set grid(List<List<TileType?>> value) => gridLogic.grid = value;
 
   // Render-layer parallel to grid
   late List<List<GridTile?>> tiles;
+  late Match3Game _game;
   late double tileSize;
   late Vector2 _boardOffset;
 
@@ -47,8 +51,8 @@ class GridWorld extends World {
   final List<List<TileType?>>? _testGrid;
 
   GridWorld({Random? rng, List<List<TileType?>>? testGrid})
-      : _rng = rng ?? Random(),
-        _testGrid = testGrid {
+      : _testGrid = testGrid {
+    gridLogic = GridLogic(cols: cols, rows: rows, rng: rng);
     assert(
       testGrid == null ||
           (testGrid.length == cols &&
@@ -63,24 +67,24 @@ class GridWorld extends World {
   Future<void> onLoad() async {
     final testGrid = _testGrid;
     if (testGrid != null) {
-      grid = List.generate(cols, (x) => List.of(testGrid[x]));
+      gridLogic.grid = List.generate(cols, (x) => List.of(testGrid[x]));
     } else {
-      _initGrid();
+      gridLogic.initGrid(detector);
     }
 
-    final game = findGame() as Match3Game;
-    _progressService = game.progressService;
+    _game = findGame() as Match3Game;
+    _progressService = _game.progressService;
 
     final progress =
         await _progressService?.load(1) ?? LevelProgress.initial(1);
     _bestScore = progress.bestScore;
 
     _bgRef = _CosmicBackground()
-      ..size = Vector2(game.size.x, game.size.y);
+      ..size = Vector2(_game.size.x, _game.size.y);
     add(_bgRef);
 
     // Compute layout — use canvasSize to prevent cropping on all viewports.
-    _applyLayout(game.canvasSize);
+    _applyLayout(_game.canvasSize);
 
     _backdropRef = _BoardBackdrop()
       ..position = _boardOffset - Vector2(8, 8)
@@ -109,9 +113,8 @@ class GridWorld extends World {
   void onGameResize(Vector2 size) {
     super.onGameResize(size);
     if (!isLoaded) return;
-    final game = findGame() as Match3Game;
-    _applyLayout(game.canvasSize);
-    _bgRef.size = Vector2(game.size.x, game.size.y);
+    _applyLayout(_game.canvasSize);
+    _bgRef.size = Vector2(_game.size.x, _game.size.y);
     _backdropRef.position = _boardOffset - Vector2(8, 8);
     _backdropRef.size = Vector2(tileSize * cols + 16, tileSize * rows + 16);
     for (int x = 0; x < cols; x++) {
@@ -141,17 +144,13 @@ class GridWorld extends World {
   }
 
   void _updateScoreNotifier() {
-    final game = findGame() as Match3Game?;
-    if (game != null) {
-      game.scoreNotifier.value = (score: score.value, best: _bestScore);
-    }
+    _game.scoreNotifier.value = (score: score.value, best: _bestScore);
   }
 
   // --- Swap + Cascade Pipeline ---
 
   Future<void> runSwap(GridTile tileA, GridTile tileB) async {
-    final game = findGame() as Match3Game;
-    game.transitionTo(GamePhase.swapping);
+    _game.transitionTo(GamePhase.swapping);
     try {
       final posA = tileA.position.clone();
       final posB = tileB.position.clone();
@@ -170,18 +169,18 @@ class GridWorld extends World {
         tileB.add(MoveEffect.to(posB, EffectController(duration: 0.2)));
         await Future<void>.delayed(const Duration(milliseconds: 220));
         _swapTiles(tileA, tileB);
-        game.transitionTo(GamePhase.idle);
+        _game.transitionTo(GamePhase.idle);
         return;
       }
 
-      game.transitionTo(GamePhase.matching);
+      _game.transitionTo(GamePhase.matching);
       cascade.reset();
       await _runCascade(matches);
     } catch (e, stack) {
       // Debug: crash immediately; release: reset to idle so the game is not bricked.
       gameLogger.e('GridWorld.runSwap() failed — resetting FSM to idle', error: e, stackTrace: stack);
       assert(false, 'runSwap() threw unexpectedly: $e');
-      game.transitionTo(GamePhase.idle);
+      _game.transitionTo(GamePhase.idle);
     }
   }
 
@@ -201,11 +200,10 @@ class GridWorld extends World {
   }
 
   Future<void> _runCascade(List<MatchResult> matches) async {
-    final game = findGame() as Match3Game;
     try {
       _clearMatches(matches);
 
-      game.transitionTo(GamePhase.falling);
+      _game.transitionTo(GamePhase.falling);
 
       _applyGravityWithAnimation();
       await Future<void>.delayed(const Duration(milliseconds: 300));
@@ -217,21 +215,21 @@ class GridWorld extends World {
 
       final newMatches = detector.detectAll(grid);
       if (newMatches.isEmpty || !cascade.canContinue) {
-        game.transitionTo(GamePhase.idle);
+        _game.transitionTo(GamePhase.idle);
         await _persistScore();
         return;
       }
 
       gameLogger.t('Cascade depth: ${cascade.depth}');
       cascade.increment();
-      game.transitionTo(GamePhase.cascading);
-      game.transitionTo(GamePhase.matching);
+      _game.transitionTo(GamePhase.cascading);
+      _game.transitionTo(GamePhase.matching);
       await _runCascade(newMatches);
     } catch (e, stack) {
       // Debug: crash immediately; release: reset to idle so the game is not bricked.
       gameLogger.e('GridWorld._runCascade() failed — resetting FSM to idle', error: e, stackTrace: stack);
       assert(false, '_runCascade() threw unexpectedly: $e');
-      game.transitionTo(GamePhase.idle);
+      _game.transitionTo(GamePhase.idle);
     }
   }
 
@@ -251,10 +249,12 @@ class GridWorld extends World {
 
   void _applyGravityWithAnimation() {
     while (applyGravity()) {}
+    final liveTiles = _collectLiveTiles();
+    tiles = List.generate(cols, (_) => List<GridTile?>.generate(rows, (_) => null));
+    _reconcileTilePositions(liveTiles);
+  }
 
-    final newTiles =
-        List.generate(cols, (_) => List<GridTile?>.generate(rows, (_) => null));
-
+  List<GridTile> _collectLiveTiles() {
     final liveTiles = <GridTile>[];
     for (int x = 0; x < cols; x++) {
       for (int y = 0; y < rows; y++) {
@@ -263,18 +263,21 @@ class GridWorld extends World {
         }
       }
     }
+    return liveTiles;
+  }
 
-    // Place each live tile at its grid type's new location.
-    // Iteration order (top-to-bottom) is load-bearing: gravity preserves column
-    // ordering, so top-to-bottom sweep correctly maps each component to its
-    // post-gravity cell. Matching is by tile type within the original column —
-    // two same-coloured tiles in the same column can be mis-assigned, which is
-    // acceptable (rare and visually indistinguishable).
+  /// Place each live tile at its grid type's new location.
+  /// Iteration order (top-to-bottom) is load-bearing: gravity preserves column
+  /// ordering, so top-to-bottom sweep correctly maps each component to its
+  /// post-gravity cell. Matching is by tile type within the original column —
+  /// two same-coloured tiles in the same column can be mis-assigned, which is
+  /// acceptable (rare and visually indistinguishable).
+  void _reconcileTilePositions(List<GridTile> liveTiles) {
     for (final tile in liveTiles) {
       bool placed = false;
       for (int y = 0; y < rows; y++) {
-        if (grid[tile.gridX][y] == tile.tileType && newTiles[tile.gridX][y] == null) {
-          newTiles[tile.gridX][y] = tile;
+        if (grid[tile.gridX][y] == tile.tileType && tiles[tile.gridX][y] == null) {
+          tiles[tile.gridX][y] = tile;
           if (tile.gridY != y) {
             // Cancel any stale MoveEffect (e.g., a refill animation that hasn't
             // fully completed when the next cascade fires on a low-fps device).
@@ -302,8 +305,6 @@ class GridWorld extends World {
         tile.removeFromParent();
       }
     }
-
-    tiles = newTiles;
   }
 
   void _refillAllWithAnimation() {
@@ -345,65 +346,24 @@ class GridWorld extends World {
     }
   }
 
-  // --- Core grid logic ---
-
-  void _initGrid() {
-    var attempts = 0;
-    const maxAttempts = 200;
-    // Regenerate until match-free; bounded to prevent infinite loop on unlucky seeds.
-    // After maxAttempts, accept as-is — the first cascade cycle will clear any matches.
-    do {
-      grid = List.generate(
-          cols, (_) => List.generate(rows, (_) => _randomTile()));
-      attempts++;
-    } while (detector.detectAll(grid).isNotEmpty && attempts < maxAttempts);
-  }
-
-  TileType _randomTile() {
-    return TileType.values[_rng.nextInt(TileType.values.length)];
-  }
+  // --- Core grid logic (delegated to GridLogic) ---
 
   /// Returns true if any tile moved.
-  bool applyGravity() {
-    bool moved = false;
-    for (int x = 0; x < cols; x++) {
-      for (int y = rows - 1; y > 0; y--) {
-        if (grid[x][y] == null && grid[x][y - 1] != null) {
-          grid[x][y] = grid[x][y - 1];
-          grid[x][y - 1] = null;
-          moved = true;
-        }
-      }
-    }
-    return moved;
-  }
+  bool applyGravity() => gridLogic.applyGravity();
 
   /// Kept as a unit-testable primitive; the cascade pipeline calls [refillAll].
-  void refillTop() {
-    for (int x = 0; x < cols; x++) {
-      if (grid[x][0] == null) grid[x][0] = _randomTile();
-    }
-  }
+  void refillTop() => gridLogic.refillTop();
 
   /// Called by the cascade pipeline after gravity settles; unlike [refillTop],
   /// fills all rows so multi-tile clears are fully repacked.
-  void refillAll() {
-    for (int x = 0; x < cols; x++) {
-      for (int y = 0; y < rows; y++) {
-        if (grid[x][y] == null) grid[x][y] = _randomTile();
-      }
-    }
-  }
+  void refillAll() => gridLogic.refillAll();
 
   /// Test-only wrapper for [_swapTiles] that accepts raw grid coordinates.
   /// Allows unit-testing of grid and tiles matrix mutations without a Flame
   /// game instance.
   @visibleForTesting
   void swapTilesForTest(int ax, int ay, int bx, int by) {
-    final typeA = grid[ax][ay];
-    final typeB = grid[bx][by];
-    grid[ax][ay] = typeB;
-    grid[bx][by] = typeA;
+    gridLogic.swapTypes(ax, ay, bx, by);
     final tmpRef = tiles[ax][ay];
     tiles[ax][ay] = tiles[bx][by];
     tiles[bx][by] = tmpRef;

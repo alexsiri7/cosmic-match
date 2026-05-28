@@ -1,4 +1,5 @@
 import 'package:archive/archive.dart';
+import '../core/crc_integrity.dart';
 
 class LevelProgress {
   final int level;
@@ -38,8 +39,5 @@ class LevelProgress {
 
   /// Canonicalize a map to a stable string by sorting keys.
   /// Used by both LevelProgress and ProgressService for CRC computation.
-  static String canonicalize(Map<String, dynamic> data) {
-    final keys = data.keys.toList()..sort();
-    return keys.map((k) => '$k:${data[k]}').join(',');
-  }
+  static String canonicalize(Map<String, dynamic> data) => canonicalizeMap(data);
 }
