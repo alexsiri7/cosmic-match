@@ -1,0 +1,9 @@
+{
+  "name": "cosmic-match",
+  "version": "1.0.0",
+  "scripts": {
+    "type-check": "flutter analyze",
+    "lint": "flutter analyze",
+    "test": "flutter test"
+  }
+}

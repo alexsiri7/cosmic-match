@@ -1,4 +1,5 @@
 import 'package:archive/archive.dart';
+import '../core/crc_integrity.dart';
 
 class FeedbackItem {
   final String id;
@@ -56,8 +57,5 @@ class FeedbackItem {
     );
   }
 
-  static String canonicalize(Map<String, dynamic> data) {
-    final keys = data.keys.toList()..sort();
-    return keys.map((k) => '$k:${data[k]}').join(',');
-  }
+  static String canonicalize(Map<String, dynamic> data) => canonicalizeMap(data);
 }
