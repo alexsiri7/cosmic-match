@@ -37,8 +37,10 @@ lib/
                   #   sentry_filters.dart — `dropUnactionableEvents` composite beforeSend filter; delegates to
                   #     `dropUnactionableAbort` (#145, channel-buffer Abort) and
                   #     `dropGoogleFontsFetchFailure` (#140, google_fonts CDN fetch failures)
+                  #   crc_integrity.dart — `canonicalizeMap()` / `isValidCrc()` shared CRC utilities
   game/           # Flame game, FSM, world, components
                   #   Input/FSM enums (GamePhase, SwipeDirection) defined in match3_game.dart
+                  #   grid_logic.dart — pure grid-data operations (gravity, refill, swap); no Flame deps
     theme/        # Tile color palette constants (kTilePalette — derived from TileType.colorValue;
                   #   kTileGlowPalette — derived from TileType.glowValue, used for selection border;
                   #   kTileSelectedOverlay — transparent, selection drawn by _GlowBorder stroke;
