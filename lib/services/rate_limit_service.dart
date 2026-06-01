@@ -72,9 +72,7 @@ class RateLimitService {
       if (lastMs != null) {
         final last = int.tryParse(lastMs);
         if (last != null) {
-          final elapsed =
-              DateTime.now().millisecondsSinceEpoch - last;
-          final elapsedSeconds = elapsed ~/ 1000;
+          final elapsedSeconds = (DateTime.now().millisecondsSinceEpoch - last) ~/ 1000;
           if (elapsedSeconds < kFeedbackCooldownSeconds) {
             final remaining = kFeedbackCooldownSeconds - elapsedSeconds;
             return (
