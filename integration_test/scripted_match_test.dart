@@ -41,7 +41,7 @@ void main() {
   setUp(() async {
     tempDir = await Directory.systemTemp.createTemp('hive_integration_');
     Hive.init(tempDir.path);
-    progressService = ProgressService();
+    progressService = ProgressService(hmacKey: List.filled(32, 1));
     game = Match3Game(
       progressService: progressService,
       testGrid: _buildTestGrid(),
