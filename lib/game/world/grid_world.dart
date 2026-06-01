@@ -29,7 +29,7 @@ class GridWorld extends World {
   final CascadeController cascade = CascadeController();
   final PatternDetector detector = PatternDetector();
 
-  late GridLogic gridLogic;
+  final GridLogic gridLogic;
 
   List<List<TileType?>> get grid => gridLogic.grid;
   set grid(List<List<TileType?>> value) => gridLogic.grid = value;
@@ -50,8 +50,8 @@ class GridWorld extends World {
   final List<List<TileType?>>? _testGrid;
 
   GridWorld({Random? rng, List<List<TileType?>>? testGrid})
-      : _testGrid = testGrid {
-    gridLogic = GridLogic(cols: cols, rows: rows, rng: rng);
+      : _testGrid = testGrid,
+        gridLogic = GridLogic(cols: cols, rows: rows, rng: rng) {
     assert(
       testGrid == null ||
           (testGrid.length == cols &&
