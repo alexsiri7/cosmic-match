@@ -83,8 +83,6 @@ class FeedbackService {
       return;
     }
 
-    gameLogger.d('FeedbackService.submit: type=$type');
-
     final item = PendingFeedback(
       id: DateTime.now().microsecondsSinceEpoch.toString(),
       type: type,

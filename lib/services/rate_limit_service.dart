@@ -36,6 +36,27 @@ class RateLimitService {
     await _storage.write(key: key, value: value);
   }
 
+  /// Reads the persisted hourly window. Returns `count=0, windowStart=now`
+  /// when storage is empty, expired, or malformed.
+  Future<({int count, DateTime windowStart})> _readHourlyWindow() async {
+    final windowJson = await _read(_keyHourWindow);
+    if (windowJson != null) {
+      try {
+        final map = jsonDecode(windowJson) as Map<String, dynamic>;
+        final windowStart = DateTime.tryParse(map['windowStart'] as String? ?? '');
+        final storedCount = map['count'] as int?;
+        if (windowStart != null &&
+            storedCount != null &&
+            DateTime.now().difference(windowStart).inMinutes < 60) {
+          return (count: storedCount, windowStart: windowStart);
+        }
+      } catch (e) {
+        gameLogger.d('RateLimitService: malformed hour-window JSON — resetting', error: e);
+      }
+    }
+    return (count: 0, windowStart: DateTime.now());
+  }
+
   /// Check whether a submission is currently allowed.
   ///
   /// Returns a record with:
@@ -66,22 +87,7 @@ class RateLimitService {
       }
 
       // --- Hourly cap ---
-      int count = 0;
-      final windowJson = await _read(_keyHourWindow);
-      if (windowJson != null) {
-        try {
-          final map = jsonDecode(windowJson) as Map<String, dynamic>;
-          final windowStart = DateTime.tryParse(map['windowStart'] as String? ?? '');
-          final storedCount = map['count'] as int?;
-          if (windowStart != null &&
-              storedCount != null &&
-              DateTime.now().difference(windowStart).inMinutes < 60) {
-            count = storedCount;
-          }
-        } catch (e) {
-          gameLogger.d('RateLimitService.checkStatus: malformed hour-window JSON — resetting', error: e);
-        }
-      }
+      final count = (await _readHourlyWindow()).count;
 
       if (count >= kFeedbackMaxPerHour) {
         return (allowed: false, cooldownSeconds: 0, hourlyRemaining: 0);
@@ -112,26 +118,9 @@ class RateLimitService {
       );
 
       // Update hourly window.
-      int count = 0;
-      DateTime windowStart = DateTime.now();
-      final windowJson = await _read(_keyHourWindow);
-      if (windowJson != null) {
-        try {
-          final map = jsonDecode(windowJson) as Map<String, dynamic>;
-          final stored = DateTime.tryParse(map['windowStart'] as String? ?? '');
-          final storedCount = map['count'] as int?;
-          if (stored != null &&
-              storedCount != null &&
-              DateTime.now().difference(stored).inMinutes < 60) {
-            count = storedCount;
-            windowStart = stored;
-          }
-        } catch (e) {
-          gameLogger.d('RateLimitService.recordSubmission: malformed hour-window JSON — resetting window', error: e);
-        }
-      }
-
-      count++;
+      final window = await _readHourlyWindow();
+      final count = window.count + 1;
+      final windowStart = window.windowStart;
       await _write(
         _keyHourWindow,
         jsonEncode({
