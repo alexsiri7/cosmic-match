@@ -1,5 +1,23 @@
 import 'package:sentry_flutter/sentry_flutter.dart';
 
+/// Returns the frame list when [event] is a single "Abort" exception with at
+/// least one frame; otherwise returns null.
+///
+/// Both `dropUnactionableAbort` and `dropSyscallAbort` share this prefix
+/// check — they differ only in which frame predicate they apply.
+///
+/// Empty frames must not match: `Iterable.every` is vacuously true on `[]`
+/// and would otherwise silently drop frameless Abort events.
+List<SentryStackFrame>? _abortFrames(SentryEvent event) {
+  final exceptions = event.exceptions ?? const <SentryException>[];
+  if (exceptions.length != 1) return null;
+  final exception = exceptions.first;
+  if (exception.value?.trim().toLowerCase() != 'abort') return null;
+  final frames = exception.stackTrace?.frames ?? const <SentryStackFrame>[];
+  if (frames.isEmpty) return null;
+  return frames;
+}
+
 /// Drops Sentry events that are clearly symbolication artifacts:
 /// a single exception with value "Abort" (case-insensitive) whose entire
 /// stack trace consists only of engine frames from `channel_buffers.dart`.
@@ -19,24 +37,11 @@ import 'package:sentry_flutter/sentry_flutter.dart';
 /// Pass-through for: empty/null frame lists, any frame not in
 /// `channel_buffers.dart`, or events that don't match this exact shape.
 SentryEvent? dropUnactionableAbort(SentryEvent event, Hint hint) {
-  final exceptions = event.exceptions ?? const <SentryException>[];
-  if (exceptions.length != 1) return event;
-
-  final exception = exceptions.first;
-  final value = exception.value?.trim().toLowerCase();
-  if (value != 'abort') return event;
-
-  final frames = exception.stackTrace?.frames ?? const <SentryStackFrame>[];
-  // Empty/null frames must not match: Iterable.every is vacuously true on []
-  // and would otherwise silently drop frameless Abort events the filter was
-  // never meant to suppress.
-  if (frames.isEmpty) return event;
-
-  final hasOnlyEngineFrames = frames.every(
-    (f) => (f.fileName ?? '').contains('channel_buffers.dart'),
-  );
-
-  return hasOnlyEngineFrames ? null : event;
+  final frames = _abortFrames(event);
+  if (frames == null) return event;
+  return frames.every((f) => (f.fileName ?? '').contains('channel_buffers.dart'))
+      ? null
+      : event;
 }
 
 /// Drops Sentry events that are unactionable native-abort symbolication artifacts:
@@ -51,24 +56,9 @@ SentryEvent? dropUnactionableAbort(SentryEvent event, Hint hint) {
 /// Pass-through for: empty/null frame lists, any frame not containing `syscall`,
 /// or events that don't match this exact shape.
 SentryEvent? dropSyscallAbort(SentryEvent event, Hint hint) {
-  final exceptions = event.exceptions ?? const <SentryException>[];
-  if (exceptions.length != 1) return event;
-
-  final exception = exceptions.first;
-  final value = exception.value?.trim().toLowerCase();
-  if (value != 'abort') return event;
-
-  final frames = exception.stackTrace?.frames ?? const <SentryStackFrame>[];
-  // Empty/null frames must not match: Iterable.every is vacuously true on []
-  // and would otherwise silently drop frameless Abort events the filter was
-  // never meant to suppress.
-  if (frames.isEmpty) return event;
-
-  final hasOnlySyscallFrames = frames.every(
-    (f) => (f.fileName ?? '').contains('syscall'),
-  );
-
-  return hasOnlySyscallFrames ? null : event;
+  final frames = _abortFrames(event);
+  if (frames == null) return event;
+  return frames.every((f) => (f.fileName ?? '').contains('syscall')) ? null : event;
 }
 
 /// Drops Sentry events from `package:google_fonts` that report a failed font
