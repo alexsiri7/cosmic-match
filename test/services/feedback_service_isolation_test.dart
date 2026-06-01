@@ -13,6 +13,9 @@ import 'package:http/testing.dart';
 /// `feedback_queue` with incompatible map shapes; one would corrupt reads from
 /// the other. The tests below assert runtime isolation — if a future refactor
 /// re-aligns the box names, these tests fail.
+
+final _testKey = List<int>.generate(32, (i) => i);
+
 void main() {
   group('FeedbackService / FeedbackQueueService Hive box isolation', () {
     late Directory tempDir;
@@ -32,7 +35,7 @@ void main() {
     });
 
     test('FeedbackQueueService writes do not appear in the worker-queue box', () async {
-      final ghQueue = FeedbackQueueService();
+      final ghQueue = FeedbackQueueService(hmacKey: _testKey);
       await ghQueue.enqueue(FeedbackItem(
         id: 'gh-1',
         timestamp: DateTime(2026, 1, 1),
@@ -53,6 +56,7 @@ void main() {
       final service = FeedbackService(
         workerUrl: 'https://example.com/feedback',
         httpClient: MockClient((_) async => http.Response('', 503)),
+        hmacKey: _testKey,
       );
 
       await service.submit(
@@ -70,7 +74,7 @@ void main() {
           reason: 'sanity: failure should enqueue into the worker-queue box');
 
       // The GitHub-path queue must be empty.
-      final ghItems = await FeedbackQueueService().loadQueue();
+      final ghItems = await FeedbackQueueService(hmacKey: _testKey).loadQueue();
       expect(
         ghItems,
         isEmpty,

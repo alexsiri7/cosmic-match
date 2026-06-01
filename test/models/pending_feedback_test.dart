@@ -1,20 +1,18 @@
-import 'package:archive/archive.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:cosmic_match/core/crc_integrity.dart';
 import 'package:cosmic_match/models/pending_feedback.dart';
 
-/// Mirror of FeedbackService._isValid for test-level CRC validation.
-bool _isValid(Map raw) {
-  final storedCrc = raw['crc'] as int?;
-  if (storedCrc == null) return false;
-  final data = Map<String, dynamic>.from(raw)..remove('crc');
-  return getCrc32(PendingFeedback.canonicalize(data).codeUnits) == storedCrc;
-}
+final _testKey = List<int>.generate(32, (i) => i);
+
+/// Mirror of FeedbackService._isValid for test-level HMAC validation.
+bool _isValid(Map raw) =>
+    isValidHmac(raw, canonicalize: PendingFeedback.canonicalize, key: _testKey);
 
 void main() {
-  group('PendingFeedback CRC validation', () {
-    test('toMap includes crc key', () {
+  group('PendingFeedback HMAC validation', () {
+    test('toMap includes hmac key', () {
       final item = PendingFeedback(
-        id: 'crc-1',
+        id: 'hmac-1',
         type: 'bug',
         message: 'test message',
         screenshotB64: 'abc',
@@ -24,14 +22,14 @@ void main() {
         createdAt: DateTime(2025, 6, 1),
       );
 
-      final map = item.toMap();
-      expect(map.containsKey('crc'), isTrue);
-      expect(map['crc'], isA<int>());
+      final map = item.toMap(_testKey);
+      expect(map.containsKey('hmac'), isTrue);
+      expect(map['hmac'], isA<String>());
     });
 
     test('fromMap(toMap()) round-trips all 8 fields', () {
       final original = PendingFeedback(
-        id: 'crc-2',
+        id: 'hmac-2',
         type: 'feature',
         message: 'add dark mode please',
         screenshotB64: 'img-data',
@@ -41,7 +39,7 @@ void main() {
         createdAt: DateTime(2025, 3, 15, 10, 30),
       );
 
-      final restored = PendingFeedback.fromMap(original.toMap());
+      final restored = PendingFeedback.fromMap(original.toMap(_testKey));
 
       expect(restored.id, original.id);
       expect(restored.type, original.type);
@@ -53,9 +51,9 @@ void main() {
       expect(restored.createdAt, original.createdAt);
     });
 
-    test('tampered message field detected by CRC mismatch', () {
+    test('tampered message field detected by HMAC mismatch', () {
       final item = PendingFeedback(
-        id: 'crc-3',
+        id: 'hmac-3',
         type: 'bug',
         message: 'original message',
         screenshotB64: '',
@@ -65,16 +63,16 @@ void main() {
         createdAt: DateTime(2025, 1, 1),
       );
 
-      final map = item.toMap();
+      final map = item.toMap(_testKey);
       expect(_isValid(map), isTrue);
 
       map['message'] = 'tampered message';
       expect(_isValid(map), isFalse);
     });
 
-    test('missing crc key treated as invalid', () {
+    test('missing hmac key treated as invalid', () {
       final map = <String, dynamic>{
-        'id': 'no-crc',
+        'id': 'no-hmac',
         'type': 'bug',
         'message': 'test',
         'screenshotB64': '',

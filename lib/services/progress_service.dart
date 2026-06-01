@@ -7,15 +7,22 @@ class ProgressService {
   static const _boxName = 'progress';
 
   final HiveAesCipher? _cipher;
+  final List<int>? _hmacKey;
 
   /// Creates a [ProgressService].
   ///
   /// When [cipher] is provided the Hive box is opened with AES-256 encryption.
   /// Pass `null` to open the box unencrypted (graceful degradation).
   ///
+  /// When [hmacKey] is provided, save data is signed with HMAC-SHA256.
+  /// Pass `null` if secure storage is unavailable (saves will lack HMAC and
+  /// be treated as tampered on load — intentional fail-safe).
+  ///
   /// Note: opening a previously-unencrypted box with a cipher will throw.
   /// For V1 (no existing users) this is acceptable.
-  ProgressService({HiveAesCipher? cipher}) : _cipher = cipher;
+  ProgressService({HiveAesCipher? cipher, List<int>? hmacKey})
+      : _cipher = cipher,
+        _hmacKey = hmacKey;
 
   Future<LevelProgress> load(int level) async {
     gameLogger.d('ProgressService.load: level=$level');
@@ -37,9 +44,13 @@ class ProgressService {
 
   Future<void> save(LevelProgress progress) async {
     gameLogger.d('ProgressService.save: level=${progress.level}');
+    if (_hmacKey == null) {
+      gameLogger.w('ProgressService.save: hmacKey unavailable — skipping persist for level=${progress.level}');
+      return;
+    }
     try {
       final box = await Hive.openBox(_boxName, encryptionCipher: _cipher);
-      await box.put('level_${progress.level}', progress.toMap());
+      await box.put('level_${progress.level}', progress.toMap(_hmacKey));
     } on HiveError catch (e, stack) {
       gameLogger.e('ProgressService.save(level=${progress.level}): HiveError — possible cipher mismatch.', error: e, stackTrace: stack);
       // Progress loss is unfortunate but not catastrophic; do not rethrow
@@ -49,6 +60,12 @@ class ProgressService {
     }
   }
 
-  bool _isValid(Map raw) =>
-      isValidCrc(raw, canonicalize: LevelProgress.canonicalize);
+  bool _isValid(Map raw) {
+    final key = _hmacKey;
+    if (key == null) {
+      gameLogger.w('ProgressService._isValid: hmacKey unavailable — cannot validate integrity');
+      return false;
+    }
+    return isValidHmac(raw, canonicalize: LevelProgress.canonicalize, key: key);
+  }
 }

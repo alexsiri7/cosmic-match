@@ -7,8 +7,11 @@ class FeedbackQueueService {
   static const _boxName = 'feedback_queue';
 
   final HiveAesCipher? _cipher;
+  final List<int>? _hmacKey;
 
-  FeedbackQueueService({HiveAesCipher? cipher}) : _cipher = cipher;
+  FeedbackQueueService({HiveAesCipher? cipher, List<int>? hmacKey})
+      : _cipher = cipher,
+        _hmacKey = hmacKey;
 
   Future<Box> _openBox() => Hive.openBox(_boxName, encryptionCipher: _cipher);
 
@@ -37,9 +40,13 @@ class FeedbackQueueService {
 
   Future<void> enqueue(FeedbackItem item) async {
     gameLogger.d('FeedbackQueueService.enqueue: id=${item.id}');
+    if (_hmacKey == null) {
+      gameLogger.w('FeedbackQueueService.enqueue: hmacKey unavailable — skipping persist for id=${item.id}');
+      return;
+    }
     try {
       final box = await _openBox();
-      await box.put(item.id, item.toMap());
+      await box.put(item.id, item.toMap(_hmacKey));
     } on HiveError catch (e, stack) {
       gameLogger.e('FeedbackQueueService.enqueue(${item.id}): HiveError', error: e, stackTrace: stack);
     } catch (e, stack) {
@@ -55,7 +62,7 @@ class FeedbackQueueService {
       if (raw == null || raw is! Map || !_isValid(raw)) return;
       final item = FeedbackItem.fromMap(raw);
       final updated = item.copyWith(uploaded: true, githubIssueUrl: issueUrl);
-      await box.put(id, updated.toMap());
+      await box.put(id, updated.toMap(_hmacKey));
     } on HiveError catch (e, stack) {
       gameLogger.e('FeedbackQueueService.markUploaded($id): HiveError', error: e, stackTrace: stack);
     } catch (e, stack) {
@@ -129,6 +136,12 @@ class FeedbackQueueService {
     }
   }
 
-  bool _isValid(Map raw) =>
-      isValidCrc(raw, canonicalize: FeedbackItem.canonicalize);
+  bool _isValid(Map raw) {
+    final key = _hmacKey;
+    if (key == null) {
+      gameLogger.w('FeedbackQueueService._isValid: hmacKey unavailable — cannot validate integrity');
+      return false;
+    }
+    return isValidHmac(raw, canonicalize: FeedbackItem.canonicalize, key: key);
+  }
 }

@@ -5,17 +5,20 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:hive/hive.dart';
 
-/// Manages the AES-256 encryption key for Hive boxes.
+/// Manages cryptographic keys for Hive persistence.
 ///
-/// The key is generated once via [Hive.generateSecureKey] and persisted in
+/// Provides two keys, both generated once and stored in platform secure storage:
+/// - AES-256 cipher key for [HiveAesCipher] box encryption ([getCipher])
+/// - HMAC-SHA256 signing key for save-data integrity ([getHmacKey])
+///
+/// Both keys are generated via [Hive.generateSecureKey] and persisted in
 /// platform-specific secure storage via [FlutterSecureStorage] (Android
 /// Keystore for V1; iOS Keychain / macOS Keychain on those platforms).
-/// On subsequent launches the existing key is retrieved.
-/// If secure storage is unavailable (e.g. an emulator without hardware-backed
-/// storage), [getCipher] returns `null` and the caller should fall back to
-/// an unencrypted box.
+/// If secure storage is unavailable, both methods return `null` and callers
+/// fall back to graceful degradation (unencrypted box / no HMAC).
 class KeyService {
   static const _keyName = 'hive_aes_key';
+  static const _hmacKeyName = 'hive_hmac_key';
 
   /// Returns a [HiveAesCipher] backed by a Keystore-managed key, or `null`
   /// if secure storage is unavailable or key retrieval fails for any reason.
@@ -36,6 +39,25 @@ class KeyService {
       return HiveAesCipher(keyBytes);
     } catch (e, stack) {
       gameLogger.w('KeyService.getCipher() failed: $e', error: e, stackTrace: stack);
+      return null;
+    }
+  }
+
+  /// Returns a 32-byte HMAC-SHA256 key stored in platform secure storage,
+  /// or `null` if secure storage is unavailable.
+  Future<List<int>?> getHmacKey() async {
+    try {
+      const storage = FlutterSecureStorage();
+      if (!await storage.containsKey(key: _hmacKeyName)) {
+        final keyBytes = Hive.generateSecureKey();
+        final encoded = base64Url.encode(keyBytes);
+        await storage.write(key: _hmacKeyName, value: encoded);
+      }
+      final encoded = await storage.read(key: _hmacKeyName);
+      if (encoded == null) return null;
+      return base64Url.decode(encoded);
+    } catch (e, stack) {
+      gameLogger.w('KeyService.getHmacKey() failed: $e', error: e, stackTrace: stack);
       return null;
     }
   }

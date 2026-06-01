@@ -10,6 +10,8 @@ import 'package:cosmic_match/models/pending_feedback.dart';
 import 'package:cosmic_match/services/feedback_service.dart';
 import 'package:cosmic_match/services/rate_limit_service.dart';
 
+final _testKey = List<int>.generate(32, (i) => i);
+
 void main() {
   group('PendingFeedback', () {
     test('toMap/fromMap round-trips correctly', () {
@@ -25,7 +27,7 @@ void main() {
         createdAt: now,
       );
 
-      final map = original.toMap();
+      final map = original.toMap(_testKey);
       final restored = PendingFeedback.fromMap(map);
 
       expect(restored.id, original.id);
@@ -50,7 +52,7 @@ void main() {
         createdAt: DateTime(2025, 3, 1),
       );
 
-      final map = item.toMap();
+      final map = item.toMap(_testKey);
       expect(map['createdAt'], isA<String>());
       expect(DateTime.parse(map['createdAt'] as String), item.createdAt);
     });
@@ -67,7 +69,7 @@ void main() {
         createdAt: DateTime(2025, 6, 1),
       );
 
-      final map = item.toMap();
+      final map = item.toMap(_testKey);
       expect(map.keys, containsAll([
         'id', 'type', 'message', 'screenshotB64',
         'appVersion', 'os', 'device', 'createdAt',
@@ -104,7 +106,7 @@ void main() {
         createdAt: DateTime(2025, 1, 1),
       );
 
-      await box.put(item.id, item.toMap());
+      await box.put(item.id, item.toMap(_testKey));
       expect(box.length, 1);
 
       final raw = box.get('q-1') as Map;
@@ -127,7 +129,7 @@ void main() {
           device: 'test',
           createdAt: DateTime(2025, 1, 1),
         );
-        await box.put(item.id, item.toMap());
+        await box.put(item.id, item.toMap(_testKey));
       }
 
       expect(box.length, 5);
@@ -240,6 +242,7 @@ void main() {
       final service = FeedbackService(
         workerUrl: 'https://example.com/feedback',
         httpClient: client,
+        hmacKey: _testKey,
       );
 
       await service.submit(
@@ -296,6 +299,7 @@ void main() {
       final service = FeedbackService(
         workerUrl: 'https://example.com/feedback',
         httpClient: client,
+        hmacKey: _testKey,
       );
 
       // Fill queue to 20 items
@@ -493,6 +497,7 @@ void main() {
         workerUrl: 'https://example.com/feedback',
         httpClient: client,
         rateLimitService: RateLimitService(testStorage: storage),
+        hmacKey: _testKey,
       );
 
       await service.submit(
@@ -598,13 +603,14 @@ void main() {
         device: 'test',
         createdAt: DateTime(2025, 6, 1),
       );
-      await box.put(item.id, item.toMap());
+      await box.put(item.id, item.toMap(_testKey));
       expect(box.length, 1);
 
       final client = MockClient((_) async => http.Response('{"url": "https://github.com/issue/1"}', 201));
       final service = FeedbackService(
         workerUrl: 'https://example.com/',
         httpClient: client,
+        hmacKey: _testKey,
       );
 
       await service.flushQueue();
@@ -623,19 +629,20 @@ void main() {
         device: 'test',
         createdAt: DateTime(2025, 6, 1),
       );
-      await box.put(item.id, item.toMap());
+      await box.put(item.id, item.toMap(_testKey));
 
       final client = MockClient((_) async => http.Response('', 503));
       final service = FeedbackService(
         workerUrl: 'https://example.com/',
         httpClient: client,
+        hmacKey: _testKey,
       );
 
       await service.flushQueue();
       expect(box.length, 1); // still in queue for next flush
     });
 
-    test('drops items with tampered CRC on flush (CLAUDE.md persistence contract)', () async {
+    test('drops items with tampered HMAC on flush (CLAUDE.md persistence contract)', () async {
       final box = await Hive.openBox('feedback_worker_queue');
       final item = PendingFeedback(
         id: 'tampered-1',
@@ -647,8 +654,8 @@ void main() {
         device: 'test',
         createdAt: DateTime(2025, 1, 1),
       );
-      // Write a valid map, then mutate `message` without recomputing CRC.
-      final map = item.toMap();
+      // Write a valid map, then mutate `message` without recomputing HMAC.
+      final map = item.toMap(_testKey);
       map['message'] = 'tampered';
       await box.put(item.id, map);
       expect(box.length, 1);
@@ -660,6 +667,7 @@ void main() {
       final service = FeedbackService(
         workerUrl: 'https://example.com/',
         httpClient: client,
+        hmacKey: _testKey,
       );
 
       await service.flushQueue();
@@ -667,13 +675,13 @@ void main() {
           reason: 'tampered item should be dropped, not sent to worker');
     });
 
-    test('drops items missing CRC on flush (CLAUDE.md persistence contract)', () async {
+    test('drops items missing HMAC on flush (CLAUDE.md persistence contract)', () async {
       final box = await Hive.openBox('feedback_worker_queue');
-      // Legacy/tampered row without a `crc` key.
-      await box.put('no-crc', {
-        'id': 'no-crc',
+      // Legacy/tampered row without an `hmac` key.
+      await box.put('no-hmac', {
+        'id': 'no-hmac',
         'type': 'bug',
-        'message': 'no-crc',
+        'message': 'no-hmac',
         'screenshotB64': '',
         'appVersion': '1.0.0+1',
         'os': 'android',
@@ -686,11 +694,12 @@ void main() {
       final service = FeedbackService(
         workerUrl: 'https://example.com/',
         httpClient: client,
+        hmacKey: _testKey,
       );
 
       await service.flushQueue();
       expect(box.length, 0,
-          reason: 'item missing CRC should be dropped without retry');
+          reason: 'item missing HMAC should be dropped without retry');
     });
 
     test('a malformed row does not strand later valid items', () async {
@@ -721,19 +730,57 @@ void main() {
         device: 'test',
         createdAt: DateTime(2025, 1, 1),
       );
-      await box.put(good.id, good.toMap());
+      await box.put(good.id, good.toMap(_testKey));
       expect(box.length, 2);
 
       final client = MockClient((_) async => http.Response('{"url":"x"}', 201));
       final service = FeedbackService(
         workerUrl: 'https://example.com/',
         httpClient: client,
+        hmacKey: _testKey,
       );
 
       await service.flushQueue();
       // Both rows should be removed: the bad one as invalid, the good one as sent.
       expect(box.length, 0,
           reason: 'a bad row must not abort the loop and strand later valid items');
+    });
+  });
+
+  group('FeedbackService null-hmacKey fail-safe', () {
+    late Directory tempDir;
+
+    setUp(() async {
+      tempDir = await Directory.systemTemp.createTemp('hive_feedback_service_null_key_test_');
+      Hive.init(tempDir.path);
+    });
+
+    tearDown(() async {
+      await Hive.close();
+      await tempDir.delete(recursive: true);
+    });
+
+    test('_enqueue with null hmacKey skips persist — flushQueue sees nothing', () async {
+      // Simulates secure storage failure: FeedbackService constructed with hmacKey: null.
+      // submit() will try to POST; on failure it calls _enqueue, which must be a no-op.
+      final client = MockClient((_) async => throw Exception('network error'));
+      final service = FeedbackService(
+        workerUrl: 'https://example.com/',
+        httpClient: client,
+        // hmacKey: null — simulates storage failure
+      );
+      await service.submit(
+        type: 'bug',
+        message: 'test message for null key path',
+        screenshotB64: '',
+        appVersion: '1.0.0+1',
+        os: 'android',
+        device: 'test',
+      );
+
+      final box = await Hive.openBox('feedback_worker_queue');
+      expect(box.length, 0,
+          reason: '_enqueue must skip write when hmacKey is null');
     });
   });
 }

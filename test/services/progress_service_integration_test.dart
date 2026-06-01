@@ -5,6 +5,8 @@ import 'package:hive_flutter/hive_flutter.dart';
 import 'package:cosmic_match/services/progress_service.dart';
 import 'package:cosmic_match/models/level_progress.dart';
 
+final _testKey = List<int>.generate(32, (i) => i);
+
 void main() {
   late Directory tempDir;
 
@@ -20,7 +22,7 @@ void main() {
 
   group('ProgressService null-cipher integration', () {
     test('save and load round-trip preserves data', () async {
-      final service = ProgressService(); // null cipher (default)
+      final service = ProgressService(hmacKey: _testKey);
       final progress =
           LevelProgress(level: 1, starsEarned: 2, bestScore: 500);
       await service.save(progress);
@@ -31,21 +33,21 @@ void main() {
     });
 
     test('missing key returns initial progress', () async {
-      final service = ProgressService();
+      final service = ProgressService(hmacKey: _testKey);
       final loaded = await service.load(99);
       expect(loaded.level, equals(99));
       expect(loaded.starsEarned, equals(0));
       expect(loaded.bestScore, equals(0));
     });
 
-    test('tampered CRC returns initial progress', () async {
-      final service = ProgressService();
+    test('tampered HMAC returns initial progress', () async {
+      final service = ProgressService(hmacKey: _testKey);
       final box = await Hive.openBox('progress');
       await box.put('level_1', {
         'level': 1,
         'starsEarned': 3,
         'bestScore': 99999,
-        'crc': 0,
+        'hmac': 'invalid',
       });
       await box.close();
       final loaded = await service.load(1);
@@ -56,6 +58,31 @@ void main() {
     test('ProgressService() constructs with null cipher by default', () {
       // Verifies the optional cipher parameter is truly optional.
       expect(() => ProgressService(), returnsNormally);
+    });
+  });
+
+  group('ProgressService null-hmacKey fail-safe', () {
+    test('save with null hmacKey skips persist — load returns initial', () async {
+      // Simulates secure storage failure: service constructed with hmacKey: null.
+      // With the null-key guard, save() is a no-op, so load() returns initial.
+      final service = ProgressService(); // hmacKey: null
+      final progress = LevelProgress(level: 3, starsEarned: 2, bestScore: 9000);
+      await service.save(progress);
+
+      final loaded = await service.load(3);
+      expect(loaded.starsEarned, equals(0),
+          reason: 'save skipped (null hmacKey) — load must return initial progress');
+      expect(loaded.bestScore, equals(0));
+    });
+
+    test('save with null hmacKey writes nothing to the box', () async {
+      final service = ProgressService(); // hmacKey: null
+      await service.save(LevelProgress(level: 5, starsEarned: 3, bestScore: 1000));
+
+      final box = await Hive.openBox('progress');
+      expect(box.get('level_5'), isNull,
+          reason: 'null-key save must not write any entry to the Hive box');
+      await box.close();
     });
   });
 }

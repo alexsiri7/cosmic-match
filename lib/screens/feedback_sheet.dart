@@ -289,19 +289,19 @@ class _FeedbackSheetState extends State<_FeedbackSheet> {
                 // Type picker
                 Row(
                   children: [
-                    for (final (label, type) in [
+                    for (final (i, (label, type)) in [
                       ('Bug', 'bug'),
                       ('Feature', 'feature'),
                       ('Other', 'other'),
-                    ]) ...[
+                    ].indexed) ...[
+                      if (i > 0) const SizedBox(width: 8),
                       _TypeButton(
                         label: label,
                         selected: _selectedType == type,
                         onTap: () => setState(() => _selectedType = type),
                       ),
-                      const SizedBox(width: 8),
                     ],
-                  ]..removeLast(),
+                  ],
                 ),
                 const SizedBox(height: 16),
                 // Description field

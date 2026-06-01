@@ -1,4 +1,3 @@
-import 'package:archive/archive.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:cosmic_match/core/crc_integrity.dart';
 
@@ -24,31 +23,49 @@ void main() {
     });
   });
 
-  group('isValidCrc', () {
-    test('returns true for valid CRC', () {
+  group('isValidHmac', () {
+    final testKey = List<int>.generate(32, (i) => i);
+
+    test('returns true for valid HMAC', () {
       final data = {'level': 1, 'score': 100};
       final canon = canonicalizeMap(data);
-      final crc = getCrc32(canon.codeUnits);
-      final raw = {...data, 'crc': crc};
-      expect(isValidCrc(raw, canonicalize: canonicalizeMap), isTrue);
+      final hmac = computeHmac(canon, testKey);
+      final raw = {...data, 'hmac': hmac};
+      expect(isValidHmac(raw, canonicalize: canonicalizeMap, key: testKey), isTrue);
     });
 
-    test('returns false when crc key is missing', () {
-      expect(
-          isValidCrc({'level': 1}, canonicalize: canonicalizeMap), isFalse);
+    test('returns false when hmac key is missing', () {
+      expect(isValidHmac({'level': 1}, canonicalize: canonicalizeMap, key: testKey), isFalse);
     });
 
     test('returns false when data is tampered', () {
       final data = {'level': 1, 'score': 100};
-      final canon = canonicalizeMap(data);
-      final crc = getCrc32(canon.codeUnits);
-      final raw = {'level': 1, 'score': 999, 'crc': crc};
-      expect(isValidCrc(raw, canonicalize: canonicalizeMap), isFalse);
+      final hmac = computeHmac(canonicalizeMap(data), testKey);
+      final raw = {'level': 1, 'score': 999, 'hmac': hmac};
+      expect(isValidHmac(raw, canonicalize: canonicalizeMap, key: testKey), isFalse);
     });
 
-    test('returns false when crc value is null', () {
-      final raw = {'level': 1, 'crc': null};
-      expect(isValidCrc(raw, canonicalize: canonicalizeMap), isFalse);
+    test('returns false when hmac value is null', () {
+      final raw = {'level': 1, 'hmac': null};
+      expect(isValidHmac(raw, canonicalize: canonicalizeMap, key: testKey), isFalse);
+    });
+
+    test('different key produces different HMAC', () {
+      final data = {'level': 1};
+      final key1 = List<int>.generate(32, (i) => i);
+      final key2 = List<int>.generate(32, (i) => i + 1);
+      expect(computeHmac(canonicalizeMap(data), key1),
+             isNot(equals(computeHmac(canonicalizeMap(data), key2))));
+    });
+
+    test('computeHmac output is stable for known input (regression)', () {
+      // Canonical form (keys alphabetical): "bestScore:100,level:1,starsEarned:2"
+      // Key: bytes 0..31. This pin catches any future crypto package change that
+      // would silently invalidate all persisted save data.
+      final key = List<int>.generate(32, (i) => i);
+      const canonical = 'bestScore:100,level:1,starsEarned:2';
+      expect(computeHmac(canonical, key),
+          equals('b93200584ccda45dd46fdbbbbcff0e91c9616c9d486a40a6c8aa401e71309551'));
     });
   });
 }

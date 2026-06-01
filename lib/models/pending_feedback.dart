@@ -1,4 +1,3 @@
-import 'package:archive/archive.dart';
 import '../core/crc_integrity.dart';
 
 /// Data class for a queued feedback submission.
@@ -25,7 +24,7 @@ class PendingFeedback {
     required this.createdAt,
   });
 
-  Map<String, dynamic> toMap() {
+  Map<String, dynamic> toMap(List<int>? hmacKey) {
     final data = <String, dynamic>{
       'id': id,
       'type': type,
@@ -36,7 +35,9 @@ class PendingFeedback {
       'device': device,
       'createdAt': createdAt.toIso8601String(),
     };
-    data['crc'] = getCrc32(canonicalize(data).codeUnits);
+    if (hmacKey != null) {
+      data['hmac'] = computeHmac(canonicalize(data), hmacKey);
+    }
     return data;
   }
 

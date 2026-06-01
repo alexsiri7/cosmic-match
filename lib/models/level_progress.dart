@@ -1,4 +1,3 @@
-import 'package:archive/archive.dart';
 import '../core/crc_integrity.dart';
 
 class LevelProgress {
@@ -15,19 +14,19 @@ class LevelProgress {
   factory LevelProgress.initial(int level) =>
       LevelProgress(level: level, starsEarned: 0, bestScore: 0);
 
-  Map<String, dynamic> toMap() {
+  Map<String, dynamic> toMap(List<int>? hmacKey) {
     final data = <String, dynamic>{
       'level': level,
       'starsEarned': starsEarned,
       'bestScore': bestScore,
     };
-    // CRC is computed over a canonicalized (key-sorted) representation to
-    // ensure stability regardless of map insertion order or future field additions.
-    data['crc'] = getCrc32(canonicalize(data).codeUnits);
+    if (hmacKey != null) {
+      data['hmac'] = computeHmac(canonicalize(data), hmacKey);
+    }
     return data;
   }
 
-  /// Note: CRC is not validated here; callers must call ProgressService._isValid
+  /// Note: HMAC is not validated here; callers must call ProgressService._isValid
   /// before invoking fromMap to ensure data integrity.
   factory LevelProgress.fromMap(Map raw) {
     return LevelProgress(
