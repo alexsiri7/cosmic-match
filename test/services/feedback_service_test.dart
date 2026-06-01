@@ -5,8 +5,10 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:hive/hive.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
+import 'package:cosmic_match/core/constants.dart';
 import 'package:cosmic_match/models/pending_feedback.dart';
 import 'package:cosmic_match/services/feedback_service.dart';
+import 'package:cosmic_match/services/rate_limit_service.dart';
 
 void main() {
   group('PendingFeedback', () {
@@ -407,6 +409,112 @@ void main() {
       final box = await Hive.openBox('feedback_worker_queue');
       expect(box.length, 0);
     });
+
+    test('does not POST and does not enqueue when rate-limited', () async {
+      var posted = false;
+      final client = MockClient((_) async {
+        posted = true;
+        return http.Response('{"url": "https://github.com/issue/1"}', 201);
+      });
+
+      // Simulate a submission 5 seconds ago (within the 30 s cooldown).
+      final storage = <String, String>{
+        'feedback_last_submit_ms': DateTime.now()
+            .subtract(const Duration(seconds: 5))
+            .millisecondsSinceEpoch
+            .toString(),
+      };
+      final service = FeedbackService(
+        workerUrl: 'https://example.com/feedback',
+        httpClient: client,
+        rateLimitService: RateLimitService(testStorage: storage),
+      );
+
+      await service.submit(
+        type: 'bug',
+        message: 'rate limit test message',
+        screenshotB64: '',
+        appVersion: '1.0.0+1',
+        os: 'android',
+        device: 'Pixel',
+      );
+
+      expect(posted, isFalse, reason: 'should not POST when rate-limited');
+      final box = await Hive.openBox('feedback_worker_queue');
+      expect(box.length, 0, reason: 'should not enqueue when rate-limited');
+    });
+
+    test('calls recordSubmission after successful POST (201)', () async {
+      final client = MockClient(
+          (_) async => http.Response('{"url": "https://github.com/issue/1"}', 201));
+
+      // Cooldown already expired so submit is allowed.
+      final storage = <String, String>{
+        'feedback_last_submit_ms': DateTime.now()
+            .subtract(const Duration(seconds: kFeedbackCooldownSeconds + 1))
+            .millisecondsSinceEpoch
+            .toString(),
+      };
+      final service = FeedbackService(
+        workerUrl: 'https://example.com/feedback',
+        httpClient: client,
+        rateLimitService: RateLimitService(testStorage: storage),
+      );
+
+      await service.submit(
+        type: 'bug',
+        message: 'submission that should count',
+        screenshotB64: '',
+        appVersion: '1.0.0+1',
+        os: 'android',
+        device: 'Pixel',
+      );
+
+      // After a successful POST, a new cooldown must be active.
+      final newSubmitMs = int.parse(storage['feedback_last_submit_ms']!);
+      expect(
+        DateTime.now().millisecondsSinceEpoch - newSubmitMs,
+        lessThan(2000),
+        reason: 'recordSubmission must update last-submit timestamp on 201',
+      );
+    });
+
+    test('does not call recordSubmission when POST fails (503)', () async {
+      final client = MockClient((_) async => http.Response('', 503));
+
+      // Cooldown already expired.
+      final originalMs = DateTime.now()
+          .subtract(const Duration(seconds: kFeedbackCooldownSeconds + 1))
+          .millisecondsSinceEpoch;
+      final storage = <String, String>{
+        'feedback_last_submit_ms': originalMs.toString(),
+      };
+      final service = FeedbackService(
+        workerUrl: 'https://example.com/feedback',
+        httpClient: client,
+        rateLimitService: RateLimitService(testStorage: storage),
+      );
+
+      await service.submit(
+        type: 'bug',
+        message: 'failed submission message',
+        screenshotB64: '',
+        appVersion: '1.0.0+1',
+        os: 'android',
+        device: 'Pixel',
+      );
+
+      // Timestamp must NOT have been updated (no recordSubmission call).
+      expect(
+        storage['feedback_last_submit_ms'],
+        originalMs.toString(),
+        reason: 'failed POST must not update the rate-limit timestamp',
+      );
+      // Item must be queued for retry.
+      final box = await Hive.openBox('feedback_worker_queue');
+      expect(box.length, 1);
+    });
+
     test('sends correct POST body structure to worker', () async {
       Map<String, dynamic>? capturedBody;
       final client = MockClient((request) async {
@@ -436,6 +544,29 @@ void main() {
       expect(context['appVersion'], '2.0.0+3');
       expect(context['os'], 'android');
       expect(context['device'], 'Pixel 8');
+    });
+  });
+
+  group('FeedbackService.remainingCooldownSeconds', () {
+    test('returns 0 when no rateLimitService provided', () async {
+      final service = FeedbackService(workerUrl: 'https://example.com/');
+      expect(await service.remainingCooldownSeconds(), 0);
+    });
+
+    test('delegates to rateLimitService when provided', () async {
+      final storage = <String, String>{
+        'feedback_last_submit_ms': DateTime.now()
+            .subtract(const Duration(seconds: 5))
+            .millisecondsSinceEpoch
+            .toString(),
+      };
+      final service = FeedbackService(
+        workerUrl: 'https://example.com/',
+        rateLimitService: RateLimitService(testStorage: storage),
+      );
+      final secs = await service.remainingCooldownSeconds();
+      expect(secs, greaterThan(0));
+      expect(secs, lessThanOrEqualTo(kFeedbackCooldownSeconds));
     });
   });
 

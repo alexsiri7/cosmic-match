@@ -16,6 +16,7 @@ import 'screens/game_screen.dart';
 import 'screens/home_screen.dart';
 import 'services/feedback_queue_service.dart';
 import 'services/feedback_service.dart';
+import 'services/rate_limit_service.dart';
 import 'services/in_app_update_service.dart';
 import 'services/key_service.dart';
 import 'services/progress_service.dart';
@@ -40,7 +41,11 @@ Future<void> main() async {
     'FEEDBACK_WORKER_URL',
     defaultValue: 'https://feedback.alexsiri7.workers.dev/',
   );
-  final feedbackService = FeedbackService(workerUrl: feedbackWorkerUrl);
+  final rateLimitService = RateLimitService();
+  final feedbackService = FeedbackService(
+    workerUrl: feedbackWorkerUrl,
+    rateLimitService: rateLimitService,
+  );
   feedbackService.listenConnectivity();
 
   void launch() => runApp(ProviderScope(
@@ -175,6 +180,7 @@ class _CosmicMatchAppState extends State<CosmicMatchApp> {
     showFeedbackSheet(
       navContext,
       screenshotBytes: screenshotBytes,
+      checkCooldown: service.remainingCooldownSeconds,
       onSubmit: ({
         required String type,
         required String message,

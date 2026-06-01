@@ -22,3 +22,9 @@ const int kMinFeedbackMessageLength = 10;
 /// expired on app startup. Limits retention of user-generated content
 /// in line with GDPR/CCPA data-minimisation principles.
 const int kFeedbackQueueTtlDays = 7;
+
+/// Minimum seconds between feedback submissions on the same device (SEC-RPT-008).
+const int kFeedbackCooldownSeconds = 30;
+
+/// Maximum feedback submissions allowed per hour per device (SEC-RPT-008).
+const int kFeedbackMaxPerHour = 5;

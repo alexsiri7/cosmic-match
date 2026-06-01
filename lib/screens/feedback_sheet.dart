@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
 import 'dart:ui' as ui;
@@ -20,6 +21,7 @@ Future<void> showFeedbackSheet(
     required String message,
     required String screenshotB64,
   }) onSubmit,
+  Future<int> Function()? checkCooldown,
 }) {
   return showModalBottomSheet(
     context: context,
@@ -28,6 +30,7 @@ Future<void> showFeedbackSheet(
     builder: (_) => _FeedbackSheet(
       screenshotBytes: screenshotBytes,
       onSubmit: onSubmit,
+      checkCooldown: checkCooldown,
     ),
   );
 }
@@ -39,10 +42,12 @@ class _FeedbackSheet extends StatefulWidget {
     required String message,
     required String screenshotB64,
   }) onSubmit;
+  final Future<int> Function()? checkCooldown;
 
   const _FeedbackSheet({
     required this.screenshotBytes,
     required this.onSubmit,
+    this.checkCooldown,
   });
 
   @override
@@ -54,6 +59,8 @@ class _FeedbackSheetState extends State<_FeedbackSheet> {
   String _selectedType = 'bug';
   final List<List<Offset?>> _drawPaths = [[]];
   bool _submitting = false;
+  int _cooldownSeconds = 0;
+  Timer? _cooldownTimer;
   bool _drawMode = true;
   Offset _imageOffset = Offset.zero;
   // Updated by LayoutBuilder on each build; read by `_renderAnnotatedScreenshot()`
@@ -62,14 +69,47 @@ class _FeedbackSheetState extends State<_FeedbackSheet> {
   double _previewHeight = 200;
 
   @override
+  void initState() {
+    super.initState();
+    _initCooldown();
+  }
+
+  @override
   void dispose() {
+    _cooldownTimer?.cancel();
     _descController.dispose();
     super.dispose();
   }
 
+  Future<void> _initCooldown() async {
+    final fn = widget.checkCooldown;
+    if (fn == null) return;
+    final secs = await fn();
+    if (!mounted) return;
+    if (secs > 0) {
+      setState(() => _cooldownSeconds = secs);
+      _startCooldownTimer();
+    }
+  }
+
+  void _startCooldownTimer() {
+    _cooldownTimer?.cancel();
+    _cooldownTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (!mounted) {
+        _cooldownTimer?.cancel();
+        return;
+      }
+      setState(() {
+        _cooldownSeconds = (_cooldownSeconds - 1).clamp(0, kFeedbackCooldownSeconds);
+      });
+      if (_cooldownSeconds == 0) _cooldownTimer?.cancel();
+    });
+  }
+
   bool get _canSubmit =>
       _descController.text.trim().length >= kMinFeedbackMessageLength &&
-      !_submitting;
+      !_submitting &&
+      _cooldownSeconds == 0;
 
   Future<void> _handleSubmit() async {
     if (!_canSubmit) return;
@@ -292,6 +332,20 @@ class _FeedbackSheetState extends State<_FeedbackSheet> {
                   onChanged: (_) => setState(() {}),
                 ),
                 const SizedBox(height: 20),
+                // Cooldown countdown
+                if (_cooldownSeconds > 0)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: Center(
+                      child: Text(
+                        'Try again in $_cooldownSeconds seconds',
+                        style: GoogleFonts.ibmPlexMono(
+                          fontSize: 12,
+                          color: Colors.white.withValues(alpha: 0.5),
+                        ),
+                      ),
+                    ),
+                  ),
                 // Submit button
                 SizedBox(
                   width: double.infinity,
