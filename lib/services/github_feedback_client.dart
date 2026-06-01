@@ -109,10 +109,8 @@ class GitHubFeedbackClient {
     required String label,
   }) {
     if (response.statusCode < 200 || response.statusCode >= 300) {
-      final snippet =
-          response.body.substring(0, response.body.length.clamp(0, 200));
-      gameLogger.e(
-          'GitHubFeedbackClient.$method failed: ${response.statusCode} — $snippet');
+      gameLogger.w(
+          'GitHubFeedbackClient.$method failed: HTTP ${response.statusCode}');
       throw FeedbackClientException(
           '$label failed with status ${response.statusCode}');
     }

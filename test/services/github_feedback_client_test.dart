@@ -193,7 +193,7 @@ void main() {
       );
     });
 
-    test('_throwIfError throws on 500 with body longer than 200 chars', () async {
+    test('_throwIfError throws on 500 regardless of body length', () async {
       final longBody = 'x' * 300;
       final mockHttp = MockClient((_) async => http.Response(longBody, 500));
 
@@ -204,6 +204,21 @@ void main() {
           (e) => e.message,
           'message',
           contains('500'),
+        )),
+      );
+    });
+
+    test('_throwIfError does not include response body in exception message', () async {
+      const sensitiveBody = '{"token":"ghp_secret_value","message":"Bad credentials"}';
+      final mockHttp = MockClient((_) async => http.Response(sensitiveBody, 403));
+
+      final client = GitHubFeedbackClient.withToken('ghp_test', httpClient: mockHttp);
+      await expectLater(
+        () => client.uploadImage('img-1', _minimalPng),
+        throwsA(isA<FeedbackClientException>().having(
+          (e) => e.message,
+          'message',
+          isNot(contains('ghp_secret_value')),
         )),
       );
     });
