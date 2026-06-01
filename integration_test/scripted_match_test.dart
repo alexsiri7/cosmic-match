@@ -49,6 +49,7 @@ void main() {
   });
 
   tearDown(() async {
+    game.pauseEngine(); // Stop Flame game loop before Hive shutdown to avoid async write race
     await Hive.close();
     await tempDir.delete(recursive: true);
   });

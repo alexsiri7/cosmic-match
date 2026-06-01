@@ -12,9 +12,13 @@ permissions:
 
 jobs:
   integration:
-    name: Integration Tests
+    name: Integration Tests (${{ matrix.test }})
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    strategy:
+      matrix:
+        test: [integration_test/app_boot_test.dart, integration_test/scripted_match_test.dart]
+      fail-fast: false
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
 
@@ -44,4 +48,4 @@ jobs:
           api-level: 34
           target: google_apis
           arch: x86_64
-          script: flutter test integration_test/
+          script: flutter test ${{ matrix.test }}
