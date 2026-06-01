@@ -9,6 +9,7 @@ import '../core/constants.dart';
 import '../core/crc_integrity.dart';
 import '../core/logger.dart';
 import '../models/pending_feedback.dart';
+import 'rate_limit_service.dart';
 
 class FeedbackService {
   static const _boxName = 'feedback_worker_queue';
@@ -16,11 +17,16 @@ class FeedbackService {
 
   final String workerUrl;
   final http.Client _httpClient;
+  final RateLimitService? _rateLimitService;
   StreamSubscription<List<ConnectivityResult>>? _connectivitySub;
   bool _flushing = false;
 
-  FeedbackService({required this.workerUrl, http.Client? httpClient})
-      : _httpClient = httpClient ?? http.Client();
+  FeedbackService({
+    required this.workerUrl,
+    http.Client? httpClient,
+    RateLimitService? rateLimitService,
+  })  : _httpClient = httpClient ?? http.Client(),
+        _rateLimitService = rateLimitService;
 
   /// Start listening for connectivity changes to flush queued feedback.
   void listenConnectivity() {
@@ -49,6 +55,20 @@ class FeedbackService {
     required String os,
     required String device,
   }) async {
+    // Log attempt (not content) for rate-limit analysis (SEC-RPT-008).
+    gameLogger.d('FeedbackService.submit: attempt type=$type');
+    final rl = _rateLimitService;
+    if (rl != null) {
+      final status = await rl.checkStatus();
+      if (!status.allowed) {
+        gameLogger.w(
+          'FeedbackService.submit: rate-limited — '
+          'cooldown=${status.cooldownSeconds}s hourlyRemaining=${status.hourlyRemaining}',
+        );
+        return;
+      }
+    }
+
     if (workerUrl.isEmpty) {
       gameLogger.w('FeedbackService.submit: workerUrl is empty — skipping');
       return;
@@ -77,10 +97,16 @@ class FeedbackService {
     );
 
     final sent = await _postToWorker(item);
-    if (!sent) {
+    if (sent) {
+      await _rateLimitService?.recordSubmission();
+    } else {
       await _enqueue(item);
     }
   }
+
+  /// Returns the remaining cooldown in seconds (0 = no cooldown active).
+  Future<int> remainingCooldownSeconds() async =>
+      await _rateLimitService?.remainingCooldownSeconds() ?? 0;
 
   /// Flush all queued items — called on connectivity change.
   Future<void> flushQueue() async {
