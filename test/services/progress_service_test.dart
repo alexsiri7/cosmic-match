@@ -1,15 +1,13 @@
-import 'package:archive/archive.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:cosmic_match/core/crc_integrity.dart';
 import 'package:cosmic_match/models/level_progress.dart';
 
+final _testKey = List<int>.generate(32, (i) => i);
+
 /// Mirror of ProgressService._isValid for test-level validation.
-/// Keeps tests independent of Hive while still exercising the same CRC logic.
-bool _isValid(Map raw) {
-  final storedCrc = raw['crc'] as int?;
-  if (storedCrc == null) return false;
-  final data = Map<String, dynamic>.from(raw)..remove('crc');
-  return getCrc32(LevelProgress.canonicalize(data).codeUnits) == storedCrc;
-}
+/// Keeps tests independent of Hive while still exercising the same HMAC logic.
+bool _isValid(Map raw) =>
+    isValidHmac(raw, canonicalize: LevelProgress.canonicalize, key: _testKey);
 
 void main() {
   group('LevelProgress', () {
@@ -20,52 +18,42 @@ void main() {
       expect(progress.bestScore, 0);
     });
 
-    test('toMap includes crc key', () {
+    test('toMap includes hmac key', () {
       final progress =
           LevelProgress(level: 1, starsEarned: 3, bestScore: 5000);
-      final map = progress.toMap();
-      expect(map.containsKey('crc'), isTrue);
-      expect(map['crc'], isA<int>());
+      final map = progress.toMap(_testKey);
+      expect(map.containsKey('hmac'), isTrue);
+      expect(map['hmac'], isA<String>());
     });
 
     test('fromMap round-trips correctly', () {
       final original =
           LevelProgress(level: 5, starsEarned: 2, bestScore: 12345);
-      final map = original.toMap();
+      final map = original.toMap(_testKey);
       final restored = LevelProgress.fromMap(map);
       expect(restored.level, original.level);
       expect(restored.starsEarned, original.starsEarned);
       expect(restored.bestScore, original.bestScore);
     });
 
-    test('crc is stable across repeated toMap calls', () {
+    test('HMAC is stable across repeated toMap calls', () {
       final progress =
-          LevelProgress(level: 1, starsEarned: 1, bestScore: 100);
-      final crc1 = progress.toMap()['crc'] as int;
-      final crc2 = progress.toMap()['crc'] as int;
-      expect(crc1, equals(crc2));
-    });
-
-    test('CRC value is stable for known input (regression)', () {
-      // Pins the concrete CRC output for a known canonical string.
-      // Canonical form (keys alphabetical): "bestScore:100,level:1,starsEarned:2"
-      // This catches any future package swap or algorithm change that would
-      // silently invalidate persisted save data.
-      const expectedCrc = 2900003034;
-      final progress = LevelProgress(level: 1, starsEarned: 2, bestScore: 100);
-      expect(progress.toMap()['crc'], equals(expectedCrc));
+          LevelProgress(level: 1, starsEarned: 2, bestScore: 100);
+      final hmac1 = progress.toMap(_testKey)['hmac'] as String;
+      final hmac2 = progress.toMap(_testKey)['hmac'] as String;
+      expect(hmac1, equals(hmac2));
     });
   });
 
-  group('ProgressService CRC validation', () {
-    test('valid CRC passes validation', () {
+  group('ProgressService HMAC validation', () {
+    test('valid HMAC passes validation', () {
       final progress =
           LevelProgress(level: 1, starsEarned: 3, bestScore: 5000);
-      final map = progress.toMap();
+      final map = progress.toMap(_testKey);
       expect(_isValid(map), isTrue);
     });
 
-    test('missing crc key treated as tampered', () {
+    test('missing hmac key treated as tampered', () {
       final map = <String, dynamic>{
         'level': 1,
         'starsEarned': 0,
@@ -77,36 +65,36 @@ void main() {
     test('tampered bestScore is detected', () {
       final progress =
           LevelProgress(level: 1, starsEarned: 1, bestScore: 100);
-      final map = progress.toMap();
-      map['bestScore'] = 999999; // tamper — CRC unchanged
+      final map = progress.toMap(_testKey);
+      map['bestScore'] = 999999; // tamper — HMAC unchanged
       expect(_isValid(map), isFalse);
     });
 
     test('tampered starsEarned is detected', () {
       final progress =
           LevelProgress(level: 1, starsEarned: 1, bestScore: 100);
-      final map = progress.toMap();
+      final map = progress.toMap(_testKey);
       map['starsEarned'] = 3; // tamper
       expect(_isValid(map), isFalse);
     });
 
-    test('wrong crc value is detected', () {
+    test('wrong hmac value is detected', () {
       final progress =
           LevelProgress(level: 1, starsEarned: 1, bestScore: 100);
-      final map = progress.toMap();
-      map['crc'] = 0; // corrupt CRC
+      final map = progress.toMap(_testKey);
+      map['hmac'] = 'deadbeef'; // corrupt HMAC
       expect(_isValid(map), isFalse);
     });
 
-    test('CRC is order-independent (canonicalization)', () {
+    test('HMAC is order-independent (canonicalization)', () {
       // Build maps with same data but different key insertion order
       final progress =
           LevelProgress(level: 2, starsEarned: 2, bestScore: 2000);
-      final canonical = progress.toMap();
+      final canonical = progress.toMap(_testKey);
 
       // Reconstruct with different key order (simulates Hive deserialisation)
       final reordered = <String, dynamic>{
-        'crc': canonical['crc'],
+        'hmac': canonical['hmac'],
         'bestScore': canonical['bestScore'],
         'starsEarned': canonical['starsEarned'],
         'level': canonical['level'],

@@ -18,6 +18,7 @@ class FeedbackService {
   final String workerUrl;
   final http.Client _httpClient;
   final RateLimitService? _rateLimitService;
+  final List<int>? _hmacKey;
   StreamSubscription<List<ConnectivityResult>>? _connectivitySub;
   bool _flushing = false;
 
@@ -25,8 +26,10 @@ class FeedbackService {
     required this.workerUrl,
     http.Client? httpClient,
     RateLimitService? rateLimitService,
+    List<int>? hmacKey,
   })  : _httpClient = httpClient ?? http.Client(),
-        _rateLimitService = rateLimitService;
+        _rateLimitService = rateLimitService,
+        _hmacKey = hmacKey;
 
   /// Start listening for connectivity changes to flush queued feedback.
   void listenConnectivity() {
@@ -149,8 +152,11 @@ class FeedbackService {
   }
 
   // See CLAUDE.md "CRC32 Persistence Contract".
-  bool _isValid(Map raw) =>
-      isValidCrc(raw, canonicalize: PendingFeedback.canonicalize);
+  bool _isValid(Map raw) {
+    final key = _hmacKey;
+    if (key == null) return false;
+    return isValidHmac(raw, canonicalize: PendingFeedback.canonicalize, key: key);
+  }
 
   Future<bool> _postToWorker(PendingFeedback item) async {
     try {
@@ -212,7 +218,7 @@ class FeedbackService {
         await box.deleteAt(0);
       }
 
-      await box.put(item.id, item.toMap());
+      await box.put(item.id, item.toMap(_hmacKey));
       gameLogger.d('FeedbackService: queued item ${item.id}');
     } on HiveError catch (e, stack) {
       gameLogger.e('FeedbackService._enqueue: HiveError', error: e, stackTrace: stack);

@@ -6,6 +6,8 @@ import 'package:cosmic_match/core/constants.dart';
 import 'package:cosmic_match/models/feedback_item.dart';
 import 'package:cosmic_match/services/feedback_queue_service.dart';
 
+final _testKey = List<int>.generate(32, (i) => i);
+
 const _kTestPng =
     'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
 
@@ -40,7 +42,7 @@ void main() {
 
   group('FeedbackQueueService integration', () {
     test('enqueue → loadQueue round-trip preserves all fields', () async {
-      final service = FeedbackQueueService();
+      final service = FeedbackQueueService(hmacKey: _testKey);
       final original = _item(description: 'Round-trip check');
       await service.enqueue(original);
       final queue = await service.loadQueue();
@@ -53,13 +55,13 @@ void main() {
     });
 
     test('loadQueue returns empty list when no items enqueued', () async {
-      final service = FeedbackQueueService();
+      final service = FeedbackQueueService(hmacKey: _testKey);
       final queue = await service.loadQueue();
       expect(queue, isEmpty);
     });
 
     test('enqueue multiple items — all returned by loadQueue', () async {
-      final service = FeedbackQueueService();
+      final service = FeedbackQueueService(hmacKey: _testKey);
       await service.enqueue(_item(id: 'a', description: 'First'));
       await service.enqueue(_item(id: 'b', description: 'Second'));
       await service.enqueue(_item(id: 'c', description: 'Third'));
@@ -70,7 +72,7 @@ void main() {
     });
 
     test('loadQueue skips items with tampered CRC', () async {
-      final service = FeedbackQueueService();
+      final service = FeedbackQueueService(hmacKey: _testKey);
       // Directly write a tampered entry into the box
       final box = await Hive.openBox('feedback_queue');
       await box.put('tampered-1', {
@@ -80,7 +82,7 @@ void main() {
         'screenshotBase64': 'abc',
         'uploaded': true,
         'githubIssueUrl': null,
-        'crc': 0,
+        'hmac': 'invalid',
       });
       await box.close();
 
@@ -89,7 +91,7 @@ void main() {
     });
 
     test('markUploaded updates uploaded flag and sets issueUrl', () async {
-      final service = FeedbackQueueService();
+      final service = FeedbackQueueService(hmacKey: _testKey);
       await service.enqueue(_item(id: 'up-1'));
 
       await service.markUploaded('up-1', 'https://github.com/issues/42');
@@ -101,7 +103,7 @@ void main() {
     });
 
     test('markUploaded preserves other fields unchanged', () async {
-      final service = FeedbackQueueService();
+      final service = FeedbackQueueService(hmacKey: _testKey);
       final original = _item(id: 'up-2', description: 'Preserve me');
       await service.enqueue(original);
 
@@ -115,7 +117,7 @@ void main() {
     });
 
     test('markUploaded on unknown id is a no-op', () async {
-      final service = FeedbackQueueService();
+      final service = FeedbackQueueService(hmacKey: _testKey);
       await service.enqueue(_item(id: 'real-1'));
       // Should not throw or corrupt the queue
       await service.markUploaded('nonexistent', 'https://github.com/issues/1');
@@ -125,7 +127,7 @@ void main() {
     });
 
     test('remove deletes the correct item', () async {
-      final service = FeedbackQueueService();
+      final service = FeedbackQueueService(hmacKey: _testKey);
       await service.enqueue(_item(id: 'del-1', description: 'Delete me'));
       await service.enqueue(_item(id: 'keep-1', description: 'Keep me'));
 
@@ -137,7 +139,7 @@ void main() {
     });
 
     test('remove on unknown id is a no-op', () async {
-      final service = FeedbackQueueService();
+      final service = FeedbackQueueService(hmacKey: _testKey);
       await service.enqueue(_item(id: 'item-1'));
       await service.remove('nonexistent');
       final queue = await service.loadQueue();
@@ -147,7 +149,7 @@ void main() {
 
   group('expireOldItems', () {
     test('deletes items older than ttlDays', () async {
-      final service = FeedbackQueueService();
+      final service = FeedbackQueueService(hmacKey: _testKey);
       final box = await Hive.openBox('feedback_queue');
       final staleItem = FeedbackItem(
         id: 'stale-1',
@@ -156,7 +158,7 @@ void main() {
         screenshotBase64:
             _kTestPng,
       );
-      await box.put(staleItem.id, staleItem.toMap());
+      await box.put(staleItem.id, staleItem.toMap(_testKey));
       await box.close();
 
       final deleted = await service.expireOldItems(7);
@@ -167,7 +169,7 @@ void main() {
     });
 
     test('keeps items within ttlDays', () async {
-      final service = FeedbackQueueService();
+      final service = FeedbackQueueService(hmacKey: _testKey);
       final freshItem = FeedbackItem(
         id: 'fresh-1',
         timestamp: DateTime.now().subtract(const Duration(days: 3)),
@@ -183,7 +185,7 @@ void main() {
     });
 
     test('deletes expired but keeps fresh items', () async {
-      final service = FeedbackQueueService();
+      final service = FeedbackQueueService(hmacKey: _testKey);
       final freshItem = FeedbackItem(
         id: 'fresh-2',
         timestamp: DateTime.now().subtract(const Duration(days: 2)),
@@ -200,7 +202,7 @@ void main() {
         screenshotBase64:
             _kTestPng,
       );
-      await box.put(staleItem.id, staleItem.toMap());
+      await box.put(staleItem.id, staleItem.toMap(_testKey));
       await box.close();
 
       final deleted = await service.expireOldItems(7);
@@ -212,9 +214,9 @@ void main() {
     });
 
     test('also removes invalid/tampered entries', () async {
-      final service = FeedbackQueueService();
+      final service = FeedbackQueueService(hmacKey: _testKey);
       final box = await Hive.openBox('feedback_queue');
-      await box.put('bad-crc', {'id': 'bad-crc', 'crc': 0});
+      await box.put('bad-hmac', {'id': 'bad-hmac', 'hmac': 'invalid'});
       await box.close();
 
       final deleted = await service.expireOldItems(7);
@@ -222,7 +224,7 @@ void main() {
     });
 
     test('returns 0 on empty queue', () async {
-      final service = FeedbackQueueService();
+      final service = FeedbackQueueService(hmacKey: _testKey);
       final deleted = await service.expireOldItems(7);
       expect(deleted, 0);
     });
@@ -234,7 +236,7 @@ void main() {
       // expireOldItems will be a few microseconds later, making the item appear
       // stale. Testing at ttlDays - 1 second pins the strictly-before semantics
       // without hitting the timing ambiguity.
-      final service = FeedbackQueueService();
+      final service = FeedbackQueueService(hmacKey: _testKey);
       final nearBoundaryItem = FeedbackItem(
         id: 'near-boundary-ttl',
         timestamp: DateTime.now().subtract(
@@ -253,7 +255,7 @@ void main() {
     });
 
     test('deletes item aged ttlDays + 1 second (one second past boundary)', () async {
-      final service = FeedbackQueueService();
+      final service = FeedbackQueueService(hmacKey: _testKey);
       final box = await Hive.openBox('feedback_queue');
       final pastItem = FeedbackItem(
         id: 'past-ttl',
@@ -262,7 +264,7 @@ void main() {
         screenshotBase64:
             _kTestPng,
       );
-      await box.put(pastItem.id, pastItem.toMap());
+      await box.put(pastItem.id, pastItem.toMap(_testKey));
       await box.close();
       final deleted = await service.expireOldItems(7);
       expect(deleted, 1);
@@ -277,7 +279,7 @@ void main() {
 
   group('clearAll', () {
     test('empties the entire queue', () async {
-      final service = FeedbackQueueService();
+      final service = FeedbackQueueService(hmacKey: _testKey);
       await service.enqueue(_item(id: 'c-1'));
       await service.enqueue(_item(id: 'c-2'));
       await service.enqueue(_item(id: 'c-3'));
@@ -289,7 +291,7 @@ void main() {
     });
 
     test('clearAll on empty queue is a no-op', () async {
-      final service = FeedbackQueueService();
+      final service = FeedbackQueueService(hmacKey: _testKey);
       await service.clearAll();
       final queue = await service.loadQueue();
       expect(queue, isEmpty);

@@ -16,6 +16,7 @@ import 'package:hive/hive.dart';
 /// an unencrypted box.
 class KeyService {
   static const _keyName = 'hive_aes_key';
+  static const _hmacKeyName = 'hive_hmac_key';
 
   /// Returns a [HiveAesCipher] backed by a Keystore-managed key, or `null`
   /// if secure storage is unavailable or key retrieval fails for any reason.
@@ -36,6 +37,25 @@ class KeyService {
       return HiveAesCipher(keyBytes);
     } catch (e, stack) {
       gameLogger.w('KeyService.getCipher() failed: $e', error: e, stackTrace: stack);
+      return null;
+    }
+  }
+
+  /// Returns a 32-byte HMAC-SHA256 key stored in platform secure storage,
+  /// or `null` if secure storage is unavailable.
+  Future<List<int>?> getHmacKey() async {
+    try {
+      const storage = FlutterSecureStorage();
+      if (!await storage.containsKey(key: _hmacKeyName)) {
+        final keyBytes = Hive.generateSecureKey();
+        final encoded = base64Url.encode(keyBytes);
+        await storage.write(key: _hmacKeyName, value: encoded);
+      }
+      final encoded = await storage.read(key: _hmacKeyName);
+      if (encoded == null) return null;
+      return base64Url.decode(encoded);
+    } catch (e, stack) {
+      gameLogger.w('KeyService.getHmacKey() failed: $e', error: e, stackTrace: stack);
       return null;
     }
   }

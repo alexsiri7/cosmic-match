@@ -30,9 +30,11 @@ Future<void> main() async {
   }
 
   await Hive.initFlutter();
-  final cipher = await KeyService().getCipher();
-  final progressService = ProgressService(cipher: cipher);
-  final queueService = FeedbackQueueService(cipher: cipher);
+  final keyService = KeyService();
+  final cipher = await keyService.getCipher();
+  final hmacKey = await keyService.getHmacKey();
+  final progressService = ProgressService(cipher: cipher, hmacKey: hmacKey);
+  final queueService = FeedbackQueueService(cipher: cipher, hmacKey: hmacKey);
   await queueService.expireOldItems(kFeedbackQueueTtlDays);
 
   gameLogger.i('CosmicMatch initialised — hive ready, progressService ready');
@@ -45,6 +47,7 @@ Future<void> main() async {
   final feedbackService = FeedbackService(
     workerUrl: feedbackWorkerUrl,
     rateLimitService: rateLimitService,
+    hmacKey: hmacKey,
   );
   feedbackService.listenConnectivity();
 
