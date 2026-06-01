@@ -31,7 +31,6 @@ class GridWorld extends World {
 
   late GridLogic gridLogic;
 
-  /// Forwarding getter so existing call sites (including tests) still compile.
   List<List<TileType?>> get grid => gridLogic.grid;
   set grid(List<List<TileType?>> value) => gridLogic.grid = value;
 
@@ -254,17 +253,8 @@ class GridWorld extends World {
     _reconcileTilePositions(liveTiles);
   }
 
-  List<GridTile> _collectLiveTiles() {
-    final liveTiles = <GridTile>[];
-    for (int x = 0; x < cols; x++) {
-      for (int y = 0; y < rows; y++) {
-        if (tiles[x][y] != null) {
-          liveTiles.add(tiles[x][y]!);
-        }
-      }
-    }
-    return liveTiles;
-  }
+  List<GridTile> _collectLiveTiles() =>
+      [for (final col in tiles) ...col.whereType<GridTile>()];
 
   /// Place each live tile at its grid type's new location.
   /// Iteration order (top-to-bottom) is load-bearing: gravity preserves column
