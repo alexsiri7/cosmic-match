@@ -17,6 +17,7 @@ import 'screens/home_screen.dart';
 import 'services/feedback_service.dart';
 import 'services/in_app_update_service.dart';
 import 'services/key_service.dart';
+import 'services/feedback_queue_service.dart';
 import 'services/progress_service.dart';
 
 Future<void> main() async {
@@ -30,6 +31,8 @@ Future<void> main() async {
   await Hive.initFlutter();
   final cipher = await KeyService().getCipher();
   final progressService = ProgressService(cipher: cipher);
+  final queueService = FeedbackQueueService(cipher: cipher);
+  await queueService.expireOldItems(kFeedbackQueueTtlDays);
 
   gameLogger.i('CosmicMatch initialised — hive ready, progressService ready');
 
@@ -44,6 +47,7 @@ Future<void> main() async {
     child: CosmicMatchApp(
       progressService: progressService,
       feedbackService: feedbackService,
+      queueService: queueService,
     ),
   ));
 
@@ -83,6 +87,7 @@ enum _Screen { home, game }
 class CosmicMatchApp extends StatefulWidget {
   final ProgressService progressService;
   final FeedbackService? feedbackService;
+  final FeedbackQueueService? queueService;
 
   /// Overrides the [Match3Game] instance used by the app.
   /// For testing only — bypasses Hive-backed [ProgressService] initialisation.
@@ -93,6 +98,7 @@ class CosmicMatchApp extends StatefulWidget {
     super.key,
     required this.progressService,
     this.feedbackService,
+    this.queueService,
     this.gameOverride,
   });
 
@@ -187,6 +193,10 @@ class _CosmicMatchAppState extends State<CosmicMatchApp> {
     );
   }
 
+  Future<void> _clearFeedbackQueue() async {
+    await widget.queueService?.clearAll();
+  }
+
   Widget _buildScreen() {
     switch (_currentScreen) {
       case _Screen.home:
@@ -194,6 +204,7 @@ class _CosmicMatchAppState extends State<CosmicMatchApp> {
           onPlay: () => setState(() => _currentScreen = _Screen.game),
           onMap: () {}, // Map not yet implemented
           onFeedback: _showFeedback,
+          onClearFeedbackQueue: _clearFeedbackQueue,
         );
       case _Screen.game:
         return GameScreen(

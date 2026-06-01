@@ -6,8 +6,9 @@ class HomeScreen extends StatelessWidget {
   final VoidCallback onPlay;
   final VoidCallback onMap;
   final VoidCallback onFeedback;
+  final VoidCallback onClearFeedbackQueue;
 
-  const HomeScreen({super.key, required this.onPlay, required this.onMap, required this.onFeedback});
+  const HomeScreen({super.key, required this.onPlay, required this.onMap, required this.onFeedback, required this.onClearFeedbackQueue});
 
   @override
   Widget build(BuildContext context) {
@@ -191,6 +192,14 @@ class HomeScreen extends StatelessWidget {
                       textStyle: const TextStyle(fontSize: 12, letterSpacing: 0.3),
                     ),
                     child: const Text('Send feedback'),
+                  ),
+                  TextButton(
+                    onPressed: onClearFeedbackQueue,
+                    style: TextButton.styleFrom(
+                      foregroundColor: Colors.white.withValues(alpha: 0.45),
+                      textStyle: const TextStyle(fontSize: 12, letterSpacing: 0.3),
+                    ),
+                    child: const Text('Clear feedback queue'),
                   ),
                 ],
               ),

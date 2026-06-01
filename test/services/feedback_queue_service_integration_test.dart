@@ -140,4 +140,108 @@ void main() {
       expect(queue, hasLength(1));
     });
   });
+
+  group('expireOldItems', () {
+    test('deletes items older than ttlDays', () async {
+      final service = FeedbackQueueService();
+      final box = await Hive.openBox('feedback_queue');
+      final staleItem = FeedbackItem(
+        id: 'stale-1',
+        timestamp: DateTime.now().subtract(const Duration(days: 8)),
+        description: 'Old feedback',
+        screenshotBase64:
+            'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==',
+      );
+      await box.put(staleItem.id, staleItem.toMap());
+      await box.close();
+
+      final deleted = await service.expireOldItems(7);
+
+      expect(deleted, 1);
+      final queue = await service.loadQueue();
+      expect(queue, isEmpty);
+    });
+
+    test('keeps items within ttlDays', () async {
+      final service = FeedbackQueueService();
+      final freshItem = FeedbackItem(
+        id: 'fresh-1',
+        timestamp: DateTime.now().subtract(const Duration(days: 3)),
+        description: 'Recent feedback',
+        screenshotBase64:
+            'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==',
+      );
+      await service.enqueue(freshItem);
+      final deleted = await service.expireOldItems(7);
+      expect(deleted, 0);
+      final queue = await service.loadQueue();
+      expect(queue, hasLength(1));
+    });
+
+    test('deletes expired but keeps fresh items', () async {
+      final service = FeedbackQueueService();
+      final freshItem = FeedbackItem(
+        id: 'fresh-2',
+        timestamp: DateTime.now().subtract(const Duration(days: 2)),
+        description: 'Recent feedback',
+        screenshotBase64:
+            'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==',
+      );
+      await service.enqueue(freshItem);
+      final box = await Hive.openBox('feedback_queue');
+      final staleItem = FeedbackItem(
+        id: 'stale-2',
+        timestamp: DateTime.now().subtract(const Duration(days: 10)),
+        description: 'Very old feedback',
+        screenshotBase64:
+            'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==',
+      );
+      await box.put(staleItem.id, staleItem.toMap());
+      await box.close();
+
+      final deleted = await service.expireOldItems(7);
+
+      expect(deleted, 1);
+      final queue = await service.loadQueue();
+      expect(queue, hasLength(1));
+      expect(queue.first.id, 'fresh-2');
+    });
+
+    test('also removes invalid/tampered entries', () async {
+      final service = FeedbackQueueService();
+      final box = await Hive.openBox('feedback_queue');
+      await box.put('bad-crc', {'id': 'bad-crc', 'crc': 0});
+      await box.close();
+
+      final deleted = await service.expireOldItems(7);
+      expect(deleted, 1);
+    });
+
+    test('returns 0 on empty queue', () async {
+      final service = FeedbackQueueService();
+      final deleted = await service.expireOldItems(7);
+      expect(deleted, 0);
+    });
+  });
+
+  group('clearAll', () {
+    test('empties the entire queue', () async {
+      final service = FeedbackQueueService();
+      await service.enqueue(_item(id: 'c-1'));
+      await service.enqueue(_item(id: 'c-2'));
+      await service.enqueue(_item(id: 'c-3'));
+
+      await service.clearAll();
+
+      final queue = await service.loadQueue();
+      expect(queue, isEmpty);
+    });
+
+    test('clearAll on empty queue is a no-op', () async {
+      final service = FeedbackQueueService();
+      await service.clearAll();
+      final queue = await service.loadQueue();
+      expect(queue, isEmpty);
+    });
+  });
 }
