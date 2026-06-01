@@ -67,7 +67,8 @@ class GitHubFeedbackClient {
     _throwIfError(response, method: 'uploadImage', label: 'Image upload');
 
     final json = jsonDecode(response.body) as Map<String, dynamic>;
-    return (json['content'] as Map<String, dynamic>)['download_url'] as String;
+    final content = json['content'] as Map<String, dynamic>;
+    return content['download_url'] as String;
   }
 
   Future<String> createIssue(String description, String imageUrl) async {
