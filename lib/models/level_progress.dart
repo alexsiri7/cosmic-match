@@ -37,7 +37,5 @@ class LevelProgress {
     );
   }
 
-  /// Canonicalize a map to a stable string by sorting keys.
-  /// Used by both LevelProgress and ProgressService for CRC computation.
   static String canonicalize(Map<String, dynamic> data) => canonicalizeMap(data);
 }
