@@ -41,7 +41,8 @@ void main() {
   setUp(() async {
     tempDir = await Directory.systemTemp.createTemp('hive_integration_');
     Hive.init(tempDir.path);
-    progressService = ProgressService();
+    // Use a fixed 32-byte test key so save/load round-trips work (see #202)
+    progressService = ProgressService(hmacKey: List<int>.filled(32, 0));
     game = Match3Game(
       progressService: progressService,
       testGrid: _buildTestGrid(),
