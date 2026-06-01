@@ -242,6 +242,105 @@ void main() {
     });
   });
 
+  group('dropSyscallAbort', () {
+    test('drops single-frame syscall Abort event', () {
+      final event = _eventWith(
+        value: 'Abort',
+        frames: [
+          SentryStackFrame(
+            function: 'abort',
+            fileName: 'syscall',
+          ),
+        ],
+      );
+      expect(dropSyscallAbort(event, hint), isNull);
+    });
+
+    test('drops multi-frame all-syscall Abort event', () {
+      final event = _eventWith(
+        value: 'Abort',
+        frames: [
+          SentryStackFrame(function: 'abort', fileName: 'syscall'),
+          SentryStackFrame(function: 'raise', fileName: 'syscall'),
+        ],
+      );
+      expect(dropSyscallAbort(event, hint), isNull);
+    });
+
+    test('drops case-insensitive "abort" with surrounding whitespace', () {
+      final event = _eventWith(
+        value: '  abort  ',
+        frames: [
+          SentryStackFrame(function: 'abort', fileName: 'syscall'),
+        ],
+      );
+      expect(dropSyscallAbort(event, hint), isNull);
+    });
+
+    test('passes through events with a different exception value', () {
+      final event = _eventWith(
+        value: 'StateError: bad state',
+        frames: [
+          SentryStackFrame(function: 'abort', fileName: 'syscall'),
+        ],
+      );
+      expect(dropSyscallAbort(event, hint), isNotNull);
+    });
+
+    test('passes through Abort with empty frames list', () {
+      final event = _eventWith(value: 'Abort', frames: const []);
+      expect(dropSyscallAbort(event, hint), isNotNull);
+    });
+
+    test('passes through Abort with null stackTrace', () {
+      final event = SentryEvent(
+        exceptions: [SentryException(type: 'Exception', value: 'Abort')],
+      );
+      expect(dropSyscallAbort(event, hint), isNotNull);
+    });
+
+    test('passes through Abort when any frame is outside syscall', () {
+      final event = _eventWith(
+        value: 'Abort',
+        frames: [
+          SentryStackFrame(function: 'abort', fileName: 'syscall'),
+          SentryStackFrame(function: 'MyService.doThing', fileName: 'my_service.dart'),
+        ],
+      );
+      expect(dropSyscallAbort(event, hint), isNotNull);
+    });
+
+    test('passes through events with multiple exceptions', () {
+      final event = SentryEvent(
+        exceptions: [
+          SentryException(
+            type: 'Exception',
+            value: 'Abort',
+            stackTrace: SentryStackTrace(frames: [
+              SentryStackFrame(function: 'abort', fileName: 'syscall'),
+            ]),
+          ),
+          SentryException(type: 'Exception', value: 'Other'),
+        ],
+      );
+      expect(dropSyscallAbort(event, hint), isNotNull);
+    });
+
+    test('passes through events with no exceptions', () {
+      final event = SentryEvent();
+      expect(dropSyscallAbort(event, hint), isNotNull);
+    });
+
+    test('passes through Abort whose only frame has null function and fileName',
+        () {
+      final event = _eventWith(
+        value: 'Abort',
+        frames: [SentryStackFrame()],
+      );
+      expect(dropSyscallAbort(event, hint), isNotNull);
+    });
+  });
+
   group('dropGoogleFontsFetchFailure', () {
     test('drops event with non-200 message variant ("with url:")', () {
       final event = _eventWith(
@@ -414,6 +513,16 @@ void main() {
             function: '_ChannelCallbackRecord.invoke',
             fileName: 'channel_buffers.dart',
           ),
+        ],
+      );
+      expect(dropUnactionableEvents(event, hint), isNull);
+    });
+
+    test('drops events matching the SyscallAbort filter', () {
+      final event = _eventWith(
+        value: 'Abort',
+        frames: [
+          SentryStackFrame(function: 'abort', fileName: 'syscall'),
         ],
       );
       expect(dropUnactionableEvents(event, hint), isNull);
