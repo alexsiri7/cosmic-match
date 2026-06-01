@@ -10,10 +10,12 @@ class FeedbackQueueService {
 
   FeedbackQueueService({HiveAesCipher? cipher}) : _cipher = cipher;
 
+  Future<Box> _openBox() => Hive.openBox(_boxName, encryptionCipher: _cipher);
+
   Future<List<FeedbackItem>> loadQueue() async {
     gameLogger.d('FeedbackQueueService.loadQueue');
     try {
-      final box = await Hive.openBox(_boxName, encryptionCipher: _cipher);
+      final box = await _openBox();
       final items = <FeedbackItem>[];
       for (final key in box.keys) {
         final raw = box.get(key);
@@ -36,7 +38,7 @@ class FeedbackQueueService {
   Future<void> enqueue(FeedbackItem item) async {
     gameLogger.d('FeedbackQueueService.enqueue: id=${item.id}');
     try {
-      final box = await Hive.openBox(_boxName, encryptionCipher: _cipher);
+      final box = await _openBox();
       await box.put(item.id, item.toMap());
     } on HiveError catch (e, stack) {
       gameLogger.e('FeedbackQueueService.enqueue(${item.id}): HiveError', error: e, stackTrace: stack);
@@ -48,7 +50,7 @@ class FeedbackQueueService {
   Future<void> markUploaded(String id, String issueUrl) async {
     gameLogger.d('FeedbackQueueService.markUploaded: id=$id');
     try {
-      final box = await Hive.openBox(_boxName, encryptionCipher: _cipher);
+      final box = await _openBox();
       final raw = box.get(id);
       if (raw == null || raw is! Map || !_isValid(raw)) return;
       final item = FeedbackItem.fromMap(raw);
@@ -64,7 +66,7 @@ class FeedbackQueueService {
   Future<void> remove(String id) async {
     gameLogger.d('FeedbackQueueService.remove: id=$id');
     try {
-      final box = await Hive.openBox(_boxName, encryptionCipher: _cipher);
+      final box = await _openBox();
       await box.delete(id);
     } on HiveError catch (e, stack) {
       gameLogger.e('FeedbackQueueService.remove($id): HiveError', error: e, stackTrace: stack);
@@ -80,7 +82,7 @@ class FeedbackQueueService {
     final cutoff = DateTime.now().subtract(Duration(days: ttlDays));
     int deleted = 0;
     try {
-      final box = await Hive.openBox(_boxName, encryptionCipher: _cipher);
+      final box = await _openBox();
       final keysToDelete = <dynamic>[];
       for (final key in box.keys) {
         final raw = box.get(key);
@@ -114,7 +116,7 @@ class FeedbackQueueService {
   Future<bool> clearAll() async {
     gameLogger.d('FeedbackQueueService.clearAll');
     try {
-      final box = await Hive.openBox(_boxName, encryptionCipher: _cipher);
+      final box = await _openBox();
       await box.clear();
       gameLogger.i('FeedbackQueueService.clearAll: queue cleared');
       return true;

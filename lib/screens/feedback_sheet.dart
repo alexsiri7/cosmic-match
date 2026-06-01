@@ -249,24 +249,19 @@ class _FeedbackSheetState extends State<_FeedbackSheet> {
                 // Type picker
                 Row(
                   children: [
-                    _TypeButton(
-                      label: 'Bug',
-                      selected: _selectedType == 'bug',
-                      onTap: () => setState(() => _selectedType = 'bug'),
-                    ),
-                    const SizedBox(width: 8),
-                    _TypeButton(
-                      label: 'Feature',
-                      selected: _selectedType == 'feature',
-                      onTap: () => setState(() => _selectedType = 'feature'),
-                    ),
-                    const SizedBox(width: 8),
-                    _TypeButton(
-                      label: 'Other',
-                      selected: _selectedType == 'other',
-                      onTap: () => setState(() => _selectedType = 'other'),
-                    ),
-                  ],
+                    for (final (label, type) in [
+                      ('Bug', 'bug'),
+                      ('Feature', 'feature'),
+                      ('Other', 'other'),
+                    ]) ...[
+                      _TypeButton(
+                        label: label,
+                        selected: _selectedType == type,
+                        onTap: () => setState(() => _selectedType = type),
+                      ),
+                      const SizedBox(width: 8),
+                    ],
+                  ]..removeLast(),
                 ),
                 const SizedBox(height: 16),
                 // Description field
@@ -287,14 +282,8 @@ class _FeedbackSheetState extends State<_FeedbackSheet> {
                     ),
                     filled: true,
                     fillColor: Colors.white.withValues(alpha: 0.06),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.1)),
-                    ),
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.1)),
-                    ),
+                    border: _unfocusedBorder,
+                    enabledBorder: _unfocusedBorder,
                     focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                       borderSide: BorderSide(color: kLyraAccent.withValues(alpha: 0.5)),
@@ -380,6 +369,11 @@ class _TypeButton extends StatelessWidget {
     );
   }
 }
+
+final _unfocusedBorder = OutlineInputBorder(
+  borderRadius: BorderRadius.circular(12),
+  borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.1)),
+);
 
 Paint _strokeAnnotationPaint() => Paint()
   ..color = Colors.red
