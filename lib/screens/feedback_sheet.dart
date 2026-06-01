@@ -95,7 +95,6 @@ class _FeedbackSheetState extends State<_FeedbackSheet> {
   }
 
   Future<String> _renderAnnotatedScreenshot() async {
-    // Decode the original screenshot
     final codec = await ui.instantiateImageCodec(widget.screenshotBytes);
     final frame = await codec.getNextFrame();
     final image = frame.image;

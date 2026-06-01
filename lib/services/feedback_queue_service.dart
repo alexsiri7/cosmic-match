@@ -73,6 +73,62 @@ class FeedbackQueueService {
     }
   }
 
+  /// Deletes queue entries older than [ttlDays] and any entries that
+  /// fail CRC validation. Returns the total number of entries removed.
+  Future<int> expireOldItems(int ttlDays) async {
+    gameLogger.d('FeedbackQueueService.expireOldItems: ttlDays=$ttlDays');
+    final cutoff = DateTime.now().subtract(Duration(days: ttlDays));
+    int deleted = 0;
+    try {
+      final box = await Hive.openBox(_boxName, encryptionCipher: _cipher);
+      final keysToDelete = <dynamic>[];
+      for (final key in box.keys) {
+        final raw = box.get(key);
+        if (raw == null || raw is! Map || !_isValid(raw)) {
+          keysToDelete.add(key);
+          continue;
+        }
+        final item = FeedbackItem.fromMap(raw);
+        if (item.timestamp.isBefore(cutoff)) {
+          keysToDelete.add(key);
+        }
+      }
+      // Note: if an exception occurs mid-loop, `deleted` reflects a partial count
+      // (items deleted before the abort). The caller in main.dart discards the
+      // return value today; future callers should treat it as a best-effort count.
+      for (final key in keysToDelete) {
+        await box.delete(key);
+        deleted++;
+      }
+      if (deleted > 0) {
+        gameLogger.i('FeedbackQueueService.expireOldItems: deleted $deleted item(s)');
+      }
+    } on HiveError catch (e, stack) {
+      gameLogger.e('FeedbackQueueService.expireOldItems: HiveError', error: e, stackTrace: stack);
+    } catch (e, stack) {
+      gameLogger.w('FeedbackQueueService.expireOldItems failed', error: e, stackTrace: stack);
+    }
+    return deleted;
+  }
+
+  /// Removes all entries from the feedback queue.
+  /// Returns `true` if the queue was successfully cleared, `false` on error.
+  Future<bool> clearAll() async {
+    gameLogger.d('FeedbackQueueService.clearAll');
+    try {
+      final box = await Hive.openBox(_boxName, encryptionCipher: _cipher);
+      await box.clear();
+      gameLogger.i('FeedbackQueueService.clearAll: queue cleared');
+      return true;
+    } on HiveError catch (e, stack) {
+      gameLogger.e('FeedbackQueueService.clearAll: HiveError', error: e, stackTrace: stack);
+      return false;
+    } catch (e, stack) {
+      gameLogger.w('FeedbackQueueService.clearAll failed', error: e, stackTrace: stack);
+      return false;
+    }
+  }
+
   bool _isValid(Map raw) =>
       isValidCrc(raw, canonicalize: FeedbackItem.canonicalize);
 }
