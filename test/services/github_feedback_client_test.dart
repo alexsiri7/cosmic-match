@@ -223,6 +223,21 @@ void main() {
       );
     });
 
+    test('_throwIfError does not include response body in createIssue exception message', () async {
+      const sensitiveBody = '{"token":"ghp_secret_value","message":"Bad credentials"}';
+      final mockHttp = MockClient((_) async => http.Response(sensitiveBody, 403));
+
+      final client = GitHubFeedbackClient.withToken('ghp_test', httpClient: mockHttp);
+      await expectLater(
+        () => client.createIssue('desc', 'https://img.png'),
+        throwsA(isA<FeedbackClientException>().having(
+          (e) => e.message,
+          'message',
+          isNot(contains('ghp_secret_value')),
+        )),
+      );
+    });
+
     test('uploadImage sends correct request body structure', () async {
       Map<String, dynamic>? capturedBody;
       final mockHttp = MockClient((request) async {
