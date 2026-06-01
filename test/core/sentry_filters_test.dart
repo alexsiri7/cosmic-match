@@ -325,6 +325,20 @@ void main() {
       );
       expect(dropSyscallAbort(event, hint), isNotNull);
     });
+
+    test('passes through events with no exceptions', () {
+      final event = SentryEvent();
+      expect(dropSyscallAbort(event, hint), isNotNull);
+    });
+
+    test('passes through Abort whose only frame has null function and fileName',
+        () {
+      final event = _eventWith(
+        value: 'Abort',
+        frames: [SentryStackFrame()],
+      );
+      expect(dropSyscallAbort(event, hint), isNotNull);
+    });
   });
 
   group('dropGoogleFontsFetchFailure', () {

@@ -59,6 +59,9 @@ SentryEvent? dropSyscallAbort(SentryEvent event, Hint hint) {
   if (value != 'abort') return event;
 
   final frames = exception.stackTrace?.frames ?? const <SentryStackFrame>[];
+  // Empty/null frames must not match: Iterable.every is vacuously true on []
+  // and would otherwise silently drop frameless Abort events the filter was
+  // never meant to suppress.
   if (frames.isEmpty) return event;
 
   final hasOnlySyscallFrames = frames.every(

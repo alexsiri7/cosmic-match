@@ -35,7 +35,8 @@ lib/
                   #   logger.dart — `gameLogger` (single project-wide logger instance)
                   #   constants.dart — `kTransparentPng` (1×1 PNG fallback for screenshot capture)
                   #   sentry_filters.dart — `dropUnactionableEvents` composite beforeSend filter; delegates to
-                  #     `dropUnactionableAbort` (#145, channel-buffer Abort) and
+                  #     `dropUnactionableAbort` (#145, channel-buffer Abort),
+                  #     `dropSyscallAbort` (#197, syscall native-abort frames) and
                   #     `dropGoogleFontsFetchFailure` (#140, google_fonts CDN fetch failures)
                   #   crc_integrity.dart — `canonicalizeMap()` / `isValidCrc()` shared CRC utilities
   game/           # Flame game, FSM, world, components
