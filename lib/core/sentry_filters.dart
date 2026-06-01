@@ -39,6 +39,35 @@ SentryEvent? dropUnactionableAbort(SentryEvent event, Hint hint) {
   return hasOnlyEngineFrames ? null : event;
 }
 
+/// Drops Sentry events that are unactionable native-abort symbolication artifacts:
+/// a single exception with value "Abort" (case-insensitive) whose entire
+/// stack trace consists only of native system frames from `syscall`.
+///
+/// These events originate from OS-level aborts with no user or Dart code in the
+/// trace — the `syscall` frames carry no actionable signal. Dropping them here
+/// prevents sentry-bridge from re-filing the same GitHub issue on each recurrence
+/// (see issue #197).
+///
+/// Pass-through for: empty/null frame lists, any frame not containing `syscall`,
+/// or events that don't match this exact shape.
+SentryEvent? dropSyscallAbort(SentryEvent event, Hint hint) {
+  final exceptions = event.exceptions ?? const <SentryException>[];
+  if (exceptions.length != 1) return event;
+
+  final exception = exceptions.first;
+  final value = exception.value?.trim().toLowerCase();
+  if (value != 'abort') return event;
+
+  final frames = exception.stackTrace?.frames ?? const <SentryStackFrame>[];
+  if (frames.isEmpty) return event;
+
+  final hasOnlySyscallFrames = frames.every(
+    (f) => (f.fileName ?? '').contains('syscall'),
+  );
+
+  return hasOnlySyscallFrames ? null : event;
+}
+
 /// Drops Sentry events from `package:google_fonts` that report a failed font
 /// download from fonts.gstatic.com. The package's `_httpFetchFontAndSaveToDevice`
 /// throws `Exception('Failed to load font with url[:] <url>[: <inner>]')` whenever
@@ -83,6 +112,7 @@ SentryEvent? dropGoogleFontsFetchFailure(SentryEvent event, Hint hint) {
 /// Sentry only allows one `beforeSend` callback, so all filters must compose here.
 SentryEvent? dropUnactionableEvents(SentryEvent event, Hint hint) {
   if (dropUnactionableAbort(event, hint) == null) return null;
+  if (dropSyscallAbort(event, hint) == null) return null;
   if (dropGoogleFontsFetchFailure(event, hint) == null) return null;
   return event;
 }
