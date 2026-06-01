@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hive_flutter/hive_flutter.dart';
+import 'package:cosmic_match/core/constants.dart';
 import 'package:cosmic_match/models/feedback_item.dart';
 import 'package:cosmic_match/services/feedback_queue_service.dart';
 
@@ -221,6 +222,53 @@ void main() {
       final service = FeedbackQueueService();
       final deleted = await service.expireOldItems(7);
       expect(deleted, 0);
+    });
+
+    test('keeps item aged exactly ttlDays minus one second (near-boundary: isBefore is strict)', () async {
+      // Use ttlDays - 1 second as a safe proxy for the boundary to avoid a
+      // wall-clock race: if we construct the item at exactly
+      // DateTime.now().subtract(Duration(days: 7)), the cutoff computed inside
+      // expireOldItems will be a few microseconds later, making the item appear
+      // stale. Testing at ttlDays - 1 second pins the strictly-before semantics
+      // without hitting the timing ambiguity.
+      final service = FeedbackQueueService();
+      final nearBoundaryItem = FeedbackItem(
+        id: 'near-boundary-ttl',
+        timestamp: DateTime.now().subtract(
+          const Duration(days: 7) - const Duration(seconds: 1),
+        ),
+        description: 'Just inside TTL boundary',
+        screenshotBase64:
+            'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==',
+      );
+      await service.enqueue(nearBoundaryItem);
+      final deleted = await service.expireOldItems(7);
+      expect(deleted, 0,
+          reason: 'item inside TTL window must not be deleted');
+      final queue = await service.loadQueue();
+      expect(queue, hasLength(1));
+    });
+
+    test('deletes item aged ttlDays + 1 second (one second past boundary)', () async {
+      final service = FeedbackQueueService();
+      final box = await Hive.openBox('feedback_queue');
+      final pastItem = FeedbackItem(
+        id: 'past-ttl',
+        timestamp: DateTime.now().subtract(const Duration(days: 7, seconds: 1)),
+        description: 'Just past TTL',
+        screenshotBase64:
+            'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==',
+      );
+      await box.put(pastItem.id, pastItem.toMap());
+      await box.close();
+      final deleted = await service.expireOldItems(7);
+      expect(deleted, 1);
+    });
+  });
+
+  group('constants', () {
+    test('kFeedbackQueueTtlDays is 7 days (GDPR data-minimisation)', () {
+      expect(kFeedbackQueueTtlDays, 7);
     });
   });
 

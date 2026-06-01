@@ -14,10 +14,10 @@ import 'game/match3_game.dart';
 import 'screens/feedback_sheet.dart';
 import 'screens/game_screen.dart';
 import 'screens/home_screen.dart';
+import 'services/feedback_queue_service.dart';
 import 'services/feedback_service.dart';
 import 'services/in_app_update_service.dart';
 import 'services/key_service.dart';
-import 'services/feedback_queue_service.dart';
 import 'services/progress_service.dart';
 
 Future<void> main() async {
@@ -194,7 +194,14 @@ class _CosmicMatchAppState extends State<CosmicMatchApp> {
   }
 
   Future<void> _clearFeedbackQueue() async {
-    await widget.queueService?.clearAll();
+    final ok = await widget.queueService?.clearAll() ?? false;
+    if (!mounted) return;
+    _scaffoldMessengerKey.currentState?.showSnackBar(
+      SnackBar(
+        content: Text(ok ? 'Feedback queue cleared' : 'Could not clear queue'),
+        duration: const Duration(seconds: 2),
+      ),
+    );
   }
 
   Widget _buildScreen() {

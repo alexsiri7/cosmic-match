@@ -90,7 +90,7 @@ all other fields using a key-sorted canonical representation. The corresponding 
 `_isValid()` must reject any map with a missing or mismatched CRC.
 
 - `LevelProgress.toMap()` / `ProgressService._isValid()` — resets to `LevelProgress.initial()` on tamper
-- `FeedbackItem.toMap()` / `FeedbackQueueService._isValid()` — skips the invalid queue entry on tamper
+- `FeedbackItem.toMap()` / `FeedbackQueueService._isValid()` — skips the invalid queue entry on load; permanently deletes it when encountered during `expireOldItems` startup sweep
 - `PendingFeedback.toMap()` / `FeedbackService._isValid()` — drops the invalid worker-queue entry on tamper
 
 When adding new fields to either model:

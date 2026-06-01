@@ -73,6 +73,8 @@ class FeedbackQueueService {
     }
   }
 
+  /// Deletes queue entries older than [ttlDays] and any entries that
+  /// fail CRC validation. Returns the total number of entries removed.
   Future<int> expireOldItems(int ttlDays) async {
     gameLogger.d('FeedbackQueueService.expireOldItems: ttlDays=$ttlDays');
     final cutoff = DateTime.now().subtract(Duration(days: ttlDays));
@@ -91,6 +93,9 @@ class FeedbackQueueService {
           keysToDelete.add(key);
         }
       }
+      // Note: if an exception occurs mid-loop, `deleted` reflects a partial count
+      // (items deleted before the abort). The caller in main.dart discards the
+      // return value today; future callers should treat it as a best-effort count.
       for (final key in keysToDelete) {
         await box.delete(key);
         deleted++;
@@ -106,16 +111,21 @@ class FeedbackQueueService {
     return deleted;
   }
 
-  Future<void> clearAll() async {
+  /// Removes all entries from the feedback queue.
+  /// Returns `true` if the queue was successfully cleared, `false` on error.
+  Future<bool> clearAll() async {
     gameLogger.d('FeedbackQueueService.clearAll');
     try {
       final box = await Hive.openBox(_boxName, encryptionCipher: _cipher);
       await box.clear();
       gameLogger.i('FeedbackQueueService.clearAll: queue cleared');
+      return true;
     } on HiveError catch (e, stack) {
       gameLogger.e('FeedbackQueueService.clearAll: HiveError', error: e, stackTrace: stack);
+      return false;
     } catch (e, stack) {
       gameLogger.w('FeedbackQueueService.clearAll failed', error: e, stackTrace: stack);
+      return false;
     }
   }
 

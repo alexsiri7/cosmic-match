@@ -18,6 +18,7 @@ final kTransparentPng = Uint8List.fromList([
 /// to keep low-signal reports out of the GitHub pipeline.
 const int kMinFeedbackMessageLength = 10;
 
-/// Number of days after which unsubmitted feedback queue items are automatically
-/// expired on app startup. Enforces GDPR/CCPA data-minimisation (SEC-RPT-014).
+/// Number of days after which feedback queue items are automatically
+/// expired on app startup. Limits retention of user-generated content
+/// in line with GDPR/CCPA data-minimisation principles.
 const int kFeedbackQueueTtlDays = 7;

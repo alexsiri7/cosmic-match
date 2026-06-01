@@ -193,14 +193,34 @@ class HomeScreen extends StatelessWidget {
                     ),
                     child: const Text('Send feedback'),
                   ),
-                  TextButton(
-                    onPressed: onClearFeedbackQueue,
-                    style: TextButton.styleFrom(
-                      foregroundColor: Colors.white.withValues(alpha: 0.45),
-                      textStyle: const TextStyle(fontSize: 12, letterSpacing: 0.3),
-                    ),
-                    child: const Text('Clear feedback queue'),
-                  ),
+                  Builder(builder: (context) {
+                    return TextButton(
+                      onPressed: () async {
+                        final confirmed = await showDialog<bool>(
+                          context: context,
+                          builder: (ctx) => AlertDialog(
+                            title: const Text('Clear feedback queue?'),
+                            content: const Text(
+                                'This will permanently delete all unsent feedback.'),
+                            actions: [
+                              TextButton(
+                                  onPressed: () => Navigator.pop(ctx, false),
+                                  child: const Text('Cancel')),
+                              TextButton(
+                                  onPressed: () => Navigator.pop(ctx, true),
+                                  child: const Text('Clear')),
+                            ],
+                          ),
+                        );
+                        if (confirmed == true) onClearFeedbackQueue();
+                      },
+                      style: TextButton.styleFrom(
+                        foregroundColor: Colors.white.withValues(alpha: 0.45),
+                        textStyle: const TextStyle(fontSize: 12, letterSpacing: 0.3),
+                      ),
+                      child: const Text('Clear feedback queue'),
+                    );
+                  }),
                 ],
               ),
             ),
