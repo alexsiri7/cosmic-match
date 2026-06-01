@@ -93,9 +93,7 @@ class FeedbackQueueService {
           keysToDelete.add(key);
         }
       }
-      // Note: if an exception occurs mid-loop, `deleted` reflects a partial count
-      // (items deleted before the abort). The caller in main.dart discards the
-      // return value today; future callers should treat it as a best-effort count.
+      // deleted is a best-effort count; partial if an exception aborts mid-loop.
       for (final key in keysToDelete) {
         await box.delete(key);
         deleted++;

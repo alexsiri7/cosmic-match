@@ -124,9 +124,7 @@ class FeedbackService {
     }
   }
 
-  /// CRC32 integrity check (CLAUDE.md "CRC32 Persistence Contract"):
-  /// rejects any map missing a `crc` field or whose canonicalised payload
-  /// does not match the stored CRC.
+  // See CLAUDE.md "CRC32 Persistence Contract".
   bool _isValid(Map raw) =>
       isValidCrc(raw, canonicalize: PendingFeedback.canonicalize);
 
