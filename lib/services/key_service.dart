@@ -1,5 +1,5 @@
 import 'dart:convert';
-import 'dart:developer' as dev;
+import 'package:cosmic_match/core/logger.dart';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
@@ -35,13 +35,7 @@ class KeyService {
       final keyBytes = base64Url.decode(encoded);
       return HiveAesCipher(keyBytes);
     } catch (e, stack) {
-      dev.log(
-        'KeyService.getCipher() failed: $e',
-        name: 'KeyService',
-        error: e,
-        stackTrace: stack,
-        level: 900, // WARNING
-      );
+      gameLogger.w('KeyService.getCipher() failed: $e', error: e, stackTrace: stack);
       return null;
     }
   }
