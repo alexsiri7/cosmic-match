@@ -24,18 +24,8 @@ class KeyService {
   /// if secure storage is unavailable or key retrieval fails for any reason.
   Future<HiveAesCipher?> getCipher() async {
     try {
-      const storage = FlutterSecureStorage();
-
-      if (!await storage.containsKey(key: _keyName)) {
-        final keyBytes = Hive.generateSecureKey();
-        final encoded = base64Url.encode(keyBytes);
-        await storage.write(key: _keyName, value: encoded);
-      }
-
-      final encoded = await storage.read(key: _keyName);
-      if (encoded == null) return null;
-
-      final keyBytes = base64Url.decode(encoded);
+      final keyBytes = await _loadOrGenerateKey(_keyName);
+      if (keyBytes == null) return null;
       return HiveAesCipher(keyBytes);
     } catch (e, stack) {
       gameLogger.w('KeyService.getCipher() failed: $e', error: e, stackTrace: stack);
@@ -47,19 +37,22 @@ class KeyService {
   /// or `null` if secure storage is unavailable.
   Future<List<int>?> getHmacKey() async {
     try {
-      const storage = FlutterSecureStorage();
-      if (!await storage.containsKey(key: _hmacKeyName)) {
-        final keyBytes = Hive.generateSecureKey();
-        final encoded = base64Url.encode(keyBytes);
-        await storage.write(key: _hmacKeyName, value: encoded);
-      }
-      final encoded = await storage.read(key: _hmacKeyName);
-      if (encoded == null) return null;
-      return base64Url.decode(encoded);
+      return await _loadOrGenerateKey(_hmacKeyName);
     } catch (e, stack) {
       gameLogger.w('KeyService.getHmacKey() failed: $e', error: e, stackTrace: stack);
       return null;
     }
+  }
+
+  /// Loads an existing key from secure storage, or generates and stores a new one.
+  Future<List<int>?> _loadOrGenerateKey(String storageKey) async {
+    const storage = FlutterSecureStorage();
+    if (!await storage.containsKey(key: storageKey)) {
+      await storage.write(key: storageKey, value: base64Url.encode(Hive.generateSecureKey()));
+    }
+    final encoded = await storage.read(key: storageKey);
+    if (encoded == null) return null;
+    return base64Url.decode(encoded);
   }
 
   /// Encodes raw key bytes to a base64url string for secure storage.
