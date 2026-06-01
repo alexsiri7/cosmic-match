@@ -6,18 +6,21 @@ import 'package:cosmic_match/core/constants.dart';
 import 'package:cosmic_match/models/feedback_item.dart';
 import 'package:cosmic_match/services/feedback_queue_service.dart';
 
+const _kTestPng =
+    'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
+
 FeedbackItem _item({
   String id = 'item-1',
   String description = 'Test feedback',
   bool uploaded = false,
   String? githubIssueUrl,
+  DateTime? timestamp,
 }) =>
     FeedbackItem(
       id: id,
-      timestamp: DateTime(2026, 1, 1),
+      timestamp: timestamp ?? DateTime(2026, 1, 1),
       description: description,
-      screenshotBase64:
-          'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==',
+      screenshotBase64: _kTestPng,
       uploaded: uploaded,
       githubIssueUrl: githubIssueUrl,
     );
@@ -151,7 +154,7 @@ void main() {
         timestamp: DateTime.now().subtract(const Duration(days: 8)),
         description: 'Old feedback',
         screenshotBase64:
-            'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==',
+            _kTestPng,
       );
       await box.put(staleItem.id, staleItem.toMap());
       await box.close();
@@ -170,7 +173,7 @@ void main() {
         timestamp: DateTime.now().subtract(const Duration(days: 3)),
         description: 'Recent feedback',
         screenshotBase64:
-            'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==',
+            _kTestPng,
       );
       await service.enqueue(freshItem);
       final deleted = await service.expireOldItems(7);
@@ -186,7 +189,7 @@ void main() {
         timestamp: DateTime.now().subtract(const Duration(days: 2)),
         description: 'Recent feedback',
         screenshotBase64:
-            'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==',
+            _kTestPng,
       );
       await service.enqueue(freshItem);
       final box = await Hive.openBox('feedback_queue');
@@ -195,7 +198,7 @@ void main() {
         timestamp: DateTime.now().subtract(const Duration(days: 10)),
         description: 'Very old feedback',
         screenshotBase64:
-            'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==',
+            _kTestPng,
       );
       await box.put(staleItem.id, staleItem.toMap());
       await box.close();
@@ -239,7 +242,7 @@ void main() {
         ),
         description: 'Just inside TTL boundary',
         screenshotBase64:
-            'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==',
+            _kTestPng,
       );
       await service.enqueue(nearBoundaryItem);
       final deleted = await service.expireOldItems(7);
@@ -257,7 +260,7 @@ void main() {
         timestamp: DateTime.now().subtract(const Duration(days: 7, seconds: 1)),
         description: 'Just past TTL',
         screenshotBase64:
-            'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==',
+            _kTestPng,
       );
       await box.put(pastItem.id, pastItem.toMap());
       await box.close();
