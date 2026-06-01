@@ -56,6 +56,10 @@ class _FeedbackSheetState extends State<_FeedbackSheet> {
   bool _submitting = false;
   bool _drawMode = true;
   Offset _imageOffset = Offset.zero;
+  // Updated by LayoutBuilder on each build; read by `_renderAnnotatedScreenshot()`
+  // to scale annotation coordinates from preview space to image space.
+  double _previewWidth = 300;
+  double _previewHeight = 200;
 
   @override
   void dispose() {
@@ -129,11 +133,6 @@ class _FeedbackSheetState extends State<_FeedbackSheet> {
     if (byteData == null) return '';
     return base64Encode(byteData.buffer.asUint8List());
   }
-
-  // Updated by LayoutBuilder on each build; read by `_renderAnnotatedScreenshot()`
-  // to scale annotation coordinates from preview space to image space.
-  double _previewWidth = 300;
-  double _previewHeight = 200;
 
   @override
   Widget build(BuildContext context) {
