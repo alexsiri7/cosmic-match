@@ -41,7 +41,8 @@ class RateLimitService {
   /// Returns a record with:
   /// - `allowed`: whether the submission may proceed
   /// - `cooldownSeconds`: seconds remaining until the cooldown expires (0 if none)
-  /// - `hourlyRemaining`: submissions left in the current hourly window
+  /// - `hourlyRemaining`: submissions left in the current hourly window;
+  ///   `-1` when the per-submission cooldown fired first (hourly window not checked)
   Future<({bool allowed, int cooldownSeconds, int hourlyRemaining})>
       checkStatus() async {
     try {
@@ -77,8 +78,8 @@ class RateLimitService {
               DateTime.now().difference(windowStart).inMinutes < 60) {
             count = storedCount;
           }
-        } catch (_) {
-          // Malformed JSON — treat as fresh window.
+        } catch (e) {
+          gameLogger.d('RateLimitService.checkStatus: malformed hour-window JSON — resetting', error: e);
         }
       }
 
@@ -125,8 +126,8 @@ class RateLimitService {
             count = storedCount;
             windowStart = stored;
           }
-        } catch (_) {
-          // Malformed — reset window.
+        } catch (e) {
+          gameLogger.d('RateLimitService.recordSubmission: malformed hour-window JSON — resetting window', error: e);
         }
       }
 

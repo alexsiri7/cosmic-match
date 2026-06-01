@@ -3,8 +3,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import 'package:cosmic_match/core/constants.dart';
 import 'package:cosmic_match/game/match3_game.dart';
 import 'package:cosmic_match/main.dart';
+import 'package:cosmic_match/screens/feedback_sheet.dart';
 import 'package:cosmic_match/services/feedback_service.dart';
 import 'package:cosmic_match/services/progress_service.dart';
 
@@ -138,6 +140,70 @@ void main() {
       // hides `helperText` would otherwise leave Submit silently disabled
       // with no on-screen explanation.
       expect(find.text('At least 10 characters'), findsOneWidget);
+    },
+  );
+
+  testWidgets(
+    'Submit button disabled and countdown shown when cooldown is active',
+    (tester) async {
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+          body: Builder(builder: (context) {
+            return ElevatedButton(
+              onPressed: () => showFeedbackSheet(
+                context,
+                screenshotBytes: kTransparentPng,
+                checkCooldown: () async => 15, // 15 seconds remaining
+                onSubmit: ({required type, required message, required screenshotB64}) async {},
+              ),
+              child: const Text('open'),
+            );
+          }),
+        ),
+      ));
+      await tester.tap(find.text('open'));
+      await tester.pumpAndSettle();
+
+      // Countdown text must be visible.
+      expect(find.text('Try again in 15 seconds'), findsOneWidget);
+
+      // Submit must be disabled even with sufficient text.
+      await tester.enterText(find.byType(TextField), 'just right now');
+      await tester.pump();
+      final btn = find.widgetWithText(ElevatedButton, 'Submit');
+      expect(tester.widget<ElevatedButton>(btn).onPressed, isNull,
+          reason: 'active cooldown must disable Submit regardless of text length');
+    },
+  );
+
+  testWidgets(
+    'No countdown shown and Submit enabled when checkCooldown returns 0',
+    (tester) async {
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+          body: Builder(builder: (context) {
+            return ElevatedButton(
+              onPressed: () => showFeedbackSheet(
+                context,
+                screenshotBytes: kTransparentPng,
+                checkCooldown: () async => 0,
+                onSubmit: ({required type, required message, required screenshotB64}) async {},
+              ),
+              child: const Text('open'),
+            );
+          }),
+        ),
+      ));
+      await tester.tap(find.text('open'));
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('Try again'), findsNothing);
+
+      // With no cooldown and sufficient text, button must be enabled.
+      await tester.enterText(find.byType(TextField), 'just right now');
+      await tester.pump();
+      final btn = find.widgetWithText(ElevatedButton, 'Submit');
+      expect(tester.widget<ElevatedButton>(btn).onPressed, isNotNull);
     },
   );
 }

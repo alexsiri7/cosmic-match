@@ -52,6 +52,7 @@ lib/
                   # Navigation: _Screen enum + _buildScreen() in main.dart
   services/       # Hive persistence (ProgressService) and key management (KeyService)
                   #   FeedbackService — Cloudflare Worker HTTP client with connectivity-triggered offline queue
+                  #   RateLimitService — per-device feedback rate limiter (30 s cooldown, 5/hour cap) backed by FlutterSecureStorage; fails open on storage error (SEC-RPT-008)
   widgets/        # Flutter overlay widgets (HudOverlay — driven by Match3Game.scoreNotifier)
 test/             # Unit tests mirror lib/ structure
 ```
@@ -105,7 +106,7 @@ ensure the cipher parameter is consistent across all instantiation sites.
 
 ### SEC-008 Integrity Controls
 
-Four mitigations protect against trivial client-side manipulation (see SECURITY.md §1.1):
+Five mitigations protect against trivial client-side manipulation (see SECURITY.md §1.1):
 
 | Control | Location | Behaviour |
 |---------|----------|-----------|
@@ -113,3 +114,4 @@ Four mitigations protect against trivial client-side manipulation (see SECURITY.
 | Score Clamp | `Score.add()` | Clamps to 999,999,999; ignores negative inputs |
 | Cascade Depth Limit | `CascadeController.increment()` | Caps at 20; no-op beyond max |
 | CRC32 Save Integrity | `LevelProgress.toMap()` / `ProgressService._isValid()` | Resets tampered save data |
+| Feedback Rate Limit | `RateLimitService` / `FeedbackService.submit()` | Blocks submissions within 30 s cooldown or after 5/hour cap (SEC-RPT-008); fails open on storage error |

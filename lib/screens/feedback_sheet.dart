@@ -100,7 +100,7 @@ class _FeedbackSheetState extends State<_FeedbackSheet> {
         return;
       }
       setState(() {
-        _cooldownSeconds = (_cooldownSeconds - 1).clamp(0, 999);
+        _cooldownSeconds = (_cooldownSeconds - 1).clamp(0, kFeedbackCooldownSeconds);
       });
       if (_cooldownSeconds == 0) _cooldownTimer?.cancel();
     });
