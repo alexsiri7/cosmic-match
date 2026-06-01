@@ -187,7 +187,7 @@ class _CosmicMatchAppState extends State<CosmicMatchApp> {
           screenshotB64: screenshotB64,
           appVersion: '${packageInfo.version}+${packageInfo.buildNumber}',
           os: Platform.operatingSystem,
-          device: Platform.operatingSystemVersion,
+          device: Platform.operatingSystemVersion.split(' ').first,
         );
       },
     );
