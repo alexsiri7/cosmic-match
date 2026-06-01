@@ -182,7 +182,7 @@ jobs:
 
       - name: Upload signed AAB
         if: steps.keystore.outputs.used_real == 'yes'
-        uses: actions/upload-artifact@4cec3d8aa04e39d1a68397de0c4cd6fb9dce8ec1 # v4.6.1
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: release-aab
           path: build/app/outputs/bundle/release/app-release.aab
@@ -190,7 +190,7 @@ jobs:
 
       - name: Upload signed APK
         if: steps.keystore.outputs.used_real == 'yes'
-        uses: actions/upload-artifact@4cec3d8aa04e39d1a68397de0c4cd6fb9dce8ec1 # v4.6.1
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: release-apk
           path: build/app/outputs/flutter-apk/app-release.apk
@@ -198,7 +198,7 @@ jobs:
 
       - name: Upload CI-signed AAB (not for Play Store)
         if: steps.keystore.outputs.used_real != 'yes'
-        uses: actions/upload-artifact@4cec3d8aa04e39d1a68397de0c4cd6fb9dce8ec1 # v4.6.1
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: release-aab-ci-throwaway
           path: build/app/outputs/bundle/release/app-release.aab
@@ -206,7 +206,7 @@ jobs:
 
       - name: Upload CI-signed APK (not reinstallable over real builds)
         if: steps.keystore.outputs.used_real != 'yes'
-        uses: actions/upload-artifact@4cec3d8aa04e39d1a68397de0c4cd6fb9dce8ec1 # v4.6.1
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: release-apk-ci-throwaway
           path: build/app/outputs/flutter-apk/app-release.apk
