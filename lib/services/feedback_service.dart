@@ -151,10 +151,13 @@ class FeedbackService {
     }
   }
 
-  // See CLAUDE.md "CRC32 Persistence Contract".
+  // See CLAUDE.md "HMAC-SHA256 Persistence Contract".
   bool _isValid(Map raw) {
     final key = _hmacKey;
-    if (key == null) return false;
+    if (key == null) {
+      gameLogger.w('FeedbackService._isValid: hmacKey unavailable — cannot validate integrity');
+      return false;
+    }
     return isValidHmac(raw, canonicalize: PendingFeedback.canonicalize, key: key);
   }
 
@@ -210,6 +213,10 @@ class FeedbackService {
   }
 
   Future<void> _enqueue(PendingFeedback item) async {
+    if (_hmacKey == null) {
+      gameLogger.w('FeedbackService._enqueue: hmacKey unavailable — skipping persist for id=${item.id}');
+      return;
+    }
     try {
       final box = await Hive.openBox(_boxName);
 

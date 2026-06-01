@@ -60,4 +60,29 @@ void main() {
       expect(() => ProgressService(), returnsNormally);
     });
   });
+
+  group('ProgressService null-hmacKey fail-safe', () {
+    test('save with null hmacKey skips persist — load returns initial', () async {
+      // Simulates secure storage failure: service constructed with hmacKey: null.
+      // With the null-key guard, save() is a no-op, so load() returns initial.
+      final service = ProgressService(); // hmacKey: null
+      final progress = LevelProgress(level: 3, starsEarned: 2, bestScore: 9000);
+      await service.save(progress);
+
+      final loaded = await service.load(3);
+      expect(loaded.starsEarned, equals(0),
+          reason: 'save skipped (null hmacKey) — load must return initial progress');
+      expect(loaded.bestScore, equals(0));
+    });
+
+    test('save with null hmacKey writes nothing to the box', () async {
+      final service = ProgressService(); // hmacKey: null
+      await service.save(LevelProgress(level: 5, starsEarned: 3, bestScore: 1000));
+
+      final box = await Hive.openBox('progress');
+      expect(box.get('level_5'), isNull,
+          reason: 'null-key save must not write any entry to the Hive box');
+      await box.close();
+    });
+  });
 }

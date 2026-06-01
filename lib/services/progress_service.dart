@@ -44,6 +44,10 @@ class ProgressService {
 
   Future<void> save(LevelProgress progress) async {
     gameLogger.d('ProgressService.save: level=${progress.level}');
+    if (_hmacKey == null) {
+      gameLogger.w('ProgressService.save: hmacKey unavailable — skipping persist for level=${progress.level}');
+      return;
+    }
     try {
       final box = await Hive.openBox(_boxName, encryptionCipher: _cipher);
       await box.put('level_${progress.level}', progress.toMap(_hmacKey));
@@ -58,7 +62,10 @@ class ProgressService {
 
   bool _isValid(Map raw) {
     final key = _hmacKey;
-    if (key == null) return false;
+    if (key == null) {
+      gameLogger.w('ProgressService._isValid: hmacKey unavailable — cannot validate integrity');
+      return false;
+    }
     return isValidHmac(raw, canonicalize: LevelProgress.canonicalize, key: key);
   }
 }

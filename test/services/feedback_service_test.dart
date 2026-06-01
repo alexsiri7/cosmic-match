@@ -242,6 +242,7 @@ void main() {
       final service = FeedbackService(
         workerUrl: 'https://example.com/feedback',
         httpClient: client,
+        hmacKey: _testKey,
       );
 
       await service.submit(
@@ -298,6 +299,7 @@ void main() {
       final service = FeedbackService(
         workerUrl: 'https://example.com/feedback',
         httpClient: client,
+        hmacKey: _testKey,
       );
 
       // Fill queue to 20 items
@@ -495,6 +497,7 @@ void main() {
         workerUrl: 'https://example.com/feedback',
         httpClient: client,
         rateLimitService: RateLimitService(testStorage: storage),
+        hmacKey: _testKey,
       );
 
       await service.submit(
@@ -639,7 +642,7 @@ void main() {
       expect(box.length, 1); // still in queue for next flush
     });
 
-    test('drops items with tampered CRC on flush (CLAUDE.md persistence contract)', () async {
+    test('drops items with tampered HMAC on flush (CLAUDE.md persistence contract)', () async {
       final box = await Hive.openBox('feedback_worker_queue');
       final item = PendingFeedback(
         id: 'tampered-1',
@@ -651,7 +654,7 @@ void main() {
         device: 'test',
         createdAt: DateTime(2025, 1, 1),
       );
-      // Write a valid map, then mutate `message` without recomputing CRC.
+      // Write a valid map, then mutate `message` without recomputing HMAC.
       final map = item.toMap(_testKey);
       map['message'] = 'tampered';
       await box.put(item.id, map);
@@ -741,6 +744,43 @@ void main() {
       // Both rows should be removed: the bad one as invalid, the good one as sent.
       expect(box.length, 0,
           reason: 'a bad row must not abort the loop and strand later valid items');
+    });
+  });
+
+  group('FeedbackService null-hmacKey fail-safe', () {
+    late Directory tempDir;
+
+    setUp(() async {
+      tempDir = await Directory.systemTemp.createTemp('hive_feedback_service_null_key_test_');
+      Hive.init(tempDir.path);
+    });
+
+    tearDown(() async {
+      await Hive.close();
+      await tempDir.delete(recursive: true);
+    });
+
+    test('_enqueue with null hmacKey skips persist — flushQueue sees nothing', () async {
+      // Simulates secure storage failure: FeedbackService constructed with hmacKey: null.
+      // submit() will try to POST; on failure it calls _enqueue, which must be a no-op.
+      final client = MockClient((_) async => throw Exception('network error'));
+      final service = FeedbackService(
+        workerUrl: 'https://example.com/',
+        httpClient: client,
+        // hmacKey: null — simulates storage failure
+      );
+      await service.submit(
+        type: 'bug',
+        message: 'test message for null key path',
+        screenshotB64: '',
+        appVersion: '1.0.0+1',
+        os: 'android',
+        device: 'test',
+      );
+
+      final box = await Hive.openBox('feedback_worker_queue');
+      expect(box.length, 0,
+          reason: '_enqueue must skip write when hmacKey is null');
     });
   });
 }

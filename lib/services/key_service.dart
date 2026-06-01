@@ -5,15 +5,17 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:hive/hive.dart';
 
-/// Manages the AES-256 encryption key for Hive boxes.
+/// Manages cryptographic keys for Hive persistence.
 ///
-/// The key is generated once via [Hive.generateSecureKey] and persisted in
+/// Provides two keys, both generated once and stored in platform secure storage:
+/// - AES-256 cipher key for [HiveAesCipher] box encryption ([getCipher])
+/// - HMAC-SHA256 signing key for save-data integrity ([getHmacKey])
+///
+/// Both keys are generated via [Hive.generateSecureKey] and persisted in
 /// platform-specific secure storage via [FlutterSecureStorage] (Android
 /// Keystore for V1; iOS Keychain / macOS Keychain on those platforms).
-/// On subsequent launches the existing key is retrieved.
-/// If secure storage is unavailable (e.g. an emulator without hardware-backed
-/// storage), [getCipher] returns `null` and the caller should fall back to
-/// an unencrypted box.
+/// If secure storage is unavailable, both methods return `null` and callers
+/// fall back to graceful degradation (unencrypted box / no HMAC).
 class KeyService {
   static const _keyName = 'hive_aes_key';
   static const _hmacKeyName = 'hive_hmac_key';

@@ -40,6 +40,10 @@ class FeedbackQueueService {
 
   Future<void> enqueue(FeedbackItem item) async {
     gameLogger.d('FeedbackQueueService.enqueue: id=${item.id}');
+    if (_hmacKey == null) {
+      gameLogger.w('FeedbackQueueService.enqueue: hmacKey unavailable — skipping persist for id=${item.id}');
+      return;
+    }
     try {
       final box = await _openBox();
       await box.put(item.id, item.toMap(_hmacKey));
@@ -134,7 +138,10 @@ class FeedbackQueueService {
 
   bool _isValid(Map raw) {
     final key = _hmacKey;
-    if (key == null) return false;
+    if (key == null) {
+      gameLogger.w('FeedbackQueueService._isValid: hmacKey unavailable — cannot validate integrity');
+      return false;
+    }
     return isValidHmac(raw, canonicalize: FeedbackItem.canonicalize, key: key);
   }
 }

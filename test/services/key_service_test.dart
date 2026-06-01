@@ -5,9 +5,10 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:cosmic_match/services/key_service.dart';
 import 'package:hive/hive.dart';
 
-// Note: KeyService.getCipher() requires platform channels (Android Keystore)
-// and cannot be called in unit tests. These tests exercise the pure logic
-// (base64 encode/decode round-trip and key length) that underpins the service.
+// Note: KeyService.getCipher() and KeyService.getHmacKey() both require
+// platform channels (Android Keystore / FlutterSecureStorage) and cannot be
+// called in unit tests. These tests exercise the pure logic (base64
+// encode/decode round-trip and key length) that underpins both methods.
 // Full integration testing requires a device or emulator.
 
 void main() {

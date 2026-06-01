@@ -57,5 +57,15 @@ void main() {
       expect(computeHmac(canonicalizeMap(data), key1),
              isNot(equals(computeHmac(canonicalizeMap(data), key2))));
     });
+
+    test('computeHmac output is stable for known input (regression)', () {
+      // Canonical form (keys alphabetical): "bestScore:100,level:1,starsEarned:2"
+      // Key: bytes 0..31. This pin catches any future crypto package change that
+      // would silently invalidate all persisted save data.
+      final key = List<int>.generate(32, (i) => i);
+      const canonical = 'bestScore:100,level:1,starsEarned:2';
+      expect(computeHmac(canonical, key),
+          equals('b93200584ccda45dd46fdbbbbcff0e91c9616c9d486a40a6c8aa401e71309551'));
+    });
   });
 }

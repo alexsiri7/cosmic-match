@@ -71,7 +71,7 @@ void main() {
       expect(ids, containsAll(['a', 'b', 'c']));
     });
 
-    test('loadQueue skips items with tampered CRC', () async {
+    test('loadQueue skips items with tampered HMAC', () async {
       final service = FeedbackQueueService(hmacKey: _testKey);
       // Directly write a tampered entry into the box
       final box = await Hive.openBox('feedback_queue');
@@ -295,6 +295,28 @@ void main() {
       await service.clearAll();
       final queue = await service.loadQueue();
       expect(queue, isEmpty);
+    });
+  });
+
+  group('FeedbackQueueService null-hmacKey fail-safe', () {
+    test('enqueue with null hmacKey skips persist — loadQueue returns empty', () async {
+      // Simulates secure storage failure: service constructed with hmacKey: null.
+      final service = FeedbackQueueService(); // hmacKey: null
+      await service.enqueue(_item(id: 'null-key-1'));
+
+      final queue = await service.loadQueue();
+      expect(queue, isEmpty,
+          reason: 'enqueue skipped (null hmacKey) — queue must remain empty');
+    });
+
+    test('enqueue with null hmacKey writes nothing to the box', () async {
+      final service = FeedbackQueueService(); // hmacKey: null
+      await service.enqueue(_item(id: 'null-key-2'));
+
+      final box = await Hive.openBox('feedback_queue');
+      expect(box.get('null-key-2'), isNull,
+          reason: 'null-key enqueue must not write any entry to the Hive box');
+      await box.close();
     });
   });
 }
