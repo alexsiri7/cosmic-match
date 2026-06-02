@@ -62,6 +62,7 @@ class _FeedbackSheetState extends State<_FeedbackSheet> {
   int _cooldownSeconds = 0;
   Timer? _cooldownTimer;
   bool _drawMode = true;
+  bool _privacyAccepted = false;
   Offset _imageOffset = Offset.zero;
   // Updated by LayoutBuilder on each build; read by `_renderAnnotatedScreenshot()`
   // to scale annotation coordinates from preview space to image space.
@@ -109,7 +110,8 @@ class _FeedbackSheetState extends State<_FeedbackSheet> {
   bool get _canSubmit =>
       _descController.text.trim().length >= kMinFeedbackMessageLength &&
       !_submitting &&
-      _cooldownSeconds == 0;
+      _cooldownSeconds == 0 &&
+      _privacyAccepted;
 
   Future<void> _handleSubmit() async {
     if (!_canSubmit) return;
@@ -332,6 +334,37 @@ class _FeedbackSheetState extends State<_FeedbackSheet> {
                   onChanged: (_) => setState(() {}),
                 ),
                 const SizedBox(height: 20),
+                // Privacy consent
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Checkbox(
+                        value: _privacyAccepted,
+                        activeColor: kLyraAccent,
+                        checkColor: kLyraInk,
+                        onChanged: (value) =>
+                            setState(() => _privacyAccepted = value ?? false),
+                      ),
+                      Flexible(
+                        child: Padding(
+                          padding: const EdgeInsets.only(top: 12),
+                          child: Text(
+                            'Your feedback, annotated screenshot, app version, OS, '
+                            'and device model will be sent to our server and may be '
+                            'used to improve the game. Data is retained for up to '
+                            '$kFeedbackQueueTtlDays days.',
+                            style: GoogleFonts.ibmPlexMono(
+                              fontSize: 11,
+                              color: Colors.white.withValues(alpha: 0.55),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
                 // Cooldown countdown
                 if (_cooldownSeconds > 0)
                   Padding(

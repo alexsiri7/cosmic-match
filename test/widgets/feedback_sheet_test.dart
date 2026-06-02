@@ -102,8 +102,15 @@ void main() {
       await tester.pump();
       expect(tester.widget<ElevatedButton>(submitFinder).onPressed, isNull);
 
-      // 10 chars — now enabled.
+      // 10 chars but checkbox not ticked — still disabled.
       await tester.enterText(find.byType(TextField), 'just right');
+      await tester.pump();
+      expect(tester.widget<ElevatedButton>(submitFinder).onPressed, isNull);
+
+      // Tick privacy checkbox — now enabled.
+      await tester.ensureVisible(find.byType(Checkbox));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byType(Checkbox));
       await tester.pump();
       expect(tester.widget<ElevatedButton>(submitFinder).onPressed, isNotNull);
 
@@ -199,9 +206,99 @@ void main() {
 
       expect(find.textContaining('Try again'), findsNothing);
 
-      // With no cooldown and sufficient text, button must be enabled.
+      // With no cooldown, sufficient text, and privacy accepted, button must be enabled.
       await tester.enterText(find.byType(TextField), 'just right now');
       await tester.pump();
+      await tester.ensureVisible(find.byType(Checkbox));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byType(Checkbox));
+      await tester.pump();
+      final btn = find.widgetWithText(ElevatedButton, 'Submit');
+      expect(tester.widget<ElevatedButton>(btn).onPressed, isNotNull);
+    },
+  );
+
+  testWidgets(
+    'privacy notice is visible in feedback sheet',
+    (tester) async {
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+          body: Builder(builder: (context) {
+            return ElevatedButton(
+              onPressed: () => showFeedbackSheet(
+                context,
+                screenshotBytes: kTransparentPng,
+                onSubmit: ({required type, required message, required screenshotB64}) async {},
+              ),
+              child: const Text('open'),
+            );
+          }),
+        ),
+      ));
+      await tester.tap(find.text('open'));
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('will be sent to our server'), findsOneWidget);
+    },
+  );
+
+  testWidgets(
+    'Submit button disabled when description meets minimum but privacy not accepted',
+    (tester) async {
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+          body: Builder(builder: (context) {
+            return ElevatedButton(
+              onPressed: () => showFeedbackSheet(
+                context,
+                screenshotBytes: kTransparentPng,
+                onSubmit: ({required type, required message, required screenshotB64}) async {},
+              ),
+              child: const Text('open'),
+            );
+          }),
+        ),
+      ));
+      await tester.tap(find.text('open'));
+      await tester.pumpAndSettle();
+
+      await tester.enterText(find.byType(TextField), 'just right now');
+      await tester.pump();
+
+      await tester.ensureVisible(find.widgetWithText(ElevatedButton, 'Submit'));
+      await tester.pumpAndSettle();
+      final btn = find.widgetWithText(ElevatedButton, 'Submit');
+      expect(tester.widget<ElevatedButton>(btn).onPressed, isNull);
+    },
+  );
+
+  testWidgets(
+    'Submit button enabled after entering sufficient text and accepting privacy notice',
+    (tester) async {
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+          body: Builder(builder: (context) {
+            return ElevatedButton(
+              onPressed: () => showFeedbackSheet(
+                context,
+                screenshotBytes: kTransparentPng,
+                onSubmit: ({required type, required message, required screenshotB64}) async {},
+              ),
+              child: const Text('open'),
+            );
+          }),
+        ),
+      ));
+      await tester.tap(find.text('open'));
+      await tester.pumpAndSettle();
+
+      await tester.enterText(find.byType(TextField), 'just right now');
+      await tester.pump();
+      await tester.ensureVisible(find.byType(Checkbox));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byType(Checkbox));
+      await tester.pump();
+
       final btn = find.widgetWithText(ElevatedButton, 'Submit');
       expect(tester.widget<ElevatedButton>(btn).onPressed, isNotNull);
     },
