@@ -20,6 +20,7 @@ class FeedbackService {
   final RateLimitService? _rateLimitService;
   final HiveAesCipher? _cipher;
   final List<int>? _hmacKey;
+  final String _workerHmacSecret;
   StreamSubscription<List<ConnectivityResult>>? _connectivitySub;
   bool _flushing = false;
 
@@ -29,10 +30,12 @@ class FeedbackService {
     RateLimitService? rateLimitService,
     HiveAesCipher? cipher,
     List<int>? hmacKey,
+    String workerHmacSecret = '',
   })  : _httpClient = httpClient ?? http.Client(),
         _rateLimitService = rateLimitService,
         _cipher = cipher,
-        _hmacKey = hmacKey;
+        _hmacKey = hmacKey,
+        _workerHmacSecret = workerHmacSecret;
 
   Future<Box> _openBox() => Hive.openBox(_boxName, encryptionCipher: _cipher);
 
@@ -197,10 +200,17 @@ class FeedbackService {
         },
       });
 
+      final headers = <String, String>{'Content-Type': 'application/json'};
+      // Fail-open: dev builds omit the secret; unsigned requests still succeed.
+      if (_workerHmacSecret.isNotEmpty) {
+        final sig = computeHmac(body, utf8.encode(_workerHmacSecret));
+        headers['X-Feedback-Signature'] = 'sha256=$sig';
+      }
+
       final response = await _httpClient
           .post(
             Uri.parse(workerUrl),
-            headers: {'Content-Type': 'application/json'},
+            headers: headers,
             body: body,
           )
           .timeout(const Duration(seconds: 15));
@@ -224,6 +234,12 @@ class FeedbackService {
       if (response.statusCode == 400) {
         gameLogger.w('FeedbackService: worker returned 400 — dropping item');
         return true; // treat as "done" so it is not retried
+      }
+
+      // 401/403 = auth failure — permanent, wrong HMAC key will never self-heal on retry
+      if (response.statusCode == 401 || response.statusCode == 403) {
+        gameLogger.e('FeedbackService: worker returned ${response.statusCode} — auth failure, dropping item (check FEEDBACK_HMAC_SECRET)');
+        return true; // permanent — wrong key will never succeed on retry
       }
 
       gameLogger.w('FeedbackService: worker returned ${response.statusCode} — will retry');
