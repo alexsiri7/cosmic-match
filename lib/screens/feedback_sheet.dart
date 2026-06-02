@@ -444,9 +444,10 @@ class _DrawPainter extends CustomPainter {
     final paint = _strokeAnnotationPaint();
     for (final path in paths) {
       for (int i = 0; i < path.length - 1; i++) {
-        if (path[i] != null && path[i + 1] != null) {
-          canvas.drawLine(path[i]!, path[i + 1]!, paint);
-        }
+        final a = path[i];
+        final b = path[i + 1];
+        if (a == null || b == null) continue;
+        canvas.drawLine(a, b, paint);
       }
     }
   }
