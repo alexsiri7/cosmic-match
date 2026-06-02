@@ -173,7 +173,15 @@ class _FeedbackSheetState extends State<_FeedbackSheet> {
     rendered.dispose();
 
     if (byteData == null) return '';
-    return base64Encode(byteData.buffer.asUint8List());
+    final encoded = base64Encode(byteData.buffer.asUint8List());
+    if (encoded.length > kMaxScreenshotB64Bytes) {
+      gameLogger.w(
+        '_renderAnnotatedScreenshot: screenshot exceeds ${kMaxScreenshotB64Bytes}B '
+        '(actual=${encoded.length}) — omitting screenshot',
+      );
+      return '';
+    }
+    return encoded;
   }
 
   @override
@@ -310,6 +318,7 @@ class _FeedbackSheetState extends State<_FeedbackSheet> {
                 TextField(
                   controller: _descController,
                   maxLines: 3,
+                  maxLength: kMaxFeedbackMessageLength,
                   style: GoogleFonts.ibmPlexMono(fontSize: 13, color: Colors.white),
                   decoration: InputDecoration(
                     hintText: 'Describe the issue...',

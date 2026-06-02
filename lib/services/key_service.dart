@@ -47,12 +47,11 @@ class KeyService {
   /// Loads an existing key from secure storage, or generates and stores a new one.
   Future<List<int>?> _loadOrGenerateKey(String storageKey) async {
     const storage = FlutterSecureStorage();
-    if (!await storage.containsKey(key: storageKey)) {
-      await storage.write(key: storageKey, value: base64Url.encode(Hive.generateSecureKey()));
-    }
     final encoded = await storage.read(key: storageKey);
-    if (encoded == null) return null;
-    return base64Url.decode(encoded);
+    if (encoded != null) return base64Url.decode(encoded);
+    final generated = base64Url.encode(Hive.generateSecureKey());
+    await storage.write(key: storageKey, value: generated);
+    return base64Url.decode(generated);
   }
 
   /// Encodes raw key bytes to a base64url string for secure storage.

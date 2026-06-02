@@ -316,6 +316,35 @@ void main() {
   );
 
   testWidgets(
+    'TextField has maxLength of kMaxFeedbackMessageLength',
+    (tester) async {
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+          body: Builder(builder: (context) {
+            return ElevatedButton(
+              onPressed: () => showFeedbackSheet(
+                context,
+                screenshotBytes: kTransparentPng,
+                onSubmit: ({required type, required message, required screenshotB64}) async {},
+              ),
+              child: const Text('open'),
+            );
+          }),
+        ),
+      ));
+      await tester.tap(find.text('open'));
+      await tester.pumpAndSettle();
+
+      final textField = tester.widget<TextField>(find.byType(TextField));
+      expect(
+        textField.maxLength,
+        kMaxFeedbackMessageLength,
+        reason: 'UI must enforce the same cap as the service layer (SEC-RPT-003)',
+      );
+    },
+  );
+
+  testWidgets(
     'Submit button enabled after entering sufficient text and accepting privacy notice',
     (tester) async {
       await tester.pumpWidget(MaterialApp(
