@@ -15,6 +15,7 @@ import 'package:http/testing.dart';
 /// re-aligns the box names, these tests fail.
 
 final _testKey = List<int>.generate(32, (i) => i);
+final _testCipher = HiveAesCipher(List<int>.generate(32, (i) => i + 100));
 
 void main() {
   group('FeedbackService / FeedbackQueueService Hive box isolation', () {
@@ -56,6 +57,7 @@ void main() {
       final service = FeedbackService(
         workerUrl: 'https://example.com/feedback',
         httpClient: MockClient((_) async => http.Response('', 503)),
+        cipher: _testCipher,
         hmacKey: _testKey,
       );
 
@@ -69,7 +71,7 @@ void main() {
       );
 
       // The worker queue must hold the failed submission.
-      final workerBox = await Hive.openBox('feedback_worker_queue');
+      final workerBox = await Hive.openBox('feedback_worker_queue', encryptionCipher: _testCipher);
       expect(workerBox.length, 1,
           reason: 'sanity: failure should enqueue into the worker-queue box');
 

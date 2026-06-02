@@ -18,6 +18,7 @@ class FeedbackService {
   final String workerUrl;
   final http.Client _httpClient;
   final RateLimitService? _rateLimitService;
+  final HiveAesCipher? _cipher;
   final List<int>? _hmacKey;
   StreamSubscription<List<ConnectivityResult>>? _connectivitySub;
   bool _flushing = false;
@@ -26,10 +27,14 @@ class FeedbackService {
     required this.workerUrl,
     http.Client? httpClient,
     RateLimitService? rateLimitService,
+    HiveAesCipher? cipher,
     List<int>? hmacKey,
   })  : _httpClient = httpClient ?? http.Client(),
         _rateLimitService = rateLimitService,
+        _cipher = cipher,
         _hmacKey = hmacKey;
+
+  Future<Box> _openBox() => Hive.openBox(_boxName, encryptionCipher: _cipher);
 
   /// Start listening for connectivity changes to flush queued feedback.
   void listenConnectivity() {
@@ -115,7 +120,7 @@ class FeedbackService {
     _flushing = true;
     gameLogger.d('FeedbackService.flushQueue');
     try {
-      final box = await Hive.openBox(_boxName);
+      final box = await _openBox();
       final keys = box.keys.toList();
       for (final key in keys) {
         // Per-item try/catch: a single bad row must not strand the rest of the queue.
@@ -218,7 +223,7 @@ class FeedbackService {
       return;
     }
     try {
-      final box = await Hive.openBox(_boxName);
+      final box = await _openBox();
 
       // Enforce max queue size — drop oldest if full
       while (box.length >= _maxQueueSize) {

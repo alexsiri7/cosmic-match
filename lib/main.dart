@@ -47,6 +47,7 @@ Future<void> main() async {
   final feedbackService = FeedbackService(
     workerUrl: feedbackWorkerUrl,
     rateLimitService: rateLimitService,
+    cipher: cipher,
     hmacKey: hmacKey,
   );
   feedbackService.listenConnectivity();
