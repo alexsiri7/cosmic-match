@@ -142,6 +142,13 @@ jobs:
           } > android/key.properties
           echo "used_real=$USED_REAL" >> "$GITHUB_OUTPUT"
 
+      - name: Assert no GitHub tokens in build environment
+        run: |
+          if env | grep -q '^GITHUB_FEEDBACK_TOKEN='; then
+            echo "ERROR: GITHUB_FEEDBACK_TOKEN must not be set — embedding PATs in binaries is forbidden." >&2
+            exit 1
+          fi
+
       - name: Build release AAB
         env:
           SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
