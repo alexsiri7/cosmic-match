@@ -524,6 +524,57 @@ void main() {
       expect(box.length, 1);
     });
 
+    test('rejects message longer than kMaxFeedbackMessageLength', () async {
+      final capturedRequests = <http.Request>[];
+      final client = MockClient((req) async {
+        capturedRequests.add(req);
+        return http.Response('{"url":"http://x"}', 201);
+      });
+      final service = FeedbackService(
+        workerUrl: 'http://worker.test',
+        httpClient: client,
+        hmacKey: _testKey,
+        cipher: _testCipher,
+      );
+      await service.submit(
+        type: 'bug',
+        message: 'x' * (kMaxFeedbackMessageLength + 1),
+        screenshotB64: '',
+        appVersion: '1.0.0+1',
+        os: 'android',
+        device: 'Pixel',
+      );
+      expect(capturedRequests, isEmpty,
+          reason: 'oversized message must be rejected without making a network call');
+    });
+
+    test('omits screenshot when base64 exceeds kMaxScreenshotB64Bytes', () async {
+      http.Request? captured;
+      final client = MockClient((req) async {
+        captured = req;
+        return http.Response('{"url":"http://x"}', 201);
+      });
+      final service = FeedbackService(
+        workerUrl: 'http://worker.test',
+        httpClient: client,
+        hmacKey: _testKey,
+        cipher: _testCipher,
+      );
+      final oversized = 'A' * (kMaxScreenshotB64Bytes + 1);
+      await service.submit(
+        type: 'bug',
+        message: 'Valid feedback message',
+        screenshotB64: oversized,
+        appVersion: '1.0.0+1',
+        os: 'android',
+        device: 'Pixel',
+      );
+      expect(captured, isNotNull, reason: 'submission should proceed (screenshot dropped)');
+      final body = jsonDecode(captured!.body) as Map;
+      expect(body['screenshot'], isEmpty,
+          reason: 'oversized screenshot must be replaced with empty string');
+    });
+
     test('sends correct POST body structure to worker', () async {
       Map<String, dynamic>? capturedBody;
       final client = MockClient((request) async {

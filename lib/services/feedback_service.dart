@@ -82,7 +82,8 @@ class FeedbackService {
       return;
     }
 
-    final trimmedLen = message.trim().length;
+    final trimmed = message.trim();
+    final trimmedLen = trimmed.length;
     if (trimmedLen < kMinFeedbackMessageLength) {
       gameLogger.w(
         'FeedbackService.submit: message too short '
@@ -90,12 +91,29 @@ class FeedbackService {
       );
       return;
     }
+    if (trimmedLen > kMaxFeedbackMessageLength) {
+      gameLogger.w(
+        'FeedbackService.submit: message too long '
+        '($trimmedLen > $kMaxFeedbackMessageLength) — skipping',
+      );
+      return;
+    }
+
+    final effectiveScreenshot = screenshotB64.length > kMaxScreenshotB64Bytes
+        ? ''
+        : screenshotB64;
+    if (screenshotB64.length > kMaxScreenshotB64Bytes) {
+      gameLogger.w(
+        'FeedbackService.submit: screenshot exceeds ${kMaxScreenshotB64Bytes}B '
+        '(actual=${screenshotB64.length}) — omitting screenshot',
+      );
+    }
 
     final item = PendingFeedback(
       id: DateTime.now().microsecondsSinceEpoch.toString(),
       type: type,
-      message: message,
-      screenshotB64: screenshotB64,
+      message: trimmed,
+      screenshotB64: effectiveScreenshot,
       appVersion: appVersion,
       os: os,
       device: device,

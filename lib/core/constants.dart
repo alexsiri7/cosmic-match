@@ -18,6 +18,14 @@ final kTransparentPng = Uint8List.fromList([
 /// to keep low-signal reports out of the GitHub pipeline.
 const int kMinFeedbackMessageLength = 10;
 
+/// Maximum length (after trim) for a user-supplied feedback description (SEC-RPT-003).
+const int kMaxFeedbackMessageLength = 500;
+
+/// Maximum size in bytes of the base64-encoded screenshot payload sent to the
+/// Cloudflare Worker (SEC-RPT-003). 2 MB accommodates a typical annotated
+/// screenshot with room to spare while preventing resource exhaustion.
+const int kMaxScreenshotB64Bytes = 2 * 1024 * 1024; // 2 MB
+
 /// Number of days after which feedback queue items are automatically
 /// expired on app startup. Limits retention of user-generated content
 /// in line with GDPR/CCPA data-minimisation principles.
