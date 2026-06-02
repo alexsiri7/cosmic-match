@@ -11,6 +11,7 @@ import 'package:cosmic_match/services/feedback_service.dart';
 import 'package:cosmic_match/services/rate_limit_service.dart';
 
 final _testKey = List<int>.generate(32, (i) => i);
+final _testCipher = HiveAesCipher(List<int>.generate(32, (i) => i + 100));
 
 void main() {
   group('PendingFeedback', () {
@@ -94,7 +95,7 @@ void main() {
     });
 
     test('enqueue and read back items from Hive box', () async {
-      final box = await Hive.openBox('feedback_worker_queue');
+      final box = await Hive.openBox('feedback_worker_queue', encryptionCipher: _testCipher);
       final item = PendingFeedback(
         id: 'q-1',
         type: 'bug',
@@ -116,7 +117,7 @@ void main() {
     });
 
     test('multiple items can be stored and iterated', () async {
-      final box = await Hive.openBox('feedback_worker_queue');
+      final box = await Hive.openBox('feedback_worker_queue', encryptionCipher: _testCipher);
 
       for (int i = 0; i < 5; i++) {
         final item = PendingFeedback(
@@ -242,6 +243,7 @@ void main() {
       final service = FeedbackService(
         workerUrl: 'https://example.com/feedback',
         httpClient: client,
+        cipher: _testCipher,
         hmacKey: _testKey,
       );
 
@@ -254,7 +256,7 @@ void main() {
         device: 'Pixel',
       );
 
-      final box = await Hive.openBox('feedback_worker_queue');
+      final box = await Hive.openBox('feedback_worker_queue', encryptionCipher: _testCipher);
       expect(box.length, 1);
     });
 
@@ -299,6 +301,7 @@ void main() {
       final service = FeedbackService(
         workerUrl: 'https://example.com/feedback',
         httpClient: client,
+        cipher: _testCipher,
         hmacKey: _testKey,
       );
 
@@ -314,7 +317,7 @@ void main() {
         );
       }
 
-      final box = await Hive.openBox('feedback_worker_queue');
+      final box = await Hive.openBox('feedback_worker_queue', encryptionCipher: _testCipher);
       expect(box.length, 20);
       final firstKey = box.keys.first;
 
@@ -497,6 +500,7 @@ void main() {
         workerUrl: 'https://example.com/feedback',
         httpClient: client,
         rateLimitService: RateLimitService(testStorage: storage),
+        cipher: _testCipher,
         hmacKey: _testKey,
       );
 
@@ -516,7 +520,7 @@ void main() {
         reason: 'failed POST must not update the rate-limit timestamp',
       );
       // Item must be queued for retry.
-      final box = await Hive.openBox('feedback_worker_queue');
+      final box = await Hive.openBox('feedback_worker_queue', encryptionCipher: _testCipher);
       expect(box.length, 1);
     });
 
@@ -592,7 +596,7 @@ void main() {
     });
 
     test('removes successfully sent items from queue', () async {
-      final box = await Hive.openBox('feedback_worker_queue');
+      final box = await Hive.openBox('feedback_worker_queue', encryptionCipher: _testCipher);
       final item = PendingFeedback(
         id: 'flush-1',
         type: 'bug',
@@ -610,6 +614,7 @@ void main() {
       final service = FeedbackService(
         workerUrl: 'https://example.com/',
         httpClient: client,
+        cipher: _testCipher,
         hmacKey: _testKey,
       );
 
@@ -618,7 +623,7 @@ void main() {
     });
 
     test('retains items in queue when POST fails', () async {
-      final box = await Hive.openBox('feedback_worker_queue');
+      final box = await Hive.openBox('feedback_worker_queue', encryptionCipher: _testCipher);
       final item = PendingFeedback(
         id: 'flush-2',
         type: 'bug',
@@ -635,6 +640,7 @@ void main() {
       final service = FeedbackService(
         workerUrl: 'https://example.com/',
         httpClient: client,
+        cipher: _testCipher,
         hmacKey: _testKey,
       );
 
@@ -643,7 +649,7 @@ void main() {
     });
 
     test('drops items with tampered HMAC on flush (CLAUDE.md persistence contract)', () async {
-      final box = await Hive.openBox('feedback_worker_queue');
+      final box = await Hive.openBox('feedback_worker_queue', encryptionCipher: _testCipher);
       final item = PendingFeedback(
         id: 'tampered-1',
         type: 'bug',
@@ -667,6 +673,7 @@ void main() {
       final service = FeedbackService(
         workerUrl: 'https://example.com/',
         httpClient: client,
+        cipher: _testCipher,
         hmacKey: _testKey,
       );
 
@@ -676,7 +683,7 @@ void main() {
     });
 
     test('drops items missing HMAC on flush (CLAUDE.md persistence contract)', () async {
-      final box = await Hive.openBox('feedback_worker_queue');
+      final box = await Hive.openBox('feedback_worker_queue', encryptionCipher: _testCipher);
       // Legacy/tampered row without an `hmac` key.
       await box.put('no-hmac', {
         'id': 'no-hmac',
@@ -694,6 +701,7 @@ void main() {
       final service = FeedbackService(
         workerUrl: 'https://example.com/',
         httpClient: client,
+        cipher: _testCipher,
         hmacKey: _testKey,
       );
 
@@ -702,8 +710,41 @@ void main() {
           reason: 'item missing HMAC should be dropped without retry');
     });
 
+    test('data written with cipher is not accessible without one (SEC-RPT-005 encryption-at-rest guard)', () async {
+      // Guard: if cipher were silently dropped from _openBox(), Hive would store
+      // data in plaintext and this test would fail — catching the regression.
+      final client = MockClient((_) async => http.Response('', 503));
+      final service = FeedbackService(
+        workerUrl: 'https://example.com/feedback',
+        httpClient: client,
+        cipher: _testCipher,
+        hmacKey: _testKey,
+      );
+      await service.submit(
+        type: 'bug',
+        message: 'encryption test message',
+        screenshotB64: '',
+        appVersion: '1.0.0+1',
+        os: 'android',
+        device: 'Pixel',
+      );
+
+      // Flush all boxes so the encrypted file is fully written to disk.
+      await Hive.close();
+
+      // Re-opening the AES-encrypted box without the cipher must not expose data.
+      // Hive returns an empty view when it cannot decrypt the frames, proving the
+      // data is not accessible in plaintext (SEC-RPT-005 encryption-at-rest).
+      final unencryptedView = await Hive.openBox('feedback_worker_queue');
+      expect(
+        unencryptedView.length,
+        0,
+        reason: 'Encrypted box must not expose data without the cipher (SEC-RPT-005)',
+      );
+    });
+
     test('a malformed row does not strand later valid items', () async {
-      final box = await Hive.openBox('feedback_worker_queue');
+      final box = await Hive.openBox('feedback_worker_queue', encryptionCipher: _testCipher);
 
       // Row 1: malformed createdAt — fromMap would throw.
       await box.put('bad', {
@@ -737,6 +778,7 @@ void main() {
       final service = FeedbackService(
         workerUrl: 'https://example.com/',
         httpClient: client,
+        cipher: _testCipher,
         hmacKey: _testKey,
       );
 

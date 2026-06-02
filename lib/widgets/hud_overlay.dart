@@ -98,8 +98,8 @@ class HudOverlay extends StatelessWidget {
                     onPressed: () => _onFeedbackTap(context),
                     icon: const Icon(Icons.feedback_outlined, size: 20),
                     style: IconButton.styleFrom(
-                      backgroundColor: const Color(0x0FFFFFFF),
-                      side: const BorderSide(color: Color(0x1AFFFFFF)),
+                      backgroundColor: _kCardFill,
+                      side: const BorderSide(color: _kCardBorder),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12),
                       ),
