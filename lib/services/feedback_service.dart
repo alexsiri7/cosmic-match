@@ -99,14 +99,13 @@ class FeedbackService {
       return;
     }
 
-    final effectiveScreenshot = screenshotB64.length > kMaxScreenshotB64Bytes
-        ? ''
-        : screenshotB64;
+    String effectiveScreenshot = screenshotB64;
     if (screenshotB64.length > kMaxScreenshotB64Bytes) {
       gameLogger.w(
         'FeedbackService.submit: screenshot exceeds ${kMaxScreenshotB64Bytes}B '
         '(actual=${screenshotB64.length}) — omitting screenshot',
       );
+      effectiveScreenshot = '';
     }
 
     final item = PendingFeedback(

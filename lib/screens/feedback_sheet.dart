@@ -177,7 +177,7 @@ class _FeedbackSheetState extends State<_FeedbackSheet> {
     if (encoded.length > kMaxScreenshotB64Bytes) {
       gameLogger.w(
         '_renderAnnotatedScreenshot: screenshot exceeds ${kMaxScreenshotB64Bytes}B '
-        '(actual=${encoded.length}) — truncating to empty string',
+        '(actual=${encoded.length}) — omitting screenshot',
       );
       return '';
     }

@@ -19,6 +19,9 @@ final kTransparentPng = Uint8List.fromList([
 const int kMinFeedbackMessageLength = 10;
 
 /// Maximum length (after trim) for a user-supplied feedback description (SEC-RPT-003).
+/// Enforced both in the UI (`FeedbackSheet` via `TextField.maxLength`) and the
+/// service (`FeedbackService`) — the UI cap prevents entry; the service guard
+/// is belt-and-suspenders for any caller that bypasses the UI.
 const int kMaxFeedbackMessageLength = 500;
 
 /// Maximum size in bytes of the base64-encoded screenshot payload sent to the
