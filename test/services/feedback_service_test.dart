@@ -710,6 +710,39 @@ void main() {
           reason: 'item missing HMAC should be dropped without retry');
     });
 
+    test('data written with cipher is not accessible without one (SEC-RPT-005 encryption-at-rest guard)', () async {
+      // Guard: if cipher were silently dropped from _openBox(), Hive would store
+      // data in plaintext and this test would fail — catching the regression.
+      final client = MockClient((_) async => http.Response('', 503));
+      final service = FeedbackService(
+        workerUrl: 'https://example.com/feedback',
+        httpClient: client,
+        cipher: _testCipher,
+        hmacKey: _testKey,
+      );
+      await service.submit(
+        type: 'bug',
+        message: 'encryption test message',
+        screenshotB64: '',
+        appVersion: '1.0.0+1',
+        os: 'android',
+        device: 'Pixel',
+      );
+
+      // Flush all boxes so the encrypted file is fully written to disk.
+      await Hive.close();
+
+      // Re-opening the AES-encrypted box without the cipher must not expose data.
+      // Hive returns an empty view when it cannot decrypt the frames, proving the
+      // data is not accessible in plaintext (SEC-RPT-005 encryption-at-rest).
+      final unencryptedView = await Hive.openBox('feedback_worker_queue');
+      expect(
+        unencryptedView.length,
+        0,
+        reason: 'Encrypted box must not expose data without the cipher (SEC-RPT-005)',
+      );
+    });
+
     test('a malformed row does not strand later valid items', () async {
       final box = await Hive.openBox('feedback_worker_queue', encryptionCipher: _testCipher);
 

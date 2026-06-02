@@ -150,13 +150,13 @@ class FeedbackService {
     } on HiveError catch (e, stack) {
       gameLogger.e('FeedbackService.flushQueue: HiveError', error: e, stackTrace: stack);
     } catch (e, stack) {
-      gameLogger.w('FeedbackService.flushQueue failed', error: e, stackTrace: stack);
+      gameLogger.e('FeedbackService.flushQueue failed', error: e, stackTrace: stack);
     } finally {
       _flushing = false;
     }
   }
 
-  // See CLAUDE.md "HMAC-SHA256 Persistence Contract".
+  // See CLAUDE.md "CRC32 Persistence Contract".
   bool _isValid(Map raw) {
     final key = _hmacKey;
     if (key == null) {
@@ -196,8 +196,8 @@ class FeedbackService {
         try {
           final decoded = jsonDecode(response.body);
           if (decoded is Map) issueUrl = decoded['url'] as String?;
-        } catch (_) {
-          // worker returned 201 but body was not parseable JSON
+        } catch (e) {
+          gameLogger.d('FeedbackService: 201 body parse failed — treating as success', error: e);
         }
         gameLogger.i('FeedbackService: posted successfully. Issue: ${issueUrl ?? '(url unavailable)'}');
         return true;
@@ -235,7 +235,7 @@ class FeedbackService {
     } on HiveError catch (e, stack) {
       gameLogger.e('FeedbackService._enqueue: HiveError', error: e, stackTrace: stack);
     } catch (e, stack) {
-      gameLogger.w('FeedbackService._enqueue failed', error: e, stackTrace: stack);
+      gameLogger.e('FeedbackService._enqueue failed', error: e, stackTrace: stack);
     }
   }
 }

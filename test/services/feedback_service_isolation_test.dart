@@ -44,7 +44,7 @@ void main() {
         screenshotBase64: '',
       ));
 
-      final workerBox = await Hive.openBox('feedback_worker_queue');
+      final workerBox = await Hive.openBox('feedback_worker_queue', encryptionCipher: _testCipher);
       expect(
         workerBox.length,
         0,
