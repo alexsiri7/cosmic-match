@@ -236,6 +236,12 @@ class FeedbackService {
         return true; // treat as "done" so it is not retried
       }
 
+      // 401/403 = auth failure — permanent, wrong HMAC key will never self-heal on retry
+      if (response.statusCode == 401 || response.statusCode == 403) {
+        gameLogger.e('FeedbackService: worker returned ${response.statusCode} — auth failure, dropping item (check FEEDBACK_HMAC_SECRET)');
+        return true; // permanent — wrong key will never succeed on retry
+      }
+
       gameLogger.w('FeedbackService: worker returned ${response.statusCode} — will retry');
       return false;
     } catch (e, stack) {
