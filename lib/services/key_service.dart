@@ -49,9 +49,9 @@ class KeyService {
     const storage = FlutterSecureStorage();
     final encoded = await storage.read(key: storageKey);
     if (encoded != null) return base64Url.decode(encoded);
-    final generated = base64Url.encode(Hive.generateSecureKey());
-    await storage.write(key: storageKey, value: generated);
-    return base64Url.decode(generated);
+    final keyBytes = Hive.generateSecureKey();
+    await storage.write(key: storageKey, value: base64Url.encode(keyBytes));
+    return keyBytes;
   }
 
   /// Encodes raw key bytes to a base64url string for secure storage.
