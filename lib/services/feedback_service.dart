@@ -201,6 +201,7 @@ class FeedbackService {
       });
 
       final headers = <String, String>{'Content-Type': 'application/json'};
+      // Fail-open: dev builds omit the secret; unsigned requests still succeed.
       if (_workerHmacSecret.isNotEmpty) {
         final sig = computeHmac(body, utf8.encode(_workerHmacSecret));
         headers['X-Feedback-Signature'] = 'sha256=$sig';

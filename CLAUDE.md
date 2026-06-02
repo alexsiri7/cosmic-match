@@ -18,6 +18,8 @@ flutter build appbundle --release
 # (CI injects this automatically via the SENTRY_DSN secret)
 # To override the feedback worker endpoint, add: --dart-define=FEEDBACK_WORKER_URL=<your-worker-url>
 # (CI reads this from the FEEDBACK_WORKER_URL repository variable; defaults to https://feedback.alexsiri7.workers.dev/)
+# To authenticate feedback requests with HMAC-SHA256, add: --dart-define=FEEDBACK_HMAC_SECRET=<your-secret>
+# (CI injects this automatically via the FEEDBACK_HMAC_SECRET secret; omit for unsigned dev builds)
 
 # Generate Hive adapters (run after adding new Hive types)
 dart run build_runner build --delete-conflicting-outputs
