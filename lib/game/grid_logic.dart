@@ -20,7 +20,8 @@ class GridLogic {
   /// Bounded to prevent infinite loop on unlucky seeds — after [maxAttempts],
   /// accepts as-is (the first cascade cycle will clear any matches).
   void initGrid(PatternDetector detector) {
-    for (var i = 0; i < 200; i++) {
+    const maxAttempts = 200;
+    for (var i = 0; i < maxAttempts; i++) {
       grid = List.generate(cols, (_) => List.generate(rows, (_) => randomTile()));
       if (detector.detectAll(grid).isEmpty) break;
     }
