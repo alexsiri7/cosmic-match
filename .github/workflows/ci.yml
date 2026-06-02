@@ -153,6 +153,7 @@ jobs:
         env:
           SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
           FEEDBACK_WORKER_URL: ${{ vars.FEEDBACK_WORKER_URL || 'https://feedback.alexsiri7.workers.dev/' }}
+          FEEDBACK_HMAC_SECRET: ${{ secrets.FEEDBACK_HMAC_SECRET }}
           # Read by the Sentry Android Gradle Plugin (android/app/build.gradle.kts);
           # org/project are configured in the gradle `sentry { }` block, which the
           # plugin prefers over env vars, so they are not duplicated here.
@@ -165,7 +166,7 @@ jobs:
         # --split-debug-info + --obfuscate produce the Dart debug symbols that
         # sentry_dart_plugin uploads in the next step, enabling server-side
         # symbolication of release stack traces.
-        run: flutter build appbundle --release --build-name=$BUILD_NAME --build-number=$BUILD_NUMBER --split-debug-info=build/symbols --obfuscate --dart-define=SENTRY_DSN=$SENTRY_DSN --dart-define=FEEDBACK_WORKER_URL=$FEEDBACK_WORKER_URL
+        run: flutter build appbundle --release --build-name=$BUILD_NAME --build-number=$BUILD_NUMBER --split-debug-info=build/symbols --obfuscate --dart-define=SENTRY_DSN=$SENTRY_DSN --dart-define=FEEDBACK_WORKER_URL=$FEEDBACK_WORKER_URL --dart-define=FEEDBACK_HMAC_SECRET=$FEEDBACK_HMAC_SECRET
 
       - name: Upload debug symbols to Sentry (AAB)
         env:
@@ -179,7 +180,8 @@ jobs:
         env:
           SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
           FEEDBACK_WORKER_URL: ${{ vars.FEEDBACK_WORKER_URL || 'https://feedback.alexsiri7.workers.dev/' }}
-        run: flutter build apk --release --build-name=$BUILD_NAME --build-number=$BUILD_NUMBER --split-debug-info=build/symbols --obfuscate --dart-define=SENTRY_DSN=$SENTRY_DSN --dart-define=FEEDBACK_WORKER_URL=$FEEDBACK_WORKER_URL
+          FEEDBACK_HMAC_SECRET: ${{ secrets.FEEDBACK_HMAC_SECRET }}
+        run: flutter build apk --release --build-name=$BUILD_NAME --build-number=$BUILD_NUMBER --split-debug-info=build/symbols --obfuscate --dart-define=SENTRY_DSN=$SENTRY_DSN --dart-define=FEEDBACK_WORKER_URL=$FEEDBACK_WORKER_URL --dart-define=FEEDBACK_HMAC_SECRET=$FEEDBACK_HMAC_SECRET
 
       - name: Upload debug symbols to Sentry (APK)
         env:

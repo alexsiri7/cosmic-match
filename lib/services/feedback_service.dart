@@ -20,6 +20,7 @@ class FeedbackService {
   final RateLimitService? _rateLimitService;
   final HiveAesCipher? _cipher;
   final List<int>? _hmacKey;
+  final String _workerHmacSecret;
   StreamSubscription<List<ConnectivityResult>>? _connectivitySub;
   bool _flushing = false;
 
@@ -29,10 +30,12 @@ class FeedbackService {
     RateLimitService? rateLimitService,
     HiveAesCipher? cipher,
     List<int>? hmacKey,
+    String workerHmacSecret = '',
   })  : _httpClient = httpClient ?? http.Client(),
         _rateLimitService = rateLimitService,
         _cipher = cipher,
-        _hmacKey = hmacKey;
+        _hmacKey = hmacKey,
+        _workerHmacSecret = workerHmacSecret;
 
   Future<Box> _openBox() => Hive.openBox(_boxName, encryptionCipher: _cipher);
 
@@ -197,10 +200,16 @@ class FeedbackService {
         },
       });
 
+      final headers = <String, String>{'Content-Type': 'application/json'};
+      if (_workerHmacSecret.isNotEmpty) {
+        final sig = computeHmac(body, utf8.encode(_workerHmacSecret));
+        headers['X-Feedback-Signature'] = 'sha256=$sig';
+      }
+
       final response = await _httpClient
           .post(
             Uri.parse(workerUrl),
-            headers: {'Content-Type': 'application/json'},
+            headers: headers,
             body: body,
           )
           .timeout(const Duration(seconds: 15));

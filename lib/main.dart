@@ -43,9 +43,11 @@ Future<void> main() async {
     'FEEDBACK_WORKER_URL',
     defaultValue: 'https://feedback.alexsiri7.workers.dev/',
   );
+  const feedbackHmacSecret = String.fromEnvironment('FEEDBACK_HMAC_SECRET', defaultValue: '');
   final rateLimitService = RateLimitService();
   final feedbackService = FeedbackService(
     workerUrl: feedbackWorkerUrl,
+    workerHmacSecret: feedbackHmacSecret,
     rateLimitService: rateLimitService,
     cipher: cipher,
     hmacKey: hmacKey,

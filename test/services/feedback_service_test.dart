@@ -635,6 +635,93 @@ void main() {
       );
     });
 
+    test('attaches X-Feedback-Signature header when workerHmacSecret is set', () async {
+      http.Request? captured;
+      final client = MockClient((req) async {
+        captured = req;
+        return http.Response('{"url":"https://github.com/issue/1"}', 201);
+      });
+      final service = FeedbackService(
+        workerUrl: 'https://example.com/feedback',
+        httpClient: client,
+        workerHmacSecret: 'test-secret',
+      );
+
+      await service.submit(
+        type: 'bug',
+        message: 'message with signature',
+        screenshotB64: '',
+        appVersion: '1.0.0+1',
+        os: 'android',
+        device: 'Pixel',
+      );
+
+      expect(captured, isNotNull);
+      expect(
+        captured!.headers.containsKey('x-feedback-signature'),
+        isTrue,
+        reason: 'POST must include X-Feedback-Signature when workerHmacSecret is set',
+      );
+      expect(captured!.headers['x-feedback-signature'], startsWith('sha256='));
+    });
+
+    test('does not attach X-Feedback-Signature when workerHmacSecret is empty', () async {
+      http.Request? captured;
+      final client = MockClient((req) async {
+        captured = req;
+        return http.Response('{"url":"https://github.com/issue/1"}', 201);
+      });
+      final service = FeedbackService(
+        workerUrl: 'https://example.com/feedback',
+        httpClient: client,
+        // workerHmacSecret defaults to ''
+      );
+
+      await service.submit(
+        type: 'bug',
+        message: 'message without signature',
+        screenshotB64: '',
+        appVersion: '1.0.0+1',
+        os: 'android',
+        device: 'Pixel',
+      );
+
+      expect(captured, isNotNull);
+      expect(
+        captured!.headers.containsKey('x-feedback-signature'),
+        isFalse,
+        reason: 'POST must omit X-Feedback-Signature when workerHmacSecret is empty',
+      );
+    });
+
+    test('signature changes when body changes (HMAC correctness)', () async {
+      final signatures = <String>[];
+      final messages = ['first message here!', 'different message!!'];
+      for (final msg in messages) {
+        http.Request? captured;
+        final client = MockClient((req) async {
+          captured = req;
+          return http.Response('{"url":"x"}', 201);
+        });
+        final service = FeedbackService(
+          workerUrl: 'https://example.com/feedback',
+          httpClient: client,
+          workerHmacSecret: 'test-secret',
+        );
+        await service.submit(
+          type: 'bug',
+          message: msg,
+          screenshotB64: '',
+          appVersion: '1.0.0+1',
+          os: 'android',
+          device: 'Pixel',
+        );
+        signatures.add(captured!.headers['x-feedback-signature']!);
+      }
+      expect(signatures[0], isNot(equals(signatures[1])),
+          reason: 'different bodies must produce different HMAC signatures');
+    });
+
     test('sends correct POST body structure to worker', () async {
       Map<String, dynamic>? capturedBody;
       final client = MockClient((request) async {
