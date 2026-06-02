@@ -116,13 +116,11 @@ class RateLimitService {
       );
 
       final window = await _readHourlyWindow();
-      final count = window.count + 1;
-      final windowStart = window.windowStart;
       await _write(
         _keyHourWindow,
         jsonEncode({
-          'count': count,
-          'windowStart': windowStart.toIso8601String(),
+          'count': window.count + 1,
+          'windowStart': window.windowStart.toIso8601String(),
         }),
       );
     } catch (e, stack) {
