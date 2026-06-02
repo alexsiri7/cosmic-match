@@ -115,7 +115,6 @@ class RateLimitService {
         DateTime.now().millisecondsSinceEpoch.toString(),
       );
 
-      // Update hourly window.
       final window = await _readHourlyWindow();
       final count = window.count + 1;
       final windowStart = window.windowStart;
