@@ -345,16 +345,16 @@ class _FeedbackSheetState extends State<_FeedbackSheet> {
                         activeColor: kLyraAccent,
                         checkColor: kLyraInk,
                         onChanged: (value) =>
-                            setState(() => _privacyAccepted = value ?? false),
+                            setState(() => _privacyAccepted = value!),
                       ),
                       Flexible(
                         child: Padding(
                           padding: const EdgeInsets.only(top: 12),
                           child: Text(
-                            'Your feedback, annotated screenshot, app version, OS, '
-                            'and device model will be sent to our server and may be '
-                            'used to improve the game. Data is retained for up to '
-                            '$kFeedbackQueueTtlDays days.',
+                            'Your feedback type, description, annotated screenshot, '
+                            'app version, OS, and device model will be sent to our '
+                            'server and may be used to improve the game. Data is '
+                            'retained for up to $kFeedbackQueueTtlDays days.',
                             style: GoogleFonts.ibmPlexMono(
                               fontSize: 11,
                               color: Colors.white.withValues(alpha: 0.55),

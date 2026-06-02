@@ -174,12 +174,17 @@ void main() {
       // Countdown text must be visible.
       expect(find.text('Try again in 15 seconds'), findsOneWidget);
 
-      // Submit must be disabled even with sufficient text.
+      // Submit must be disabled even with sufficient text and privacy accepted.
       await tester.enterText(find.byType(TextField), 'just right now');
+      await tester.pump();
+      await tester.ensureVisible(find.byType(Checkbox));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byType(Checkbox));
       await tester.pump();
       final btn = find.widgetWithText(ElevatedButton, 'Submit');
       expect(tester.widget<ElevatedButton>(btn).onPressed, isNull,
-          reason: 'active cooldown must disable Submit regardless of text length');
+          reason:
+              'active cooldown must disable Submit regardless of text length or privacy acceptance');
     },
   );
 
@@ -269,6 +274,44 @@ void main() {
       await tester.pumpAndSettle();
       final btn = find.widgetWithText(ElevatedButton, 'Submit');
       expect(tester.widget<ElevatedButton>(btn).onPressed, isNull);
+    },
+  );
+
+  testWidgets(
+    'unchecking privacy checkbox re-disables Submit button',
+    (tester) async {
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+          body: Builder(builder: (context) {
+            return ElevatedButton(
+              onPressed: () => showFeedbackSheet(
+                context,
+                screenshotBytes: kTransparentPng,
+                onSubmit: ({required type, required message, required screenshotB64}) async {},
+              ),
+              child: const Text('open'),
+            );
+          }),
+        ),
+      ));
+      await tester.tap(find.text('open'));
+      await tester.pumpAndSettle();
+
+      // Enter sufficient text and tick checkbox → enabled.
+      await tester.enterText(find.byType(TextField), 'just right now');
+      await tester.pump();
+      await tester.ensureVisible(find.byType(Checkbox));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byType(Checkbox));
+      await tester.pump();
+      final btn = find.widgetWithText(ElevatedButton, 'Submit');
+      expect(tester.widget<ElevatedButton>(btn).onPressed, isNotNull);
+
+      // Untick checkbox → must go back to disabled.
+      await tester.tap(find.byType(Checkbox));
+      await tester.pump();
+      expect(tester.widget<ElevatedButton>(btn).onPressed, isNull,
+          reason: 'unchecking privacy consent must re-disable Submit');
     },
   );
 
