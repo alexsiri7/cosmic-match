@@ -45,11 +45,11 @@ void main() {
     testWidgets(
         'submit button is disabled without consent and enabled with valid form',
         (tester) async {
-      final noopSubmit = ({
+      Future<void> noopSubmit({
         required String type,
         required String message,
         required String screenshotB64,
-      }) async {};
+      }) async {}
 
       await openSheet(tester, onSubmit: noopSubmit);
 
