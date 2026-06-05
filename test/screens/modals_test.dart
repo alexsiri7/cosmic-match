@@ -13,7 +13,8 @@ void main() {
       // score card — we are only testing callback wiring, not layout.
       final origOnError = FlutterError.onError;
       FlutterError.onError = (details) {
-        if (details.toString().contains('overflowed')) return;
+        final msg = details.toString();
+        if (msg.contains('overflowed') && msg.contains('RenderFlex')) return;
         origOnError?.call(details);
       };
       addTearDown(() => FlutterError.onError = origOnError);
@@ -42,7 +43,8 @@ void main() {
     testWidgets('tapping Replay fires onReplay', (tester) async {
       final origOnError = FlutterError.onError;
       FlutterError.onError = (details) {
-        if (details.toString().contains('overflowed')) return;
+        final msg = details.toString();
+        if (msg.contains('overflowed') && msg.contains('RenderFlex')) return;
         origOnError?.call(details);
       };
       addTearDown(() => FlutterError.onError = origOnError);
