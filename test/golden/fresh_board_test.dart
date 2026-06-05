@@ -28,6 +28,8 @@ void main() {
       ),
     );
     await tester.pump(const Duration(seconds: 2));
+    expect(game.phase, GamePhase.idle,
+        reason: 'Board must be fully settled for fresh_board golden');
     await expectLater(
       find.byKey(gameKey),
       matchesGoldenFile('goldens/fresh_board.png'),

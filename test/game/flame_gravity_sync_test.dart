@@ -68,7 +68,12 @@ void main() {
         final gameSize = Vector2(400, 800);
 
         // Run gravity to completion
-        while (world.applyGravity()) {}
+        int iters = 0;
+        while (world.applyGravity()) {
+          if (++iters > GridWorld.rows * GridWorld.cols) {
+            fail('gravity did not converge after $iters iterations');
+          }
+        }
         expect(world.grid[3][GridWorld.rows - 1], TileType.yellow);
 
         world.initLayoutForTest(gameSize);
@@ -92,7 +97,12 @@ void main() {
         world.grid[2][2] = TileType.purple;
 
         // Run gravity to settle to bottom
-        while (world.applyGravity()) {}
+        int iters = 0;
+        while (world.applyGravity()) {
+          if (++iters > GridWorld.rows * GridWorld.cols) {
+            fail('gravity did not converge after $iters iterations');
+          }
+        }
         // Tiles should now be at rows 5, 6, 7
         expect(world.grid[2][5], TileType.blue);
         expect(world.grid[2][6], TileType.orange);

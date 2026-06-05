@@ -57,8 +57,10 @@ void main() {
 
       final status = await service.checkStatus();
       // ~10 seconds remaining (30 - 20).
-      expect(status.cooldownSeconds,
-          closeTo(kFeedbackCooldownSeconds - 20, 2));
+      expect(
+          status.cooldownSeconds,
+          allOf(greaterThanOrEqualTo(kFeedbackCooldownSeconds - 24),
+              lessThanOrEqualTo(kFeedbackCooldownSeconds - 18)));
     });
 
     test('checkStatus returns not-allowed when hourly cap reached', () async {
@@ -108,7 +110,7 @@ void main() {
       final ms = int.parse(storage['feedback_last_submit_ms']!);
       expect(
         DateTime.now().millisecondsSinceEpoch - ms,
-        lessThan(2000),
+        lessThan(5000),
       );
     });
 

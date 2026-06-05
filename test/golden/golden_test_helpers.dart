@@ -29,6 +29,9 @@ void suppressFlameRiverpodDisposeError() {
 ///
 /// After runSwap(tileA, tileB): grid at row 7 becomes red,red,red,blue → 3-in-a-row.
 (dynamic, dynamic) setupForcedMatch(Match3Game game) {
+  expect(game.phase, GamePhase.idle,
+      reason:
+          'setupForcedMatch requires idle phase — increase settle pump if this fails');
   final world = game.world;
   world.grid[0][7] = TileType.red;
   world.grid[1][7] = TileType.red;

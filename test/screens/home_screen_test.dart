@@ -39,4 +39,46 @@ void main() {
       expect(clearCalled, isTrue);
     },
   );
+
+  testWidgets('Play button fires onPlay', (tester) async {
+    var playCalled = false;
+    var mapCalled = false;
+
+    await tester.pumpWidget(MaterialApp(
+      home: HomeScreen(
+        onPlay: () => playCalled = true,
+        onMap: () => mapCalled = true,
+        onFeedback: () {},
+        onClearFeedbackQueue: () {},
+      ),
+    ));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.textContaining('PLAY LEVEL'));
+    await tester.pump();
+
+    expect(playCalled, isTrue);
+    expect(mapCalled, isFalse);
+  });
+
+  testWidgets('Galaxy Map button fires onMap', (tester) async {
+    var playCalled = false;
+    var mapCalled = false;
+
+    await tester.pumpWidget(MaterialApp(
+      home: HomeScreen(
+        onPlay: () => playCalled = true,
+        onMap: () => mapCalled = true,
+        onFeedback: () {},
+        onClearFeedbackQueue: () {},
+      ),
+    ));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Galaxy Map'));
+    await tester.pump();
+
+    expect(mapCalled, isTrue);
+    expect(playCalled, isFalse);
+  });
 }
