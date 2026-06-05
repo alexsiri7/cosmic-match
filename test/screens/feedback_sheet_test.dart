@@ -106,9 +106,19 @@ void main() {
       await tester.tap(find.text('Submit'));
       await tester.runAsync(
           () => Future<void>.delayed(const Duration(seconds: 1)));
-      // Consume any pending exceptions from the image codec / font loading
-      // that fire during runAsync in the test backend.
-      while (tester.takeException() != null) {}
+      // Consume only known test-infrastructure exceptions (image codec / font
+      // loading) that fire during runAsync in the test backend. Re-throw
+      // anything unexpected so real regressions surface immediately.
+      Object? ex;
+      while ((ex = tester.takeException()) != null) {
+        final msg = ex.toString();
+        if (!msg.contains('Codec') &&
+            !msg.contains('codec') &&
+            !msg.contains('google_fonts') &&
+            !msg.contains('font')) {
+          fail('Unexpected exception during submit flow: $ex');
+        }
+      }
       await tester.pump();
 
       // SnackBar should appear with error message
