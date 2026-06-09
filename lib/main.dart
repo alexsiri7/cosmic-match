@@ -1,8 +1,5 @@
-import 'dart:io';
-import 'dart:ui' as ui;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/rendering.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:package_info_plus/package_info_plus.dart';
@@ -11,10 +8,9 @@ import 'core/constants.dart';
 import 'core/logger.dart';
 import 'core/sentry_filters.dart';
 import 'game/match3_game.dart';
-import 'screens/feedback_sheet.dart';
 import 'screens/game_screen.dart';
 import 'screens/home_screen.dart';
-import 'services/feedback_queue_service.dart';
+import 'services/feedback_launcher.dart';
 import 'services/feedback_service.dart';
 import 'services/rate_limit_service.dart';
 import 'services/in_app_update_service.dart';
@@ -34,9 +30,6 @@ Future<void> main() async {
   final cipher = await keyService.getCipher();
   final hmacKey = await keyService.getHmacKey();
   final progressService = ProgressService(cipher: cipher, hmacKey: hmacKey);
-  final queueService = FeedbackQueueService(cipher: cipher, hmacKey: hmacKey);
-  await queueService.expireOldItems(kFeedbackQueueTtlDays);
-
   gameLogger.i('CosmicMatch initialised — hive ready, progressService ready');
 
   const feedbackWorkerUrl = String.fromEnvironment(
@@ -53,12 +46,12 @@ Future<void> main() async {
     hmacKey: hmacKey,
   );
   feedbackService.listenConnectivity();
+  await feedbackService.expireOldItems(kFeedbackQueueTtlDays);
 
   void launch() => runApp(ProviderScope(
     child: CosmicMatchApp(
       progressService: progressService,
       feedbackService: feedbackService,
-      queueService: queueService,
     ),
   ));
 
@@ -98,7 +91,6 @@ enum _Screen { home, game }
 class CosmicMatchApp extends StatefulWidget {
   final ProgressService progressService;
   final FeedbackService? feedbackService;
-  final FeedbackQueueService? queueService;
 
   /// Overrides the [Match3Game] instance used by the app.
   /// For testing only — bypasses Hive-backed [ProgressService] initialisation.
@@ -109,7 +101,6 @@ class CosmicMatchApp extends StatefulWidget {
     super.key,
     required this.progressService,
     this.feedbackService,
-    this.queueService,
     this.gameOverride,
   });
 
@@ -149,64 +140,24 @@ class _CosmicMatchAppState extends State<CosmicMatchApp> {
     );
   }
 
-  Future<Uint8List> _captureScreenshot() async {
-    final context = _repaintBoundaryKey.currentContext;
-    if (context == null) {
-      gameLogger.w('_captureScreenshot: repaint boundary context is null');
-      throw StateError('RepaintBoundary not yet mounted');
-    }
-    final boundary = context.findRenderObject() as RenderRepaintBoundary;
-    final image = await boundary.toImage(pixelRatio: 2.0);
-    final data = await image.toByteData(format: ui.ImageByteFormat.png);
-    if (data == null) {
-      gameLogger.w('_captureScreenshot: toByteData returned null');
-      throw StateError('Failed to encode screenshot to PNG');
-    }
-    return data.buffer.asUint8List();
-  }
-
   Future<void> _showFeedback() async {
     final service = widget.feedbackService;
     if (service == null) return;
-    Uint8List screenshotBytes;
-    try {
-      screenshotBytes = await _captureScreenshot();
-    } catch (e) {
-      gameLogger.w('_showFeedback: screenshot capture failed', error: e);
-      // Fall back to 1×1 transparent PNG so FeedbackSheet still opens.
-      screenshotBytes = kTransparentPng;
-    }
     if (!mounted) return;
     final navContext = _navigatorKey.currentContext;
-    // navContext is null until the MaterialApp's Navigator mounts (e.g. during startup).
     if (navContext == null || !navContext.mounted) {
       gameLogger.w('_showFeedback: navigator context unavailable');
       return;
     }
-    showFeedbackSheet(
-      navContext,
-      screenshotBytes: screenshotBytes,
-      checkCooldown: service.remainingCooldownSeconds,
-      onSubmit: ({
-        required String type,
-        required String message,
-        required String screenshotB64,
-      }) async {
-        final packageInfo = await PackageInfo.fromPlatform();
-        await service.submit(
-          type: type,
-          message: message,
-          screenshotB64: screenshotB64,
-          appVersion: '${packageInfo.version}+${packageInfo.buildNumber}',
-          os: Platform.operatingSystem,
-          device: Platform.operatingSystemVersion.split(' ').first,
-        );
-      },
+    await launchFeedback(
+      context: navContext,
+      service: service,
+      screenshotKey: _repaintBoundaryKey,
     );
   }
 
   Future<void> _clearFeedbackQueue() async {
-    final ok = await widget.queueService?.clearAll() ?? false;
+    final ok = await widget.feedbackService?.clearQueue() ?? false;
     if (!mounted) return;
     _scaffoldMessengerKey.currentState?.showSnackBar(
       SnackBar(

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../game/match3_game.dart';
 import '../game/theme/app_theme.dart';
+import '../widgets/stat_card.dart';
 
 /// Formats a game score for display.
 /// Exposed for unit testing via [@visibleForTesting].
@@ -91,15 +92,16 @@ class _GameScreenState extends State<GameScreen> {
                 flex: 2,
                 child: ValueListenableBuilder<({int score, int best})>(
                   valueListenable: widget.game.scoreNotifier,
-                  builder: (_, data, __) => _StatCard(
+                  builder: (_, data, __) => StatCard(
                     label: 'SCORE',
                     value: formatGameScore(data.score),
+                    accentColor: kLyraAccent,
                   ),
                 ),
               ),
               const SizedBox(width: 8),
               Expanded(
-                child: _StatCard(label: 'MOVES', value: '∞'),
+                child: StatCard(label: 'MOVES', value: '∞', accentColor: kLyraAccent),
               ),
             ],
           ),
@@ -173,45 +175,4 @@ class _GameScreenState extends State<GameScreen> {
     );
   }
 
-}
-
-class _StatCard extends StatelessWidget {
-  final String label;
-  final String value;
-
-  const _StatCard({required this.label, required this.value});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.06),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            label,
-            style: GoogleFonts.ibmPlexMono(
-              fontSize: 9,
-              letterSpacing: 1.5,
-              color: Colors.white.withValues(alpha: 0.55),
-            ),
-          ),
-          const SizedBox(height: 2),
-          Text(
-            value,
-            style: GoogleFonts.ibmPlexMono(
-              fontSize: 20,
-              fontWeight: FontWeight.w500,
-              color: kLyraAccent,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 }
