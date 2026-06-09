@@ -4,7 +4,6 @@ import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 
 import '../core/constants.dart';
@@ -13,6 +12,10 @@ import '../game/match3_game.dart';
 import '../game/theme/cosmic_theme.dart';
 import '../screens/feedback_sheet.dart';
 import '../services/feedback_service.dart';
+import 'stat_card.dart';
+
+const _kCardFill = Color(0x0FFFFFFF);   // 6% white fill
+const _kCardBorder = Color(0x1AFFFFFF); // 10% white border
 
 class HudOverlay extends StatelessWidget {
   final Match3Game game;
@@ -83,12 +86,14 @@ class HudOverlay extends StatelessWidget {
           child: Row(
             children: [
               Expanded(flex: 2,
-                  child: _StatCard(label: 'SCORE',
-                      value: scores.score.toString())),
+                  child: StatCard(label: 'SCORE',
+                      value: scores.score.toString(),
+                      accentColor: kCosmicAccent)),
               const SizedBox(width: 8),
               Expanded(
-                  child: _StatCard(label: 'BEST',
-                      value: scores.best.toString())),
+                  child: StatCard(label: 'BEST',
+                      value: scores.best.toString(),
+                      accentColor: kCosmicAccent)),
               if (feedbackService != null) ...[
                 const SizedBox(width: 8),
                 SizedBox(
@@ -117,38 +122,3 @@ class HudOverlay extends StatelessWidget {
   }
 }
 
-const _kCardFill = Color(0x0FFFFFFF);   // 6% white fill
-const _kCardBorder = Color(0x1AFFFFFF); // 10% white border
-
-class _StatCard extends StatelessWidget {
-  final String label;
-  final String value;
-  const _StatCard({required this.label, required this.value});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      decoration: BoxDecoration(
-        color: _kCardFill,
-        border: Border.all(color: _kCardBorder),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(label,
-              style: GoogleFonts.ibmPlexMono(
-                fontSize: 9, letterSpacing: 1.5,
-                color: Colors.white54)),
-          const SizedBox(height: 2),
-          Text(value,
-              style: GoogleFonts.ibmPlexMono(
-                fontSize: 20, fontWeight: FontWeight.w500,
-                color: kCosmicAccent)),
-        ],
-      ),
-    );
-  }
-}
