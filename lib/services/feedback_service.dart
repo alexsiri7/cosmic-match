@@ -250,6 +250,59 @@ class FeedbackService {
     }
   }
 
+  /// Clear all queued feedback items.
+  Future<bool> clearQueue() async {
+    gameLogger.d('FeedbackService.clearQueue');
+    try {
+      final box = await _openBox();
+      await box.clear();
+      gameLogger.i('FeedbackService.clearQueue: queue cleared');
+      return true;
+    } on HiveError catch (e, stack) {
+      gameLogger.e('FeedbackService.clearQueue: HiveError', error: e, stackTrace: stack);
+      return false;
+    } catch (e, stack) {
+      gameLogger.w('FeedbackService.clearQueue failed', error: e, stackTrace: stack);
+      return false;
+    }
+  }
+
+  /// Remove items older than [ttlDays] or with invalid integrity.
+  Future<void> expireOldItems(int ttlDays) async {
+    gameLogger.d('FeedbackService.expireOldItems: ttlDays=$ttlDays');
+    try {
+      final box = await _openBox();
+      final cutoff = DateTime.now().subtract(Duration(days: ttlDays));
+      final keysToDelete = <dynamic>[];
+      for (final key in box.keys) {
+        final raw = box.get(key);
+        if (raw == null || raw is! Map) {
+          keysToDelete.add(key);
+          continue;
+        }
+        final map = Map<String, dynamic>.from(raw);
+        if (!_isValid(map)) {
+          keysToDelete.add(key);
+          continue;
+        }
+        final item = PendingFeedback.fromMap(map);
+        if (item.createdAt.isBefore(cutoff)) {
+          keysToDelete.add(key);
+        }
+      }
+      for (final key in keysToDelete) {
+        await box.delete(key);
+      }
+      if (keysToDelete.isNotEmpty) {
+        gameLogger.i('FeedbackService.expireOldItems: deleted ${keysToDelete.length} item(s)');
+      }
+    } on HiveError catch (e, stack) {
+      gameLogger.e('FeedbackService.expireOldItems: HiveError', error: e, stackTrace: stack);
+    } catch (e, stack) {
+      gameLogger.w('FeedbackService.expireOldItems failed', error: e, stackTrace: stack);
+    }
+  }
+
   Future<void> _enqueue(PendingFeedback item) async {
     if (_hmacKey == null) {
       gameLogger.w('FeedbackService._enqueue: hmacKey unavailable — skipping persist for id=${item.id}');
