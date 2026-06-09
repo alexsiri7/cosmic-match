@@ -1,16 +1,8 @@
-import 'dart:io';
-import 'dart:typed_data';
-import 'dart:ui' as ui;
-
 import 'package:flutter/material.dart';
-import 'package:flutter/rendering.dart';
-import 'package:package_info_plus/package_info_plus.dart';
 
-import '../core/constants.dart';
-import '../core/logger.dart';
 import '../game/match3_game.dart';
 import '../game/theme/cosmic_theme.dart';
-import '../screens/feedback_sheet.dart';
+import '../services/feedback_launcher.dart';
 import '../services/feedback_service.dart';
 import 'stat_card.dart';
 
@@ -32,47 +24,10 @@ class HudOverlay extends StatelessWidget {
   Future<void> _onFeedbackTap(BuildContext context) async {
     final service = feedbackService;
     if (service == null || screenshotKey == null) return;
-
-    // Capture screenshot from RepaintBoundary
-    Uint8List? screenshotBytes;
-    try {
-      final boundary = screenshotKey!.currentContext?.findRenderObject()
-          as RenderRepaintBoundary?;
-      if (boundary != null) {
-        final image = await boundary.toImage(pixelRatio: 2.0);
-        final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
-        image.dispose();
-        if (byteData != null) {
-          screenshotBytes = byteData.buffer.asUint8List();
-        }
-      }
-    } catch (e, stack) {
-      gameLogger.w('HudOverlay: screenshot capture failed', error: e, stackTrace: stack);
-    }
-
-    // If screenshot failed, use a 1x1 transparent PNG as placeholder
-    screenshotBytes ??= kTransparentPng;
-
-    if (!context.mounted) return;
-
-    showFeedbackSheet(
-      context,
-      screenshotBytes: screenshotBytes,
-      onSubmit: ({
-        required String type,
-        required String message,
-        required String screenshotB64,
-      }) async {
-        final packageInfo = await PackageInfo.fromPlatform();
-        await service.submit(
-          type: type,
-          message: message,
-          screenshotB64: screenshotB64,
-          appVersion: '${packageInfo.version}+${packageInfo.buildNumber}',
-          os: Platform.operatingSystem,
-          device: Platform.operatingSystemVersion.split(' ').first,
-        );
-      },
+    await launchFeedback(
+      context: context,
+      service: service,
+      screenshotKey: screenshotKey!,
     );
   }
 
