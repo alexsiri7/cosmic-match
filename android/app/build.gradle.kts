@@ -72,10 +72,10 @@ android {
 
 // sentry_flutter (8.14.2) bundles its own sentry-android SDK; autoInstallation
 // would re-add a conflicting copy. autoUploadProguardMapping uploads the R8
-// mapping.txt to Sentry on every release build using SENTRY_AUTH_TOKEN/ORG/PROJECT
-// from the environment (set in .github/workflows/ci.yml). uploadNativeSymbols stays
-// off because the Flutter SDK doesn't support it — native symbols go to Play Console
-// only, via the buildTypes.release.ndk block above.
+// mapping.txt to Sentry on release builds when SENTRY_AUTH_TOKEN is present
+// (set in .github/workflows/ci.yml; omitted for Dependabot/fork builds).
+// uploadNativeSymbols stays off because the Flutter SDK doesn't support it —
+// native symbols go to Play Console only, via the buildTypes.release.ndk block above.
 sentry {
     autoInstallation { enabled.set(false) }
     includeProguardMapping.set(true)
