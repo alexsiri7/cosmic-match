@@ -79,7 +79,7 @@ android {
 sentry {
     autoInstallation { enabled.set(false) }
     includeProguardMapping.set(true)
-    autoUploadProguardMapping.set(true)
+    autoUploadProguardMapping.set(!System.getenv("SENTRY_AUTH_TOKEN").isNullOrEmpty())
     uploadNativeSymbols.set(false)
     org.set("alex-siri")
     projectName.set("cosmic-match")
