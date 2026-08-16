@@ -7,7 +7,7 @@ final _testKey = List<int>.generate(32, (i) => i);
 /// Mirror of ProgressService._isValid for test-level validation.
 /// Keeps tests independent of Hive while still exercising the same HMAC logic.
 bool _isValid(Map raw) =>
-    isValidHmac(raw, canonicalize: LevelProgress.canonicalize, key: _testKey);
+    isValidHmac(raw, canonicalize: canonicalizeMap, key: _testKey);
 
 void main() {
   group('LevelProgress', () {

@@ -6,7 +6,7 @@ final _testKey = List<int>.generate(32, (i) => i);
 
 /// Mirror of FeedbackService._isValid for test-level HMAC validation.
 bool _isValid(Map raw) =>
-    isValidHmac(raw, canonicalize: PendingFeedback.canonicalize, key: _testKey);
+    isValidHmac(raw, canonicalize: canonicalizeMap, key: _testKey);
 
 void main() {
   group('PendingFeedback HMAC validation', () {
