@@ -183,7 +183,7 @@ class FeedbackService {
       gameLogger.w('FeedbackService._isValid: hmacKey unavailable — cannot validate integrity');
       return false;
     }
-    return isValidHmac(raw, canonicalize: PendingFeedback.canonicalize, key: key);
+    return isValidHmac(raw, canonicalize: canonicalizeMap, key: key);
   }
 
   Future<bool> _postToWorker(PendingFeedback item) async {

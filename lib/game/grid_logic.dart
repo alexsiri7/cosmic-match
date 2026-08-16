@@ -17,7 +17,7 @@ class GridLogic {
       : _rng = rng ?? Random();
 
   /// Populates [grid] with random tiles, regenerating until no matches exist.
-  /// Bounded to prevent infinite loop on unlucky seeds — after [maxAttempts],
+  /// Bounded to prevent infinite loop on unlucky seeds — after 200 attempts,
   /// accepts as-is (the first cascade cycle will clear any matches).
   void initGrid(PatternDetector detector) {
     for (var i = 0; i < 200; i++) {
@@ -26,9 +26,7 @@ class GridLogic {
     }
   }
 
-  TileType randomTile() {
-    return TileType.values[_rng.nextInt(TileType.values.length)];
-  }
+  TileType randomTile() => TileType.values[_rng.nextInt(TileType.values.length)];
 
   /// Returns true if any tile moved down due to gravity.
   bool applyGravity() {

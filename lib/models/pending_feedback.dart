@@ -36,7 +36,7 @@ class PendingFeedback {
       'createdAt': createdAt.toIso8601String(),
     };
     if (hmacKey != null) {
-      data['hmac'] = computeHmac(canonicalize(data), hmacKey);
+      data['hmac'] = computeHmac(canonicalizeMap(data), hmacKey);
     }
     return data;
   }
@@ -53,6 +53,4 @@ class PendingFeedback {
       createdAt: DateTime.parse(map['createdAt'] as String),
     );
   }
-
-  static String canonicalize(Map<String, dynamic> data) => canonicalizeMap(data);
 }

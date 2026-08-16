@@ -21,7 +21,7 @@ class LevelProgress {
       'bestScore': bestScore,
     };
     if (hmacKey != null) {
-      data['hmac'] = computeHmac(canonicalize(data), hmacKey);
+      data['hmac'] = computeHmac(canonicalizeMap(data), hmacKey);
     }
     return data;
   }
@@ -35,6 +35,4 @@ class LevelProgress {
       bestScore: raw['bestScore'] as int,
     );
   }
-
-  static String canonicalize(Map<String, dynamic> data) => canonicalizeMap(data);
 }

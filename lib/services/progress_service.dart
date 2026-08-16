@@ -66,6 +66,6 @@ class ProgressService {
       gameLogger.w('ProgressService._isValid: hmacKey unavailable — cannot validate integrity');
       return false;
     }
-    return isValidHmac(raw, canonicalize: LevelProgress.canonicalize, key: key);
+    return isValidHmac(raw, canonicalize: canonicalizeMap, key: key);
   }
 }
