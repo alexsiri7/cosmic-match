@@ -2,6 +2,7 @@ import 'dart:io';
 import 'dart:typed_data';
 import 'dart:ui' as ui;
 
+import 'package:device_info_plus/device_info_plus.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:package_info_plus/package_info_plus.dart';
@@ -10,6 +11,21 @@ import '../core/constants.dart';
 import '../core/logger.dart';
 import '../screens/feedback_sheet.dart';
 import 'feedback_service.dart';
+
+Future<String> _deviceName() async {
+  try {
+    final plugin = DeviceInfoPlugin();
+    if (Platform.isAndroid) {
+      return (await plugin.androidInfo).model;
+    } else if (Platform.isIOS) {
+      return (await plugin.iosInfo).model;
+    }
+  } catch (e, stack) {
+    gameLogger.w('_deviceName: DeviceInfoPlugin failed, using fallback',
+        error: e, stackTrace: stack);
+  }
+  return Platform.operatingSystem;
+}
 
 /// Captures a screenshot and opens the feedback bottom sheet.
 ///
@@ -59,7 +75,7 @@ Future<void> launchFeedback({
         screenshotB64: screenshotB64,
         appVersion: '${packageInfo.version}+${packageInfo.buildNumber}',
         os: Platform.operatingSystem,
-        device: Platform.operatingSystemVersion.split(' ').first,
+        device: await _deviceName(),
       );
     },
   );
