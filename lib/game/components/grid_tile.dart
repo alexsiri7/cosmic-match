@@ -22,11 +22,8 @@ class GridTile extends RectangleComponent
     // Refresh cached painter and glow to reflect the new type.
     // Only runs after onLoad; before that the cache is set by onLoad itself.
     if (_painterReady) {
-      final color = kTilePalette[_tileType];
-      if (color != null) {
-        _painter = tilePainterFor(_tileType, color);
-        _glowPaint.color = kTileGlowPalette[_tileType] ?? Colors.white;
-      }
+      _painter = tilePainterFor(_tileType, kTilePalette[_tileType] ?? Colors.white);
+      _glowPaint.color = kTileGlowPalette[_tileType] ?? Colors.white;
     }
   }
 
