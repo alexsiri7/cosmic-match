@@ -13,11 +13,16 @@ import '../screens/feedback_sheet.dart';
 import 'feedback_service.dart';
 
 Future<String> _deviceName() async {
-  final plugin = DeviceInfoPlugin();
-  if (Platform.isAndroid) {
-    return (await plugin.androidInfo).model;
-  } else if (Platform.isIOS) {
-    return (await plugin.iosInfo).model;
+  try {
+    final plugin = DeviceInfoPlugin();
+    if (Platform.isAndroid) {
+      return (await plugin.androidInfo).model;
+    } else if (Platform.isIOS) {
+      return (await plugin.iosInfo).model;
+    }
+  } catch (e, stack) {
+    gameLogger.w('_deviceName: DeviceInfoPlugin failed, using fallback',
+        error: e, stackTrace: stack);
   }
   return Platform.operatingSystem;
 }
