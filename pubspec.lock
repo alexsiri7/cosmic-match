@@ -205,10 +205,10 @@ packages:
     dependency: "direct main"
     description:
       name: flame_riverpod
-      sha256: "62fd088b1466ac717aab1d71cf43c5cecd2f9469d3d2ff8c1923a0a8fa56b12b"
+      sha256: bf5ad7c55c6ffd9fc4fa8b77c6ebdaa77192f2772a45bca586a944f2b790198e
       url: "https://pub.dev"
     source: hosted
-    version: "5.5.4"
+    version: "5.5.5"
   flame_test:
     dependency: "direct dev"
     description:
