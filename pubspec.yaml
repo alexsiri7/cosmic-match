@@ -10,7 +10,7 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  flame: ^1.37.0
+  flame: ^1.38.2
   flame_riverpod: ^5.5.5  # pinned <6.0.0 due to flutter_riverpod ^3 conflict; revisit on next dep update
   flutter_riverpod: ^3.3.1
   hive: ^2.2.3
