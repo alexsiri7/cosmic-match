@@ -40,7 +40,8 @@ lib/
                   #     `dropUnactionableAbort` (#145, channel-buffer Abort),
                   #     `dropSyscallAbort` (#197, syscall native-abort frames) and
                   #     `dropGoogleFontsFetchFailure` (#140, google_fonts CDN fetch failures)
-                  #   crc_integrity.dart — `canonicalizeMap()` / `isValidCrc()` shared CRC utilities
+                  #   crc_integrity.dart — `canonicalizeMap()` / `computeHmac()` / `isValidHmac()` shared
+                  #     HMAC-SHA256 integrity utilities (file name is historical; CRC32 was replaced in #201)
   game/           # Flame game, FSM, world, components
                   #   Input/FSM enums (GamePhase, SwipeDirection) defined in match3_game.dart
                   #   grid_logic.dart — pure grid-data operations (gravity, refill, swap); no Flame deps
@@ -87,18 +88,23 @@ Detection passes run in strict priority order. **Do NOT reorder**:
 Tiles consumed by a higher-priority pass are added to the `claimed` set and skipped by
 lower-priority passes, preventing double-counting.
 
-### CRC32 Persistence Contract (`lib/models/level_progress.dart`, `lib/services/progress_service.dart`; `lib/models/pending_feedback.dart`, `lib/services/feedback_service.dart`)
+### HMAC-SHA256 Persistence Contract (`lib/models/level_progress.dart`, `lib/services/progress_service.dart`; `lib/models/pending_feedback.dart`, `lib/services/feedback_service.dart`)
 
-Any Hive-backed model must include a `crc` field in its `toMap()` output, computed over
-all other fields using a key-sorted canonical representation. The corresponding service's
-`_isValid()` must reject any map with a missing or mismatched CRC.
+Any Hive-backed model must include an `hmac` field in its `toMap(hmacKey)` output, computed
+over all other fields using a key-sorted canonical representation (`canonicalizeMap()`) and
+signed with HMAC-SHA256 using the device-local key from `KeyService`. The corresponding
+service's `_isValid()` must reject any map with a missing or mismatched signature. When no
+HMAC key is available, saves are skipped and loads treat all data as invalid (fail-safe).
 
 - `LevelProgress.toMap()` / `ProgressService._isValid()` — resets to `LevelProgress.initial()` on tamper
 - `PendingFeedback.toMap()` / `FeedbackService._isValid()` — drops the invalid worker-queue entry on tamper
 
 When adding new fields to either model:
-- Include them in `toMap()` before computing the CRC
+- Include them in `toMap()` before computing the HMAC
 - The canonicalized format sorts keys alphabetically, so insertion order does not matter
+
+Do not reintroduce plain CRC32: it was replaced in #201 because it is forgeable (see CM-016 in
+`requirements/requirements.yaml`).
 
 **Cipher invariant**: `ProgressService` and `FeedbackService` both accept an optional
 `HiveAesCipher` (SEC-004). A box opened with a cipher cannot later be opened without one
@@ -114,5 +120,5 @@ Five mitigations protect against trivial client-side manipulation (see SECURITY.
 | FSM Input Gate | `GridTile.onTapDown`, `GridTile.onDragStart` | Drops all tap and swipe input when `phase != idle` |
 | Score Clamp | `Score.add()` | Clamps to 999,999,999; ignores negative inputs |
 | Cascade Depth Limit | `CascadeController.increment()` | Caps at 20; no-op beyond max |
-| CRC32 Save Integrity | `LevelProgress.toMap()` / `ProgressService._isValid()` | Resets tampered save data |
+| HMAC-SHA256 Save Integrity | `LevelProgress.toMap()` / `ProgressService._isValid()` | Resets tampered save data; fail-safe (skip save / treat as invalid) when key unavailable |
 | Feedback Rate Limit | `RateLimitService` / `FeedbackService.submit()` | Blocks submissions within 30 s cooldown or after 5/hour cap (SEC-RPT-008); fails open on storage error |
