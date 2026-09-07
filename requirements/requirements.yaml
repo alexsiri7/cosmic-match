@@ -1,0 +1,490 @@
+# Canonical requirements spec. IDs are permanent — never renumber or reuse; append new ones.
+#
+# Reverse-engineered from the codebase, tests, CLAUDE.md, prd.md, SECURITY.md and
+# merged PR history on 2026-09-07. Statements describe what the shipped code does
+# today (EARS style); PRD aspirations not yet implemented are NOT canonized here
+# (see notes fields for known gaps). Needs human review before becoming canon.
+meta:
+  project: cosmic-match
+  prefix: CM
+  ported: 2026-09-07
+requirements:
+
+  # ── Board & core game loop ────────────────────────────────────────────────
+
+  - id: CM-001
+    title: Board initialization
+    statement: "When a game session starts, the system shall present an 8x8 grid fully populated with tiles drawn randomly from the 6 tile types (red, blue, yellow, purple, white, orange) such that no match of 3 or more exists on the initial board."
+    category: functional
+    priority: must
+    status: active
+    source: back-ported
+    acceptance:
+      - "A freshly initialized grid is 8 columns by 8 rows with no null cells"
+      - "PatternDetector.detectAll on a freshly initialized grid returns an empty list"
+      - "Generation retries are bounded (200 attempts); an unlucky seed still yields a full board rather than hanging"
+    notes: "After 200 failed attempts the board is accepted with matches present, relying on the first cascade to clear them — intentional bound, not a bug (lib/game/grid_logic.dart initGrid)."
+
+  - id: CM-002
+    title: Tap selection model
+    statement: "While the game is idle, when the player taps a tile, the system shall select it and render a glowing selection border; tapping the selected tile again shall deselect it, and tapping a non-adjacent tile shall move the selection to that tile."
+    category: functional
+    priority: must
+    status: active
+    source: back-ported
+    acceptance:
+      - "First tap on a tile marks it selected and draws the glow-stroke border (kTileGlowPalette), not a filled overlay"
+      - "Second tap on the same tile clears the selection"
+      - "Tap on a non-adjacent tile deselects the previous tile and selects the new one"
+
+  - id: CM-003
+    title: Tap-to-swap
+    statement: "While a tile is selected, when the player taps an orthogonally adjacent tile, the system shall clear the selection and initiate a swap of the two tiles."
+    category: functional
+    priority: must
+    status: active
+    source: back-ported
+    acceptance:
+      - "Tapping a tile at Manhattan distance 1 from the selected tile triggers runSwap with both tiles"
+      - "Diagonal or distant tiles never trigger a swap"
+
+  - id: CM-004
+    title: Swipe-to-swap
+    statement: "While the game is idle, when the player swipes on a tile toward an in-bounds neighbor, the system shall swap the tile with that neighbor; a swipe toward an out-of-bounds or empty cell shall be ignored."
+    category: functional
+    priority: must
+    status: active
+    source: back-ported
+    acceptance:
+      - "A swipe in each of the four directions swaps with the neighbor at (dx,dy) for that direction"
+      - "A swipe off the board edge is a no-op"
+      - "A swipe clears any pending tap selection so the two input paths never conflict"
+
+  - id: CM-005
+    title: Invalid swap reverts
+    statement: "When a swap produces no match, the system shall animate both tiles back to their original positions, restore the grid state, and return to the idle phase without awarding points."
+    category: functional
+    priority: must
+    status: active
+    source: back-ported
+    acceptance:
+      - "After an invalid swap, both tiles occupy their pre-swap grid coordinates and the FSM is idle"
+      - "Score is unchanged after an invalid swap"
+
+  - id: CM-006
+    title: Match-3 clearing
+    statement: "When a swap or cascade produces 3 or more same-type tiles contiguous in a row or column, the system shall remove those tiles from the grid and their components from the board."
+    category: functional
+    priority: must
+    status: active
+    source: back-ported
+    acceptance:
+      - "After a match, every matched cell is null in the grid and its GridTile component is removed"
+      - "Non-matched tiles are untouched"
+
+  - id: CM-007
+    title: Special-pattern detection priority
+    statement: "When detecting matches, the system shall evaluate patterns in strict priority order — 5-in-a-row (Supernova), then L/T shapes of 5+ unique tiles formed by intersecting 3+ runs (Black Hole), then 4-in-a-row (Pulsar), then 3-in-a-row (basic) — and shall exclude tiles claimed by a higher-priority pattern from all lower-priority passes."
+    category: functional
+    priority: must
+    status: active
+    source: back-ported
+    acceptance:
+      - "A 5-in-a-row is classified as Supernova, never as overlapping 4- or 3-runs"
+      - "An L/T intersection of a horizontal and vertical 3+ run sharing a tile, with >= 5 unique positions, is classified as Black Hole"
+      - "An exact 4-in-a-row (not part of a longer run) is classified as Pulsar with a bonus position at the run midpoint"
+      - "No tile position appears in more than one MatchResult (claimed-set exclusion)"
+    notes: "Detection and classification are implemented and tested (test/game/pattern_detector_test.dart), but no bonus tile is ever SPAWNED on the board and no Pulsar/Black-Hole/Supernova clearing effect exists — _clearMatches removes all matched tiles uniformly. The PRD (§5.3) intends spawned bonus tiles with area/row/type-clear effects (milestone M3, unimplemented). Do not treat the absence of spawning as intended final behavior."
+
+  - id: CM-008
+    title: Gravity
+    statement: "When tiles are cleared, the system shall drop the remaining tiles in each column straight down to fill the empty cells, preserving each column's top-to-bottom ordering."
+    category: functional
+    priority: must
+    status: active
+    source: back-ported
+    acceptance:
+      - "After applyGravity repeats to fixpoint, no null cell has a non-null cell above it in the same column"
+      - "Relative vertical order of surviving tiles within a column is unchanged"
+      - "Falling tile components animate to their new cell and land exactly on the canonical cell position (stale MoveEffects are cancelled first)"
+
+  - id: CM-009
+    title: Board refill
+    statement: "When gravity has settled, the system shall fill every remaining empty cell with a random tile whose component spawns above the top of the board and animates down into place, leaving the board fully packed."
+    category: functional
+    priority: must
+    status: active
+    source: back-ported
+    acceptance:
+      - "After the refill step, no cell in the 8x8 grid is null"
+      - "Each refilled tile's component is created at y = -1 (above the board) and receives a MoveEffect to its target cell"
+
+  - id: CM-010
+    title: Cascade chains with depth cap
+    statement: "When a refill produces new matches, the system shall clear them and repeat the gravity/refill cycle, incrementing the cascade depth each iteration, and shall stop cascading once depth reaches 20 even if matches remain."
+    category: functional
+    priority: must
+    status: active
+    source: back-ported
+    acceptance:
+      - "New matches formed by falling/refilled tiles are cleared without further player input"
+      - "CascadeController.increment is a no-op at depth 20 and canContinue returns false"
+      - "A board that still has matches at max depth returns to idle rather than looping"
+
+  - id: CM-011
+    title: Scoring formula with cascade multiplier
+    statement: "When a match is cleared, the system shall award round(10 x tiles-cleared x (1 + 0.5 x cascade-depth)) points and immediately publish the updated score to the HUD."
+    category: functional
+    priority: must
+    status: active
+    source: back-ported
+    acceptance:
+      - "A 3-tile match at cascade depth 0 awards 30 points"
+      - "The same match at cascade depth 2 awards 60 points"
+      - "scoreNotifier fires with the new value in the same clear step"
+
+  - id: CM-012
+    title: Score clamp (anti-cheat)
+    statement: "When points are added to the score, the system shall ignore zero or negative inputs and clamp the total at 999,999,999."
+    category: functional
+    priority: must
+    status: active
+    source: back-ported
+    acceptance:
+      - "Score.add(-100) leaves the value unchanged"
+      - "Adding points beyond 999,999,999 yields exactly 999,999,999"
+
+  - id: CM-013
+    title: Game-phase state machine
+    statement: "While gameplay runs, the system shall only move between game phases along the legal edges idle→swapping, swapping→{matching, idle}, matching→falling, falling→{cascading, idle}, cascading→matching; when an illegal transition is attempted, the system shall assert in debug builds and reset to idle in release builds."
+    category: functional
+    priority: must
+    status: active
+    source: back-ported
+    acceptance:
+      - "Every edge in _validTransitions is accepted; every edge not in the map is rejected"
+      - "There is no direct cascading→idle edge — a cleanly ending cascade passes through matching→falling→idle"
+      - "An illegal transition in release mode leaves the FSM in idle (game never bricked)"
+
+  - id: CM-014
+    title: FSM input gate (anti-cheat)
+    statement: "While the game phase is anything other than idle, the system shall drop all tap and swipe input on tiles."
+    category: functional
+    priority: must
+    status: active
+    source: back-ported
+    acceptance:
+      - "Taps during swapping/matching/falling/cascading do not change selection or start swaps"
+      - "Swipes during non-idle phases are ignored (GridTile.onTapDown / onDragStart gate on phase)"
+
+  - id: CM-015
+    title: Best-score persistence
+    statement: "When a cascade sequence ends and the session score exceeds the stored best score, the system shall persist the new best score for level 1 and display both current and best score in the HUD."
+    category: functional
+    priority: must
+    status: active
+    source: back-ported
+    acceptance:
+      - "After a cascade ends with score > best, ProgressService.save is called with bestScore = new score"
+      - "On game load, the stored best score is read and shown in the HUD BEST card"
+      - "A session score below the stored best does not overwrite it"
+    notes: "starsEarned is always persisted as 0 — level goals/stars (PRD §5.4) are unimplemented. Only level 1 exists."
+
+  # ── Persistence integrity & encryption ────────────────────────────────────
+
+  - id: CM-016
+    title: Save-data integrity (HMAC-SHA256)
+    statement: "When persisting a Hive-backed record, the system shall sign its key-sorted canonical representation with HMAC-SHA256 using a device-local key, and when loading, the system shall treat any record with a missing or mismatched signature as tampered — resetting level progress to initial values, or dropping the affected feedback-queue entry."
+    category: functional
+    priority: must
+    status: active
+    source: "PR #201 (replaced CRC32), SEC-008"
+    acceptance:
+      - "toMap output includes an hmac field computed over all other fields via canonicalizeMap (alphabetical key order)"
+      - "ProgressService.load returns LevelProgress.initial when the hmac field is absent or wrong"
+      - "FeedbackService flush/expiry deletes queue entries whose hmac does not validate"
+      - "When no HMAC key is available, loads treat all data as invalid and saves are skipped (fail-safe)"
+    notes: "CLAUDE.md still calls this the 'CRC32 Persistence Contract' — stale naming; the implementation is HMAC-SHA256 (lib/core/crc_integrity.dart, also stale-named). Do not reintroduce plain CRC32: it was replaced because it is forgeable."
+
+  - id: CM-017
+    title: Encrypted local storage with keystore-managed keys
+    statement: "When opening the progress or feedback-queue Hive box, the system shall encrypt it with AES-256 using a key generated once and stored in platform secure storage (Android Keystore), and when secure storage is unavailable, the system shall degrade gracefully rather than crash."
+    category: non-functional
+    priority: must
+    status: active
+    source: "SEC-004, PR #205"
+    acceptance:
+      - "KeyService returns a HiveAesCipher backed by a persisted 256-bit key; the same key is returned on subsequent launches"
+      - "Both the 'progress' and 'feedback_worker_queue' boxes are opened with the cipher when available"
+      - "KeyService returns null (no exception) when secure storage fails, and services operate without persisting"
+      - "A HiveError from a cipher mismatch on load resets to initial progress instead of crashing"
+    notes: "Cipher invariant: a box opened with a cipher can never later be opened without one. Safe for V1 (no existing users); any future migration must keep the cipher parameter consistent everywhere."
+
+  # ── Navigation & screens ──────────────────────────────────────────────────
+
+  - id: CM-018
+    title: Home-to-game navigation
+    statement: "When the app launches, the system shall show the home screen; when the player taps Play, the system shall show the game screen, and the game screen's back button shall return to the home screen while preserving the same game instance."
+    category: functional
+    priority: must
+    status: active
+    source: back-ported
+    acceptance:
+      - "App boot lands on HomeScreen with a Play button"
+      - "Tapping Play switches to GameScreen; tapping back returns to HomeScreen"
+      - "The Match3Game instance is created once and reused across navigation (score survives leaving the screen)"
+    notes: "The 'Galaxy Map' button and the game screen's pause button are wired to no-op callbacks; the goal bar shows placeholder text and MOVES shows infinity. Level select, move limits, goals and win/lose states (PRD M2) are unimplemented — placeholders, not final behavior."
+
+  - id: CM-019
+    title: Cosmic visual identity
+    statement: "While rendering any screen, the system shall use the cosmic theme — deep-ink background with nebula radial gradients and starfield, board backdrop and grid-line tokens — and shall render each of the 6 tile types with a visually distinct shape and distinct color/glow pair."
+    category: functional
+    priority: should
+    status: active
+    source: back-ported
+    acceptance:
+      - "Theme tokens (kCosmicInk, kCosmicNebulaA/B, kCosmicAccent, kBoardBackdrop, kGridLine) are the only source of these colors"
+      - "Each TileType maps to a unique colorValue and glowValue"
+      - "Each tile type paints a distinct shape (circle+craters, ringed planet, 4-point star, nebula, crescent, comet) — golden tests fresh_board/post_match_clear/post_refill/score_bar pass"
+      - "The home starfield is deterministic (seeded LCG) so renders are reproducible"
+    notes: "Distinct shape AND color per tile is an explicit accessibility decision (PRD §7)."
+
+  - id: CM-020
+    title: Responsive board layout
+    statement: "When the viewport is laid out or resized, the system shall size tiles as min(width/8, (height - 60px header)/8), center the board horizontally and in the remaining vertical space, and reposition all live tile components accordingly."
+    category: non-functional
+    priority: should
+    status: active
+    source: back-ported
+    acceptance:
+      - "Board never crops on phone, 7-inch and 10-inch tablet viewports (screenshot goldens exist for all three)"
+      - "onGameResize recomputes layout and moves every tile to its recomputed cell position"
+
+  # ── In-app feedback pipeline ──────────────────────────────────────────────
+
+  - id: CM-021
+    title: Feedback sheet with screenshot annotation
+    statement: "When the player invokes Send Feedback, the system shall capture a screenshot of the current screen (2x pixel ratio), open a bottom sheet offering type selection (bug/feature/other), a description field, and a red freehand annotation overlay on the screenshot; when capture fails, the system shall fall back to a 1x1 transparent PNG so the sheet still opens."
+    category: functional
+    priority: must
+    status: active
+    source: "issue #108"
+    acceptance:
+      - "Feedback is reachable from the home screen, the game screen header, and the HUD overlay button"
+      - "Freehand strokes drawn on the preview are composited onto the submitted screenshot, scaled from preview space to image space"
+      - "Screenshot capture failure does not prevent opening the sheet (kTransparentPng fallback)"
+
+  - id: CM-022
+    title: Feedback input validation and consent
+    statement: "While the feedback sheet is open, the system shall enable Submit only when the trimmed description is 10–500 characters, the privacy-consent checkbox is checked, no submission is in flight, and no cooldown is active; the service layer shall independently reject messages outside those bounds."
+    category: functional
+    priority: must
+    status: active
+    source: "PR #206 (consent), PR #207 (SEC-RPT-003 limits)"
+    acceptance:
+      - "Submit is disabled below 10 trimmed characters, without consent, or during cooldown"
+      - "The TextField caps input at 500 characters and FeedbackService.submit drops messages > 500 even if the UI is bypassed"
+      - "The consent text discloses exactly what is sent (type, description, annotated screenshot, app version, OS, device model)"
+
+  - id: CM-023
+    title: Feedback submission to worker
+    statement: "When feedback is submitted, the system shall POST a JSON payload (repo, type, message, screenshot, appVersion/os/device context) to the configured Cloudflare Worker with a 15-second timeout, treating HTTP 201 as success; 400, 401 and 403 as permanent failures that are dropped without retry; and any other failure as retryable."
+    category: functional
+    priority: must
+    status: active
+    source: back-ported
+    acceptance:
+      - "A 201 response completes the submission even if the response body fails to parse (no duplicate issue on next flush)"
+      - "A 400/401/403 response drops the item permanently (never re-queued)"
+      - "A network error or 5xx queues the item for later retry"
+      - "The device field carries a human-readable model name, falling back to the OS name if device_info fails (PR #231)"
+
+  - id: CM-024
+    title: Feedback request authentication (HMAC)
+    statement: "When a feedback HMAC secret is configured at build time, the system shall sign each request body with HMAC-SHA256 and send it as an X-Feedback-Signature sha256=<hex> header; when no secret is configured (dev builds), requests shall be sent unsigned."
+    category: functional
+    priority: must
+    status: active
+    source: "PR #208"
+    acceptance:
+      - "Release CI injects FEEDBACK_HMAC_SECRET and outgoing requests carry a valid signature over the exact JSON body"
+      - "With an empty secret the header is absent and submission still proceeds (fail-open for dev)"
+
+  - id: CM-025
+    title: Offline feedback queue
+    statement: "When a feedback submission fails retryably, the system shall persist it to an encrypted, HMAC-signed Hive queue capped at 20 items (evicting the oldest when full), and when connectivity is regained, the system shall flush the queue, deleting items that send successfully and skipping — not aborting on — corrupt entries."
+    category: functional
+    priority: must
+    status: active
+    source: back-ported
+    acceptance:
+      - "A failed submit lands in box 'feedback_worker_queue'; the 21st enqueue evicts the oldest entry"
+      - "A connectivity-restored event triggers flushQueue exactly once at a time (re-entrancy guard)"
+      - "A single malformed/tampered row is deleted and the rest of the queue still flushes"
+
+  - id: CM-026
+    title: Feedback queue retention (7-day TTL)
+    statement: "When the app starts, the system shall delete queued feedback items older than 7 days or with invalid integrity, limiting retention of user-generated content."
+    category: non-functional
+    priority: must
+    status: active
+    source: "back-ported (GDPR/CCPA data-minimisation, kFeedbackQueueTtlDays)"
+    acceptance:
+      - "expireOldItems(7) runs during main() before the app launches"
+      - "Items with createdAt older than the cutoff are removed; newer valid items survive"
+
+  - id: CM-027
+    title: Feedback rate limiting
+    statement: "When the player attempts a feedback submission, the system shall block it during a 30-second post-submission cooldown or after 5 submissions in a rolling hour, display a live cooldown countdown in the sheet, and fail open (allow the submission) on any rate-limit storage error."
+    category: functional
+    priority: must
+    status: active
+    source: "PR #200 (SEC-RPT-008)"
+    acceptance:
+      - "checkStatus returns allowed=false with remaining seconds inside the 30s cooldown"
+      - "The 6th submission within an hour is blocked; the window resets after 60 minutes"
+      - "A storage exception yields allowed=true (legitimate users are never blocked by a storage fault)"
+      - "The sheet shows 'Try again in N seconds' and disables Submit while N > 0"
+    notes: "recordSubmission is only called for direct successful posts, not for queue flushes — flushed items bypass the hourly count. Likely an accepted trade-off (flushes are retries of already-created items), but flagged for review."
+
+  - id: CM-028
+    title: Manual feedback-queue clearing
+    statement: "When the player taps 'Clear feedback queue' on the home screen, the system shall ask for confirmation, and on confirmation delete all queued items and report success or failure via snackbar."
+    category: functional
+    priority: may
+    status: active
+    source: back-ported
+    acceptance:
+      - "A confirmation dialog with Cancel/Clear precedes any deletion"
+      - "After Clear, the queue box is empty and a 'Feedback queue cleared' snackbar is shown"
+
+  # ── Updates, crash reporting, observability ───────────────────────────────
+
+  - id: CM-029
+    title: In-app flexible updates
+    statement: "When the app starts on Android and a Play Store update is available, the system shall start a flexible (non-blocking) update, and when the download completes, show a persistent 'Update ready' snackbar with a Restart action that installs it; update-check failures shall never affect app operation."
+    category: functional
+    priority: should
+    status: active
+    source: back-ported
+    acceptance:
+      - "checkAndStartFlexibleUpdate runs after first frame; non-Android platforms are a no-op"
+      - "Snackbar persists (1-day duration) until acted on; Restart calls completeFlexibleUpdate"
+      - "Any exception in the update flow is logged and swallowed"
+
+  - id: CM-030
+    title: Opt-in crash reporting
+    statement: "When a SENTRY_DSN is provided at compile time, the system shall initialize Sentry with environment (release/debug) and release identifier packageName@version+buildNumber; when the DSN is blank or initialization fails, the system shall launch normally with crash reporting disabled."
+    category: functional
+    priority: must
+    status: active
+    source: back-ported
+    acceptance:
+      - "Blank DSN: app launches with no Sentry init attempted"
+      - "SentryFlutter.init throwing does not prevent runApp"
+      - "Release identifier matches packageName@version+buildNumber format"
+
+  - id: CM-031
+    title: Crash-reporting privacy defaults
+    statement: "While crash reporting is enabled, the system shall send no PII, attach no screenshots, and disable performance tracing (sample rate 0.0)."
+    category: non-functional
+    priority: must
+    status: active
+    source: back-ported
+    acceptance:
+      - "sendDefaultPii=false, attachScreenshot=false, tracesSampleRate=0.0 in Sentry options"
+
+  - id: CM-032
+    title: Unactionable-event crash filters
+    statement: "When Sentry captures an event matching a known unactionable shape — a lone 'Abort' exception whose frames are all in channel_buffers.dart, a lone 'Abort' whose frames are all syscall natives, or a google_fonts font-download failure — the system shall drop the event before sending; all other events shall pass through untouched."
+    category: functional
+    priority: should
+    status: active
+    source: "issues #140/#141/#144/#145/#197"
+    acceptance:
+      - "Each filter drops exactly its documented shape and passes events with empty frames, mixed frames, or multiple exceptions"
+      - "Frameless Abort events are NOT dropped (vacuous-every guard)"
+      - "dropUnactionableEvents composes all filters in one beforeSend (Sentry allows only one callback)"
+
+  - id: CM-033
+    title: Release logging silence
+    statement: "While running a release build, the system shall silence the Flutter framework's debugPrint output; game-level logging goes through the single project-wide gameLogger instance."
+    category: non-functional
+    priority: should
+    status: active
+    source: back-ported
+    acceptance:
+      - "debugPrint is replaced with a no-op when kReleaseMode is true"
+      - "Feedback logging records attempt metadata (type) but never message content or screenshots"
+
+  # ── Constraints: platform, build, CI ──────────────────────────────────────
+
+  - id: CM-034
+    title: Platform and engine constraint
+    statement: "The system shall target Android (minSdk 26) built with Flutter and the Flame game engine, using Hive for local storage and Riverpod for state; the only network permission used is INTERNET (feedback + Sentry + fonts)."
+    category: constraint
+    priority: must
+    status: active
+    source: "prd.md §10"
+    acceptance:
+      - "android/app/build.gradle sets minSdk = 26"
+      - "AndroidManifest declares only the INTERNET permission"
+      - "No backend, accounts, or leaderboards exist in V1"
+    notes: "PRD and the home screen say 'portrait only', but no screenOrientation lock is set in the manifest and no SystemChrome.setPreferredOrientations call exists — the app currently rotates. Intended behavior is portrait-locked; the missing lock is a gap, not a requirement."
+
+  - id: CM-035
+    title: Build-time configuration injection
+    statement: "When building, the system shall receive SENTRY_DSN, FEEDBACK_WORKER_URL and FEEDBACK_HMAC_SECRET exclusively via --dart-define, with the worker URL defaulting to https://feedback.alexsiri7.workers.dev/ and blank values degrading features rather than failing the build."
+    category: constraint
+    priority: must
+    status: active
+    source: back-ported
+    acceptance:
+      - "No secret or endpoint value is hardcoded outside String.fromEnvironment defaults"
+      - "A build with no defines produces a working game with Sentry off and unsigned feedback to the default worker"
+
+  - id: CM-036
+    title: Signed, obfuscated release artifacts
+    statement: "When CI builds a release, the system shall produce a signed AAB (and APK) with code obfuscation and split debug info, keystore credentials supplied only via gitignored key.properties or CI secrets, debug symbols uploaded to Sentry when a token is present, and an assertion that no GitHub tokens are present in the build environment."
+    category: constraint
+    priority: must
+    status: active
+    source: "PR #204/#209/#227, SECURITY.md"
+    acceptance:
+      - "flutter build appbundle --release runs with --obfuscate --split-debug-info"
+      - "android/key.properties is gitignored; an .example file documents the format"
+      - "CI fails if a GitHub token is detectable in the release build environment"
+      - "Sentry symbol upload is skipped (not failed) when SENTRY_AUTH_TOKEN is absent"
+
+  - id: CM-037
+    title: CI quality gates
+    statement: "When a change is proposed, CI shall run flutter analyze and the full unit/widget/golden test suite (excluding screenshot-tagged tests), and shall run the integration test suite on an Android emulator, before the change is releasable."
+    category: constraint
+    priority: must
+    status: active
+    source: back-ported
+    acceptance:
+      - "ci.yml runs 'flutter analyze' and 'flutter test --exclude-tags screenshots'"
+      - "integration.yml runs each integration_test/ file on an emulator via a matrix (isolated per PR #195)"
+      - "Golden tests (fresh board, post-match clear, post-refill, score bar) guard visual regressions"
+
+  - id: CM-038
+    title: Store screenshots generated from goldens
+    statement: "When the screenshot workflow is dispatched, the system shall regenerate phone/7-inch/10-inch store screenshots from Flutter golden tests and open a PR updating store-listing/screenshots, keeping Play Store imagery in sync with the actual UI."
+    category: constraint
+    priority: may
+    status: active
+    source: back-ported
+    acceptance:
+      - "generate-screenshots.yml records test/screenshot goldens with --update-goldens and copies all 9 images into store-listing/screenshots"
+      - "No PR is opened when the rendered screenshots are unchanged"
+
+  - id: CM-039
+    title: Dependency lockfile discipline
+    statement: "When dependencies change, the system shall commit the updated pubspec.lock alongside pubspec.yaml so builds are reproducible."
+    category: constraint
+    priority: should
+    status: active
+    source: "PR #199 / SECURITY.md §11.1"
+    acceptance:
+      - "pubspec.lock is tracked in git and consistent with pubspec.yaml on every commit"
