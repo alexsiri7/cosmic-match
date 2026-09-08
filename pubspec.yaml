@@ -12,7 +12,7 @@ dependencies:
     sdk: flutter
   flame: ^1.38.2
   flame_riverpod: ^5.5.5  # pinned <6.0.0 due to flutter_riverpod ^3 conflict; revisit on next dep update
-  flutter_riverpod: ^3.3.1
+  flutter_riverpod: ^3.4.3
   hive: ^2.2.3
   hive_flutter: ^1.1.0
   logger: ^2.8.0
