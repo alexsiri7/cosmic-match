@@ -263,11 +263,14 @@ jobs:
 
       - name: Notify prod landing
         if: success() && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v')) && steps.keystore.outputs.used_real == 'yes'
+        # Best-effort: the Play Store upload above is the deliverable; a slow or
+        # unreachable ntfy.sh must not turn the Release job red (#244).
+        continue-on-error: true
         env:
           NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
         run: |
           [ -z "$NTFY_TOPIC" ] && exit 0
-          curl -s -o /dev/null \
+          curl -sS -o /dev/null --connect-timeout 5 --max-time 10 \
             -H "Title: cosmic-match landed in prod" \
             -H "Tags: tada" \
             -d "Cosmic Match uploaded to Play Store ✓" \
