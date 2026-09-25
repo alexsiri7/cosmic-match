@@ -4,6 +4,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:cosmic_match/core/constants.dart';
 import 'package:cosmic_match/services/rate_limit_service.dart';
 
+import 'throwing_storage.dart';
+
 void main() {
   group('RateLimitService', () {
     final fixedNow = DateTime(2026, 9, 25, 12);
@@ -158,6 +160,23 @@ void main() {
 
       final secs = await service.remainingCooldownSeconds();
       expect(secs, 25);
+    });
+
+    test('checkStatus fails open when storage read throws', () async {
+      final throwingService =
+          RateLimitService(testStorage: ThrowingStorage(), now: () => fixedNow);
+
+      final status = await throwingService.checkStatus();
+      expect(status.allowed, isTrue);
+      expect(status.cooldownSeconds, 0);
+      expect(status.hourlyRemaining, kFeedbackMaxPerHour);
+    });
+
+    test('recordSubmission swallows storage write errors', () async {
+      final throwingService =
+          RateLimitService(testStorage: ThrowingStorage(), now: () => fixedNow);
+
+      await expectLater(throwingService.recordSubmission(), completes);
     });
   });
 }

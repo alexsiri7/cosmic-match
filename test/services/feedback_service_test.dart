@@ -10,6 +10,8 @@ import 'package:cosmic_match/models/pending_feedback.dart';
 import 'package:cosmic_match/services/feedback_service.dart';
 import 'package:cosmic_match/services/rate_limit_service.dart';
 
+import 'throwing_storage.dart';
+
 final _testKey = List<int>.generate(32, (i) => i);
 final _testCipher = HiveAesCipher(List<int>.generate(32, (i) => i + 100));
 
@@ -449,6 +451,31 @@ void main() {
       expect(posted, isFalse, reason: 'should not POST when rate-limited');
       final box = await Hive.openBox('feedback_worker_queue');
       expect(box.length, 0, reason: 'should not enqueue when rate-limited');
+    });
+
+    test('submits when rate-limit storage throws', () async {
+      var posted = false;
+      final client = MockClient((_) async {
+        posted = true;
+        return http.Response('{"url": "https://github.com/issue/1"}', 201);
+      });
+      final service = FeedbackService(
+        workerUrl: 'https://example.com/feedback',
+        httpClient: client,
+        rateLimitService: RateLimitService(testStorage: ThrowingStorage()),
+      );
+
+      await service.submit(
+        type: 'bug',
+        message: 'rate limiter storage is broken',
+        screenshotB64: '',
+        appVersion: '1.0.0+1',
+        os: 'android',
+        device: 'Pixel',
+      );
+
+      expect(posted, isTrue,
+          reason: 'fail-open rate limiter must not block submission');
     });
 
     test('calls recordSubmission after successful POST (201)', () async {
