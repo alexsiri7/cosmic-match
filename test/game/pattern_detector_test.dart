@@ -167,5 +167,69 @@ void main() {
       expect(results, hasLength(1));
       expect(results[0].bonusTile, BonusTileType.supernova);
     });
+
+    test('5-in-a-row overlapping a T-arm yields Supernova, never Black Hole',
+        () {
+      final grid = _emptyGrid();
+      // Horizontal 5-in-a-row along row 0.
+      for (int x = 0; x < 5; x++) {
+        grid[x][0] = TileType.red;
+      }
+      // Vertical arm hanging off (2, 0) — would form a T if the row-0
+      // intersection tile weren't already claimed by the 5-in-a-row pass.
+      grid[2][1] = TileType.red;
+      grid[2][2] = TileType.red;
+      grid[2][3] = TileType.red;
+
+      final results = detector.detectAll(grid);
+      expect(results, hasLength(2));
+      expect(results.any((r) => r.bonusTile == BonusTileType.blackHole),
+          isFalse);
+
+      final supernova =
+          results.singleWhere((r) => r.bonusTile == BonusTileType.supernova);
+      expect(
+        supernova.tiles.toSet(),
+        {
+          const TilePosition(0, 0),
+          const TilePosition(1, 0),
+          const TilePosition(2, 0),
+          const TilePosition(3, 0),
+          const TilePosition(4, 0),
+        },
+      );
+
+      final basicMatch = results.singleWhere((r) => r.bonusTile == null);
+      expect(
+        basicMatch.tiles.toSet(),
+        {
+          const TilePosition(2, 1),
+          const TilePosition(2, 2),
+          const TilePosition(2, 3),
+        },
+      );
+
+      expect(
+        supernova.tiles.toSet().intersection(basicMatch.tiles.toSet()),
+        isEmpty,
+      );
+    });
+
+    test('L-shape with a 4-tile arm yields Black Hole, not Pulsar', () {
+      final grid = _emptyGrid();
+      // Horizontal 4-tile arm along row 0.
+      for (int x = 0; x < 4; x++) {
+        grid[x][0] = TileType.orange;
+      }
+      // Vertical arm hanging off the corner (0, 0).
+      grid[0][1] = TileType.orange;
+      grid[0][2] = TileType.orange;
+
+      final results = detector.detectAll(grid);
+      expect(results, hasLength(1));
+      expect(results[0].bonusTile, BonusTileType.blackHole);
+      expect(results[0].tiles, hasLength(6));
+      expect(results.any((r) => r.bonusTile == BonusTileType.pulsar), isFalse);
+    });
   });
 }
