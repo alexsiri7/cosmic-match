@@ -41,6 +41,7 @@ void main() {
       ),
     );
     await tester.pump(const Duration(seconds: 2));
+    expect(game.phase, GamePhase.idle, reason: 'tablet7_1 must capture a settled board');
     await expectLater(
       find.byKey(gameKey),
       matchesGoldenFile('goldens/tablet7_1.png'),
