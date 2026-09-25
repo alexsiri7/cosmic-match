@@ -66,8 +66,8 @@ class Match3Game extends FlameGame<GridWorld> with RiverpodGameMixin {
     if (allowed == null || !allowed.contains(next)) {
       final msg = 'Illegal FSM transition: $_phase → $next';
       gameLogger.e(msg);
-      assert(false, msg);
       _phase = GamePhase.idle;
+      assert(false, msg);
       return;
     }
     _phase = next;
