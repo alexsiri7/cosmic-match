@@ -452,12 +452,13 @@ void main() {
     });
 
     test('calls recordSubmission after successful POST (201)', () async {
+      final fixedNow = DateTime(2026, 9, 25, 12);
       final client = MockClient(
           (_) async => http.Response('{"url": "https://github.com/issue/1"}', 201));
 
       // Cooldown already expired so submit is allowed.
       final storage = <String, String>{
-        'feedback_last_submit_ms': DateTime.now()
+        'feedback_last_submit_ms': fixedNow
             .subtract(const Duration(seconds: kFeedbackCooldownSeconds + 1))
             .millisecondsSinceEpoch
             .toString(),
@@ -465,7 +466,8 @@ void main() {
       final service = FeedbackService(
         workerUrl: 'https://example.com/feedback',
         httpClient: client,
-        rateLimitService: RateLimitService(testStorage: storage),
+        rateLimitService:
+            RateLimitService(testStorage: storage, now: () => fixedNow),
       );
 
       await service.submit(
@@ -478,10 +480,9 @@ void main() {
       );
 
       // After a successful POST, a new cooldown must be active.
-      final newSubmitMs = int.parse(storage['feedback_last_submit_ms']!);
       expect(
-        DateTime.now().millisecondsSinceEpoch - newSubmitMs,
-        lessThan(2000),
+        storage['feedback_last_submit_ms'],
+        fixedNow.millisecondsSinceEpoch.toString(),
         reason: 'recordSubmission must update last-submit timestamp on 201',
       );
     });
