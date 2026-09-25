@@ -10,6 +10,8 @@ import 'package:cosmic_match/models/pending_feedback.dart';
 import 'package:cosmic_match/services/feedback_service.dart';
 import 'package:cosmic_match/services/rate_limit_service.dart';
 
+import 'throwing_storage.dart';
+
 final _testKey = List<int>.generate(32, (i) => i);
 final _testCipher = HiveAesCipher(List<int>.generate(32, (i) => i + 100));
 
@@ -451,13 +453,39 @@ void main() {
       expect(box.length, 0, reason: 'should not enqueue when rate-limited');
     });
 
+    test('submits when rate-limit storage throws', () async {
+      var posted = false;
+      final client = MockClient((_) async {
+        posted = true;
+        return http.Response('{"url": "https://github.com/issue/1"}', 201);
+      });
+      final service = FeedbackService(
+        workerUrl: 'https://example.com/feedback',
+        httpClient: client,
+        rateLimitService: RateLimitService(testStorage: ThrowingStorage()),
+      );
+
+      await service.submit(
+        type: 'bug',
+        message: 'rate limiter storage is broken',
+        screenshotB64: '',
+        appVersion: '1.0.0+1',
+        os: 'android',
+        device: 'Pixel',
+      );
+
+      expect(posted, isTrue,
+          reason: 'fail-open rate limiter must not block submission');
+    });
+
     test('calls recordSubmission after successful POST (201)', () async {
+      final fixedNow = DateTime(2026, 9, 25, 12);
       final client = MockClient(
           (_) async => http.Response('{"url": "https://github.com/issue/1"}', 201));
 
       // Cooldown already expired so submit is allowed.
       final storage = <String, String>{
-        'feedback_last_submit_ms': DateTime.now()
+        'feedback_last_submit_ms': fixedNow
             .subtract(const Duration(seconds: kFeedbackCooldownSeconds + 1))
             .millisecondsSinceEpoch
             .toString(),
@@ -465,7 +493,8 @@ void main() {
       final service = FeedbackService(
         workerUrl: 'https://example.com/feedback',
         httpClient: client,
-        rateLimitService: RateLimitService(testStorage: storage),
+        rateLimitService:
+            RateLimitService(testStorage: storage, now: () => fixedNow),
       );
 
       await service.submit(
@@ -478,10 +507,9 @@ void main() {
       );
 
       // After a successful POST, a new cooldown must be active.
-      final newSubmitMs = int.parse(storage['feedback_last_submit_ms']!);
       expect(
-        DateTime.now().millisecondsSinceEpoch - newSubmitMs,
-        lessThan(2000),
+        storage['feedback_last_submit_ms'],
+        fixedNow.millisecondsSinceEpoch.toString(),
         reason: 'recordSubmission must update last-submit timestamp on 201',
       );
     });

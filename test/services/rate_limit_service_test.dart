@@ -4,14 +4,17 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:cosmic_match/core/constants.dart';
 import 'package:cosmic_match/services/rate_limit_service.dart';
 
+import 'throwing_storage.dart';
+
 void main() {
   group('RateLimitService', () {
+    final fixedNow = DateTime(2026, 9, 25, 12);
     late Map<String, String> storage;
     late RateLimitService service;
 
     setUp(() {
       storage = {};
-      service = RateLimitService(testStorage: storage);
+      service = RateLimitService(testStorage: storage, now: () => fixedNow);
     });
 
     test('checkStatus returns allowed when storage is empty', () async {
@@ -24,24 +27,21 @@ void main() {
     test('checkStatus returns not-allowed when within cooldown window',
         () async {
       // Simulate a submission 10 seconds ago.
-      storage['feedback_last_submit_ms'] =
-          DateTime.now()
-              .subtract(const Duration(seconds: 10))
-              .millisecondsSinceEpoch
-              .toString();
+      storage['feedback_last_submit_ms'] = fixedNow
+          .subtract(const Duration(seconds: 10))
+          .millisecondsSinceEpoch
+          .toString();
 
       final status = await service.checkStatus();
       expect(status.allowed, isFalse);
-      expect(status.cooldownSeconds, greaterThan(0));
-      expect(status.cooldownSeconds, lessThanOrEqualTo(20));
+      expect(status.cooldownSeconds, 20);
     });
 
     test('checkStatus returns allowed when cooldown has elapsed', () async {
-      storage['feedback_last_submit_ms'] =
-          DateTime.now()
-              .subtract(const Duration(seconds: kFeedbackCooldownSeconds + 1))
-              .millisecondsSinceEpoch
-              .toString();
+      storage['feedback_last_submit_ms'] = fixedNow
+          .subtract(const Duration(seconds: kFeedbackCooldownSeconds + 1))
+          .millisecondsSinceEpoch
+          .toString();
 
       final status = await service.checkStatus();
       expect(status.allowed, isTrue);
@@ -50,30 +50,25 @@ void main() {
 
     test('checkStatus cooldownSeconds is the correct remaining value',
         () async {
-      final submittedAt =
-          DateTime.now().subtract(const Duration(seconds: 20));
+      final submittedAt = fixedNow.subtract(const Duration(seconds: 20));
       storage['feedback_last_submit_ms'] =
           submittedAt.millisecondsSinceEpoch.toString();
 
       final status = await service.checkStatus();
-      // ~10 seconds remaining (30 - 20).
-      expect(
-          status.cooldownSeconds,
-          allOf(greaterThanOrEqualTo(kFeedbackCooldownSeconds - 24),
-              lessThanOrEqualTo(kFeedbackCooldownSeconds - 18)));
+      // 10 seconds remaining (30 - 20).
+      expect(status.cooldownSeconds, 10);
     });
 
     test('checkStatus returns not-allowed when hourly cap reached', () async {
       // No cooldown active.
-      storage['feedback_last_submit_ms'] =
-          DateTime.now()
-              .subtract(const Duration(seconds: kFeedbackCooldownSeconds + 1))
-              .millisecondsSinceEpoch
-              .toString();
+      storage['feedback_last_submit_ms'] = fixedNow
+          .subtract(const Duration(seconds: kFeedbackCooldownSeconds + 1))
+          .millisecondsSinceEpoch
+          .toString();
       // Hourly window with max submissions.
       storage['feedback_hour_window'] = jsonEncode({
         'count': kFeedbackMaxPerHour,
-        'windowStart': DateTime.now()
+        'windowStart': fixedNow
             .subtract(const Duration(minutes: 30))
             .toIso8601String(),
       });
@@ -86,15 +81,14 @@ void main() {
 
     test('checkStatus returns allowed after hourly window resets', () async {
       // No cooldown.
-      storage['feedback_last_submit_ms'] =
-          DateTime.now()
-              .subtract(const Duration(seconds: kFeedbackCooldownSeconds + 1))
-              .millisecondsSinceEpoch
-              .toString();
+      storage['feedback_last_submit_ms'] = fixedNow
+          .subtract(const Duration(seconds: kFeedbackCooldownSeconds + 1))
+          .millisecondsSinceEpoch
+          .toString();
       // Stale window (older than 1 hour).
       storage['feedback_hour_window'] = jsonEncode({
         'count': kFeedbackMaxPerHour,
-        'windowStart': DateTime.now()
+        'windowStart': fixedNow
             .subtract(const Duration(minutes: 61))
             .toIso8601String(),
       });
@@ -107,10 +101,9 @@ void main() {
     test('recordSubmission persists last-submit timestamp', () async {
       await service.recordSubmission();
       expect(storage.containsKey('feedback_last_submit_ms'), isTrue);
-      final ms = int.parse(storage['feedback_last_submit_ms']!);
       expect(
-        DateTime.now().millisecondsSinceEpoch - ms,
-        lessThan(5000),
+        storage['feedback_last_submit_ms'],
+        fixedNow.millisecondsSinceEpoch.toString(),
       );
     });
 
@@ -129,7 +122,7 @@ void main() {
     test('recordSubmission resets hourly count when window is stale', () async {
       storage['feedback_hour_window'] = jsonEncode({
         'count': 4,
-        'windowStart': DateTime.now()
+        'windowStart': fixedNow
             .subtract(const Duration(minutes: 61))
             .toIso8601String(),
       });
@@ -140,7 +133,7 @@ void main() {
       expect(window['count'], 1);
     });
 
-    test('checkStatus fails open on storage read error', () async {
+    test('checkStatus tolerates malformed stored values', () async {
       // Corrupt the last-submit value (non-numeric).
       storage['feedback_last_submit_ms'] = 'not-a-number';
       // Corrupt the hour window (non-JSON).
@@ -160,15 +153,30 @@ void main() {
 
     test('remainingCooldownSeconds returns positive value when in cooldown',
         () async {
-      storage['feedback_last_submit_ms'] =
-          DateTime.now()
-              .subtract(const Duration(seconds: 5))
-              .millisecondsSinceEpoch
-              .toString();
+      storage['feedback_last_submit_ms'] = fixedNow
+          .subtract(const Duration(seconds: 5))
+          .millisecondsSinceEpoch
+          .toString();
 
       final secs = await service.remainingCooldownSeconds();
-      expect(secs, greaterThan(0));
-      expect(secs, lessThanOrEqualTo(kFeedbackCooldownSeconds));
+      expect(secs, 25);
+    });
+
+    test('checkStatus fails open when storage read throws', () async {
+      final throwingService =
+          RateLimitService(testStorage: ThrowingStorage(), now: () => fixedNow);
+
+      final status = await throwingService.checkStatus();
+      expect(status.allowed, isTrue);
+      expect(status.cooldownSeconds, 0);
+      expect(status.hourlyRemaining, kFeedbackMaxPerHour);
+    });
+
+    test('recordSubmission swallows storage write errors', () async {
+      final throwingService =
+          RateLimitService(testStorage: ThrowingStorage(), now: () => fixedNow);
+
+      await expectLater(throwingService.recordSubmission(), completes);
     });
   });
 }

@@ -43,6 +43,14 @@ void main() {
       final hmac2 = progress.toMap(_testKey)['hmac'] as String;
       expect(hmac1, equals(hmac2));
     });
+
+    test('toMap with null key omits hmac entirely', () {
+      final progress =
+          LevelProgress(level: 1, starsEarned: 3, bestScore: 5000);
+      final map = progress.toMap(null);
+      expect(map.containsKey('hmac'), isFalse);
+      expect(map.keys.toSet(), {'level', 'starsEarned', 'bestScore'});
+    });
   });
 
   group('ProgressService HMAC validation', () {

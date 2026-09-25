@@ -18,9 +18,13 @@ class RateLimitService {
 
   final Map<String, String>? _testStorage;
   final _storage = const FlutterSecureStorage();
+  final DateTime Function() _now;
 
-  RateLimitService({@visibleForTesting Map<String, String>? testStorage})
-      : _testStorage = testStorage;
+  RateLimitService({
+    @visibleForTesting Map<String, String>? testStorage,
+    @visibleForTesting DateTime Function()? now,
+  })  : _testStorage = testStorage,
+        _now = now ?? DateTime.now;
 
   Future<String?> _read(String key) async {
     final ts = _testStorage;
@@ -47,14 +51,14 @@ class RateLimitService {
         final storedCount = map['count'] as int?;
         if (windowStart != null &&
             storedCount != null &&
-            DateTime.now().difference(windowStart).inMinutes < 60) {
+            _now().difference(windowStart).inMinutes < 60) {
           return (count: storedCount, windowStart: windowStart);
         }
       } catch (e) {
         gameLogger.d('RateLimitService: malformed hour-window JSON — resetting', error: e);
       }
     }
-    return (count: 0, windowStart: DateTime.now());
+    return (count: 0, windowStart: _now());
   }
 
   /// Check whether a submission is currently allowed.
@@ -72,7 +76,7 @@ class RateLimitService {
       if (lastMs != null) {
         final last = int.tryParse(lastMs);
         if (last != null) {
-          final elapsedSeconds = (DateTime.now().millisecondsSinceEpoch - last) ~/ 1000;
+          final elapsedSeconds = (_now().millisecondsSinceEpoch - last) ~/ 1000;
           if (elapsedSeconds < kFeedbackCooldownSeconds) {
             final remaining = kFeedbackCooldownSeconds - elapsedSeconds;
             return (
@@ -112,7 +116,7 @@ class RateLimitService {
     try {
       await _write(
         _keyLastSubmit,
-        DateTime.now().millisecondsSinceEpoch.toString(),
+        _now().millisecondsSinceEpoch.toString(),
       );
 
       final window = await _readHourlyWindow();

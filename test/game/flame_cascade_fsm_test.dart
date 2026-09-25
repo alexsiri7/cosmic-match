@@ -47,13 +47,36 @@ void main() {
       expect(game.phase, GamePhase.idle);
 
       // flutter test always runs with asserts enabled (debug mode), so
-      // transitionTo() fires the AssertionError before resetting to idle.
-      // In release builds, the assert is absent and the phase silently resets
-      // to idle instead (see CLAUDE.md FSM Transitions invariant).
+      // transitionTo() resets the phase to idle before the AssertionError
+      // fires. In release builds, the assert is absent but the reset still
+      // happens (see CLAUDE.md FSM Transitions invariant).
       expect(
         () => game.transitionTo(GamePhase.cascading),
         throwsA(isA<AssertionError>()),
       );
+      expect(game.phase, GamePhase.idle,
+          reason: 'illegal transition must reset to idle');
+    });
+
+    test('illegal transition cascading → idle asserts and resets to idle',
+        () {
+      final game = Match3Game(progressService: null);
+
+      // Reach cascading via legal steps.
+      game.transitionTo(GamePhase.swapping);
+      game.transitionTo(GamePhase.matching);
+      game.transitionTo(GamePhase.falling);
+      game.transitionTo(GamePhase.cascading);
+      expect(game.phase, GamePhase.cascading);
+
+      // No direct cascading → idle edge (see CLAUDE.md FSM Transitions
+      // invariant) — this must assert and reset to idle.
+      expect(
+        () => game.transitionTo(GamePhase.idle),
+        throwsA(isA<AssertionError>()),
+      );
+      expect(game.phase, GamePhase.idle,
+          reason: 'illegal transition must reset to idle');
     });
   });
 }
