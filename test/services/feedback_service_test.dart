@@ -6,6 +6,7 @@ import 'package:hive/hive.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:cosmic_match/core/constants.dart';
+import 'package:cosmic_match/core/crc_integrity.dart';
 import 'package:cosmic_match/models/pending_feedback.dart';
 import 'package:cosmic_match/services/feedback_service.dart';
 import 'package:cosmic_match/services/rate_limit_service.dart';
@@ -663,7 +664,7 @@ void main() {
       );
     });
 
-    test('attaches X-Feedback-Signature header when workerHmacSecret is set', () async {
+    test('signs timestamp.body and attaches timestamp + signature headers when workerHmacSecret is set', () async {
       http.Request? captured;
       final client = MockClient((req) async {
         captured = req;
@@ -677,7 +678,7 @@ void main() {
 
       await service.submit(
         type: 'bug',
-        message: 'message with signature',
+        message: 'message with signature 🚀 ünïcode',
         screenshotB64: '',
         appVersion: '1.0.0+1',
         os: 'android',
@@ -685,12 +686,15 @@ void main() {
       );
 
       expect(captured, isNotNull);
+      final ts = captured!.headers['x-feedback-timestamp'];
+      expect(ts, isNotNull, reason: 'POST must include X-Feedback-Timestamp when workerHmacSecret is set');
+      final nowSeconds = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+      expect((int.parse(ts!) - nowSeconds).abs(), lessThanOrEqualTo(60));
       expect(
-        captured!.headers.containsKey('x-feedback-signature'),
-        isTrue,
-        reason: 'POST must include X-Feedback-Signature when workerHmacSecret is set',
+        captured!.headers['x-feedback-signature'],
+        'sha256=${computeHmac('$ts.${captured!.body}', utf8.encode('test-secret'))}',
+        reason: 'signature must cover exactly "<timestamp>.<raw body>" — the string the worker verifies',
       );
-      expect(captured!.headers['x-feedback-signature'], startsWith('sha256='));
     });
 
     test('does not attach X-Feedback-Signature when workerHmacSecret is empty', () async {
@@ -720,6 +724,7 @@ void main() {
         isFalse,
         reason: 'POST must omit X-Feedback-Signature when workerHmacSecret is empty',
       );
+      expect(captured!.headers.containsKey('x-feedback-timestamp'), isFalse);
     });
 
     test('signature changes when body changes (HMAC correctness)', () async {
@@ -872,6 +877,45 @@ void main() {
 
       await service.flushQueue();
       expect(box.length, 1); // still in queue for next flush
+    });
+
+    test('flushed queued item carries a timestamp header and a valid signature over its own body', () async {
+      final box = await Hive.openBox('feedback_worker_queue', encryptionCipher: _testCipher);
+      final item = PendingFeedback(
+        id: 'flush-signed',
+        type: 'bug',
+        message: 'queued signed',
+        screenshotB64: '',
+        appVersion: '1.0.0+1',
+        os: 'android',
+        device: 'test',
+        createdAt: DateTime(2025, 6, 1),
+      );
+      await box.put(item.id, item.toMap(_testKey));
+
+      http.Request? captured;
+      final client = MockClient((req) async {
+        captured = req;
+        return http.Response('{"url": "https://github.com/issue/1"}', 201);
+      });
+      final service = FeedbackService(
+        workerUrl: 'https://example.com/',
+        httpClient: client,
+        cipher: _testCipher,
+        hmacKey: _testKey,
+        workerHmacSecret: 'test-secret',
+      );
+
+      await service.flushQueue();
+
+      expect(captured, isNotNull);
+      final ts = captured!.headers['x-feedback-timestamp'];
+      expect(ts, isNotNull);
+      expect(
+        captured!.headers['x-feedback-signature'],
+        'sha256=${computeHmac('$ts.${captured!.body}', utf8.encode('test-secret'))}',
+      );
+      expect(box.length, 0);
     });
 
     test('drops items with tampered HMAC on flush (CLAUDE.md persistence contract)', () async {
