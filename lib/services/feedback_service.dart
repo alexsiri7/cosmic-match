@@ -201,9 +201,12 @@ class FeedbackService {
       });
 
       final headers = <String, String>{'Content-Type': 'application/json'};
-      // Fail-open: dev builds omit the secret; unsigned requests still succeed.
+      // Unsigned when no secret is configured (dev builds); the production worker
+      // will reject these with 401 once it enforces signatures (see CM-024).
       if (_workerHmacSecret.isNotEmpty) {
-        final sig = computeHmac(body, utf8.encode(_workerHmacSecret));
+        final ts = (DateTime.now().millisecondsSinceEpoch ~/ 1000).toString();
+        final sig = computeHmac('$ts.$body', utf8.encode(_workerHmacSecret));
+        headers['X-Feedback-Timestamp'] = ts;
         headers['X-Feedback-Signature'] = 'sha256=$sig';
       }
 

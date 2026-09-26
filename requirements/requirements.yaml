@@ -301,14 +301,15 @@ requirements:
 
   - id: CM-024
     title: Feedback request authentication (HMAC)
-    statement: "When a feedback HMAC secret is configured at build time, the system shall sign each request body with HMAC-SHA256 and send it as an X-Feedback-Signature sha256=<hex> header; when no secret is configured (dev builds), requests shall be sent unsigned."
+    statement: "When a feedback HMAC secret is configured at build time, the system shall sign `<timestamp>.<body>` with HMAC-SHA256 and send X-Feedback-Timestamp and X-Feedback-Signature: sha256=<hex> headers; when no secret is configured (dev builds), requests are sent unsigned and the production worker will reject them once it enforces signatures."
     category: functional
     priority: must
     status: active
     source: "PR #208"
     acceptance:
-      - "Release CI injects FEEDBACK_HMAC_SECRET and outgoing requests carry a valid signature over the exact JSON body"
-      - "With an empty secret the header is absent and submission still proceeds (fail-open for dev)"
+      - "Release CI injects FEEDBACK_HMAC_SECRET and outgoing requests carry a timestamp header and a valid signature over `<timestamp>.<exact JSON body>`"
+      - "With an empty secret neither header is sent; once the production worker enforces signatures it rejects the request with 401 and the item is dropped, not re-queued"
+    notes: "The production worker (alexsiri7/interstellarai.net, workers/feedback/) does not yet verify signatures or timestamps; unsigned requests are currently accepted. Enforcement is tracked in #253."
 
   - id: CM-025
     title: Offline feedback queue
@@ -441,7 +442,7 @@ requirements:
     source: back-ported
     acceptance:
       - "No secret or endpoint value is hardcoded outside String.fromEnvironment defaults"
-      - "A build with no defines produces a working game with Sentry off and unsigned feedback to the default worker"
+      - "A build with no defines produces a working game with Sentry off; feedback is sent unsigned and will be rejected by the production worker once it enforces signatures (feature degrades, build and game unaffected)"
 
   - id: CM-036
     title: Signed, obfuscated release artifacts
