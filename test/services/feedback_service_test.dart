@@ -911,6 +911,8 @@ void main() {
       expect(captured, isNotNull);
       final ts = captured!.headers['x-feedback-timestamp'];
       expect(ts, isNotNull);
+      final nowSeconds = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+      expect((int.parse(ts!) - nowSeconds).abs(), lessThanOrEqualTo(60));
       expect(
         captured!.headers['x-feedback-signature'],
         'sha256=${computeHmac('$ts.${captured!.body}', utf8.encode('test-secret'))}',
