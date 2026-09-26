@@ -202,7 +202,7 @@ class FeedbackService {
 
       final headers = <String, String>{'Content-Type': 'application/json'};
       // Unsigned when no secret is configured (dev builds); the production worker
-      // rejects unsigned cosmic-match requests with 401 (see CM-024).
+      // will reject these with 401 once it enforces signatures (see CM-024).
       if (_workerHmacSecret.isNotEmpty) {
         final ts = (DateTime.now().millisecondsSinceEpoch ~/ 1000).toString();
         final sig = computeHmac('$ts.$body', utf8.encode(_workerHmacSecret));
