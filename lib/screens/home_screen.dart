@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../game/theme/app_theme.dart';
+import '../widgets/star_row.dart';
 
 class HomeScreen extends StatelessWidget {
   final VoidCallback onPlay;
@@ -101,60 +102,7 @@ class HomeScreen extends StatelessWidget {
                     ],
                   ),
                   const Spacer(),
-                  // Resume card
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.06),
-                      border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'RESUME',
-                          style: GoogleFonts.ibmPlexMono(
-                            fontSize: 10,
-                            letterSpacing: 1.5,
-                            color: Colors.white.withValues(alpha: 0.55),
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          crossAxisAlignment: CrossAxisAlignment.end,
-                          children: [
-                            const Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text('Level 1',
-                                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.w500)),
-                                SizedBox(height: 2),
-                                Text('Lyra Sector',
-                                    style: TextStyle(fontSize: 12, color: Colors.white54)),
-                              ],
-                            ),
-                            Row(
-                              children: List.generate(3, (i) {
-                                return Padding(
-                                  padding: const EdgeInsets.only(left: 2),
-                                  child: Icon(
-                                    Icons.star,
-                                    size: 14,
-                                    color: i == 0
-                                        ? kLyraAccent
-                                        : kLyraAccent.withValues(alpha: 0.3),
-                                  ),
-                                );
-                              }),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
+                  _buildResumeCard(),
                   const SizedBox(height: 12),
                   // Play button
                   SizedBox(
@@ -191,48 +139,104 @@ class HomeScreen extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 8),
-                  TextButton(
-                    onPressed: onFeedback,
-                    style: TextButton.styleFrom(
-                      foregroundColor: Colors.white.withValues(alpha: 0.45),
-                      textStyle: const TextStyle(fontSize: 12, letterSpacing: 0.3),
-                    ),
-                    child: const Text('Send feedback'),
-                  ),
-                  TextButton(
-                    onPressed: () async {
-                      final confirmed = await showDialog<bool>(
-                        context: context,
-                        builder: (ctx) => AlertDialog(
-                          title: const Text('Clear feedback queue?'),
-                          content: const Text(
-                              'This will permanently delete all unsent feedback.'),
-                          actions: [
-                            TextButton(
-                              onPressed: () => Navigator.pop(ctx, false),
-                              child: const Text('Cancel'),
-                            ),
-                            TextButton(
-                              onPressed: () => Navigator.pop(ctx, true),
-                              child: const Text('Clear'),
-                            ),
-                          ],
-                        ),
-                      );
-                      if (confirmed == true) onClearFeedbackQueue();
-                    },
-                    style: TextButton.styleFrom(
-                      foregroundColor: Colors.white.withValues(alpha: 0.45),
-                      textStyle: const TextStyle(fontSize: 12, letterSpacing: 0.3),
-                    ),
-                    child: const Text('Clear feedback queue'),
-                  ),
+                  _buildFeedbackActions(context),
                 ],
               ),
             ),
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildResumeCard() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.06),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'RESUME',
+            style: GoogleFonts.ibmPlexMono(
+              fontSize: 10,
+              letterSpacing: 1.5,
+              color: Colors.white.withValues(alpha: 0.55),
+            ),
+          ),
+          const SizedBox(height: 4),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              const Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Level 1',
+                      style: TextStyle(fontSize: 20, fontWeight: FontWeight.w500)),
+                  SizedBox(height: 2),
+                  Text('Lyra Sector',
+                      style: TextStyle(fontSize: 12, color: Colors.white54)),
+                ],
+              ),
+              StarRow(
+                filled: (i) => i == 0,
+                size: 14,
+                starPadding: const EdgeInsets.only(left: 2),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFeedbackActions(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        TextButton(
+          onPressed: onFeedback,
+          style: TextButton.styleFrom(
+            foregroundColor: Colors.white.withValues(alpha: 0.45),
+            textStyle: const TextStyle(fontSize: 12, letterSpacing: 0.3),
+          ),
+          child: const Text('Send feedback'),
+        ),
+        TextButton(
+          onPressed: () async {
+            final confirmed = await showDialog<bool>(
+              context: context,
+              builder: (ctx) => AlertDialog(
+                title: const Text('Clear feedback queue?'),
+                content: const Text(
+                    'This will permanently delete all unsent feedback.'),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(ctx, false),
+                    child: const Text('Cancel'),
+                  ),
+                  TextButton(
+                    onPressed: () => Navigator.pop(ctx, true),
+                    child: const Text('Clear'),
+                  ),
+                ],
+              ),
+            );
+            if (confirmed == true) onClearFeedbackQueue();
+          },
+          style: TextButton.styleFrom(
+            foregroundColor: Colors.white.withValues(alpha: 0.45),
+            textStyle: const TextStyle(fontSize: 12, letterSpacing: 0.3),
+          ),
+          child: const Text('Clear feedback queue'),
+        ),
+      ],
     );
   }
 

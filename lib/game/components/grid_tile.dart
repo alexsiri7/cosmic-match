@@ -67,6 +67,8 @@ class GridTile extends RectangleComponent
     paint.color = Colors.transparent;
   }
 
+  Match3Game? _match3Game() => findGame() as Match3Game?;
+
   void select() => _selected = true;
   void deselect() => _selected = false;
 
@@ -90,7 +92,7 @@ class GridTile extends RectangleComponent
   @override
   void onTapDown(TapDownEvent event) {
     // INPUT GATE — drop all taps except when idle
-    final game = findGame() as Match3Game?;
+    final game = _match3Game();
     if (game == null || game.phase != GamePhase.idle) return;
 
     game.onTileTap(this);
@@ -126,7 +128,7 @@ class GridTile extends RectangleComponent
   @override
   void onDragStart(DragStartEvent event) {
     super.onDragStart(event);
-    final game = findGame() as Match3Game?;
+    final game = _match3Game();
     if (game == null || game.phase != GamePhase.idle) return;
 
     _dragging = true;
@@ -153,7 +155,7 @@ class GridTile extends RectangleComponent
     position = _dragOriginPosition + axisOffset;
 
     // Preview neighbor tile (subtle counter-offset)
-    final game = findGame() as Match3Game?;
+    final game = _match3Game();
     if (game == null) {
       _resetDragState();
       return;
@@ -188,7 +190,7 @@ class GridTile extends RectangleComponent
     final direction = _dominantDirection(_accumulatedDelta, size.x * 0.3);
     if (direction == null) return; // too short — ignore
 
-    final game = findGame() as Match3Game?;
+    final game = _match3Game();
     if (game == null) {
       gameLogger.w('GridTile.onDragEnd: findGame() returned null — swap dropped');
       return;
