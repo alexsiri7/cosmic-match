@@ -50,67 +50,44 @@ class PatternDetector {
     if (cols == 0) return results;
     final rows = grid[0].length;
 
-    // Scan horizontal runs (along each row)
-    for (int y = 0; y < rows; y++) {
-      for (int x = 0; x <= cols - length; x++) {
-        final type = grid[x][y];
-        if (type == null) continue;
+    // Scan horizontal runs (along each row) and vertical runs (along each
+    // column) using the same walk, parametrized by the (dx, dy) step.
+    for (final (dx, dy) in const [(1, 0), (0, 1)]) {
+      final xMax = dx == 1 ? cols - length : cols - 1;
+      final yMax = dy == 1 ? rows - length : rows - 1;
+      for (int y = 0; y <= yMax; y++) {
+        for (int x = 0; x <= xMax; x++) {
+          final type = grid[x][y];
+          if (type == null) continue;
 
-        final positions = <TilePosition>[];
-        for (int dx = 0; dx < length; dx++) {
-          final pos = TilePosition(x + dx, y);
-          if (grid[x + dx][y] != type || claimed.contains(pos)) break;
-          positions.add(pos);
-        }
-
-        // Ensure it's exactly `length` — not part of a longer run
-        // (longer runs are caught by higher-priority passes)
-        if (positions.length == length) {
-          final leftOk = x == 0 ||
-              grid[x - 1][y] != type ||
-              claimed.contains(TilePosition(x - 1, y));
-          final rightOk = x + length >= cols ||
-              grid[x + length][y] != type ||
-              claimed.contains(TilePosition(x + length, y));
-          if (leftOk && rightOk) {
-            claimed.addAll(positions);
-            results.add(MatchResult(
-              tiles: positions,
-              bonusTile: bonus,
-              bonusPosition: bonus != null ? positions[length ~/ 2] : null,
-            ));
+          final positions = <TilePosition>[];
+          for (int i = 0; i < length; i++) {
+            final pos = TilePosition(x + dx * i, y + dy * i);
+            if (grid[pos.x][pos.y] != type || claimed.contains(pos)) break;
+            positions.add(pos);
           }
-        }
-      }
-    }
 
-    // Scan vertical runs (along each column)
-    for (int x = 0; x < cols; x++) {
-      for (int y = 0; y <= rows - length; y++) {
-        final type = grid[x][y];
-        if (type == null) continue;
-
-        final positions = <TilePosition>[];
-        for (int dy = 0; dy < length; dy++) {
-          final pos = TilePosition(x, y + dy);
-          if (grid[x][y + dy] != type || claimed.contains(pos)) break;
-          positions.add(pos);
-        }
-
-        if (positions.length == length) {
-          final topOk = y == 0 ||
-              grid[x][y - 1] != type ||
-              claimed.contains(TilePosition(x, y - 1));
-          final bottomOk = y + length >= rows ||
-              grid[x][y + length] != type ||
-              claimed.contains(TilePosition(x, y + length));
-          if (topOk && bottomOk) {
-            claimed.addAll(positions);
-            results.add(MatchResult(
-              tiles: positions,
-              bonusTile: bonus,
-              bonusPosition: bonus != null ? positions[length ~/ 2] : null,
-            ));
+          // Ensure it's exactly `length` — not part of a longer run
+          // (longer runs are caught by higher-priority passes)
+          if (positions.length == length) {
+            final beforeX = x - dx, beforeY = y - dy;
+            final afterX = x + dx * length, afterY = y + dy * length;
+            final beforeOk = beforeX < 0 ||
+                beforeY < 0 ||
+                grid[beforeX][beforeY] != type ||
+                claimed.contains(TilePosition(beforeX, beforeY));
+            final afterOk = afterX >= cols ||
+                afterY >= rows ||
+                grid[afterX][afterY] != type ||
+                claimed.contains(TilePosition(afterX, afterY));
+            if (beforeOk && afterOk) {
+              claimed.addAll(positions);
+              results.add(MatchResult(
+                tiles: positions,
+                bonusTile: bonus,
+                bonusPosition: bonus != null ? positions[length ~/ 2] : null,
+              ));
+            }
           }
         }
       }
@@ -165,39 +142,30 @@ class PatternDetector {
       Grid grid, int px, int py, TileType type, bool horizontal,
       Set<TilePosition> claimed) {
     final positions = <TilePosition>[TilePosition(px, py)];
+    final cols = grid.length;
+    final rows = grid[0].length;
+    final dx = horizontal ? 1 : 0;
+    final dy = horizontal ? 0 : 1;
 
-    if (horizontal) {
-      final cols = grid.length;
-      for (int x = px - 1; x >= 0; x--) {
-        if (grid[x][py] == type && !claimed.contains(TilePosition(x, py))) {
-          positions.insert(0, TilePosition(x, py));
-        } else {
-          break;
-        }
+    for (int i = 1;; i++) {
+      final x = px - dx * i, y = py - dy * i;
+      if (x < 0 ||
+          y < 0 ||
+          grid[x][y] != type ||
+          claimed.contains(TilePosition(x, y))) {
+        break;
       }
-      for (int x = px + 1; x < cols; x++) {
-        if (grid[x][py] == type && !claimed.contains(TilePosition(x, py))) {
-          positions.add(TilePosition(x, py));
-        } else {
-          break;
-        }
+      positions.insert(0, TilePosition(x, y));
+    }
+    for (int i = 1;; i++) {
+      final x = px + dx * i, y = py + dy * i;
+      if (x >= cols ||
+          y >= rows ||
+          grid[x][y] != type ||
+          claimed.contains(TilePosition(x, y))) {
+        break;
       }
-    } else {
-      final rows = grid[0].length;
-      for (int y = py - 1; y >= 0; y--) {
-        if (grid[px][y] == type && !claimed.contains(TilePosition(px, y))) {
-          positions.insert(0, TilePosition(px, y));
-        } else {
-          break;
-        }
-      }
-      for (int y = py + 1; y < rows; y++) {
-        if (grid[px][y] == type && !claimed.contains(TilePosition(px, y))) {
-          positions.add(TilePosition(px, y));
-        } else {
-          break;
-        }
-      }
+      positions.add(TilePosition(x, y));
     }
 
     return positions.length >= 3 ? positions : null;
