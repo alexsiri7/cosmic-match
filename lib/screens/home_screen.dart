@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../game/theme/app_theme.dart';
+import '../widgets/star_row.dart';
 
 class HomeScreen extends StatelessWidget {
   final VoidCallback onPlay;
@@ -136,19 +137,10 @@ class HomeScreen extends StatelessWidget {
                                     style: TextStyle(fontSize: 12, color: Colors.white54)),
                               ],
                             ),
-                            Row(
-                              children: List.generate(3, (i) {
-                                return Padding(
-                                  padding: const EdgeInsets.only(left: 2),
-                                  child: Icon(
-                                    Icons.star,
-                                    size: 14,
-                                    color: i == 0
-                                        ? kLyraAccent
-                                        : kLyraAccent.withValues(alpha: 0.3),
-                                  ),
-                                );
-                              }),
+                            StarRow(
+                              filled: (i) => i == 0,
+                              size: 14,
+                              starPadding: const EdgeInsets.only(left: 2),
                             ),
                           ],
                         ),

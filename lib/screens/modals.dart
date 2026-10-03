@@ -2,6 +2,7 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../game/theme/app_theme.dart';
+import '../widgets/star_row.dart';
 
 class ModalShell extends StatelessWidget {
   final Widget child;
@@ -80,19 +81,10 @@ class LevelCompleteModal extends StatelessWidget {
           ),
           const SizedBox(height: 16),
           // Stars
-          Row(
+          StarRow(
+            filled: (i) => i < stars,
+            size: 54,
             mainAxisAlignment: MainAxisAlignment.center,
-            children: List.generate(3, (i) {
-              final filled = i < stars;
-              return Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 4),
-                child: Icon(
-                  Icons.star,
-                  size: 54,
-                  color: filled ? kLyraAccent : kLyraAccent.withValues(alpha: 0.3),
-                ),
-              );
-            }),
           ),
           const SizedBox(height: 24),
           // Score card
