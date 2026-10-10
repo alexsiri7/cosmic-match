@@ -2,10 +2,10 @@
 created: '2026-09-28'
 github_issue: 257
 id: '012'
-status: idea
+status: done
 title: Adopt an OpenSpec specification as the statement of what Cosmic Match should
   be
-updated: '2026-09-28'
+updated: '2026-10-10'
 ---
 
 ## Why
