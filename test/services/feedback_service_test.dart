@@ -428,8 +428,9 @@ void main() {
       });
 
       // Simulate a submission 5 seconds ago (within the 30 s cooldown).
+      final fixedNow = DateTime(2026, 9, 25, 12);
       final storage = <String, String>{
-        'feedback_last_submit_ms': DateTime.now()
+        'feedback_last_submit_ms': fixedNow
             .subtract(const Duration(seconds: 5))
             .millisecondsSinceEpoch
             .toString(),
@@ -437,7 +438,8 @@ void main() {
       final service = FeedbackService(
         workerUrl: 'https://example.com/feedback',
         httpClient: client,
-        rateLimitService: RateLimitService(testStorage: storage),
+        rateLimitService:
+            RateLimitService(testStorage: storage, now: () => fixedNow),
       );
 
       await service.submit(
@@ -519,7 +521,8 @@ void main() {
       final client = MockClient((_) async => http.Response('', 503));
 
       // Cooldown already expired.
-      final originalMs = DateTime.now()
+      final fixedNow = DateTime(2026, 9, 25, 12);
+      final originalMs = fixedNow
           .subtract(const Duration(seconds: kFeedbackCooldownSeconds + 1))
           .millisecondsSinceEpoch;
       final storage = <String, String>{
@@ -528,7 +531,8 @@ void main() {
       final service = FeedbackService(
         workerUrl: 'https://example.com/feedback',
         httpClient: client,
-        rateLimitService: RateLimitService(testStorage: storage),
+        rateLimitService:
+            RateLimitService(testStorage: storage, now: () => fixedNow),
         cipher: _testCipher,
         hmacKey: _testKey,
       );
@@ -794,19 +798,20 @@ void main() {
     });
 
     test('delegates to rateLimitService when provided', () async {
+      final fixedNow = DateTime(2026, 9, 25, 12);
       final storage = <String, String>{
-        'feedback_last_submit_ms': DateTime.now()
+        'feedback_last_submit_ms': fixedNow
             .subtract(const Duration(seconds: 5))
             .millisecondsSinceEpoch
             .toString(),
       };
       final service = FeedbackService(
         workerUrl: 'https://example.com/',
-        rateLimitService: RateLimitService(testStorage: storage),
+        rateLimitService:
+            RateLimitService(testStorage: storage, now: () => fixedNow),
       );
       final secs = await service.remainingCooldownSeconds();
-      expect(secs, greaterThan(0));
-      expect(secs, lessThanOrEqualTo(kFeedbackCooldownSeconds));
+      expect(secs, kFeedbackCooldownSeconds - 5);
     });
   });
 
