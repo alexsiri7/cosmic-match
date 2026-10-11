@@ -67,14 +67,25 @@ void main() {
     test('horizontal wins tie when |dx| == |dy| (>= branch)', () {
       // When |dx| == |dy|, the >= condition picks the horizontal axis.
       final dir = tile.dominantDirectionForTest(Vector2(20, 20), 18);
-      expect(dir, anyOf(SwipeDirection.left, SwipeDirection.right));
+      expect(dir, SwipeDirection.right);
+    });
+
+    test('horizontal wins tie when |dx| == |dy| with negative deltas', () {
+      final dir = tile.dominantDirectionForTest(Vector2(-20, -20), 18);
+      expect(dir, SwipeDirection.left);
     });
   });
 
-  group('GridTile drag state initializes clean', () {
-    test('tile construction succeeds with drag mixin', () async {
+  group('GridTile selection state', () {
+    test('tile starts unselected; select and deselect toggle the border', () async {
       final tile = await _tile();
-      expect(tile, isNotNull);
+      expect(tile.selectionBorderVisible, isFalse);
+
+      tile.select();
+      expect(tile.selectionBorderVisible, isTrue);
+
+      tile.deselect();
+      expect(tile.selectionBorderVisible, isFalse);
     });
   });
 }

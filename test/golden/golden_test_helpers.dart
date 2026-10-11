@@ -1,7 +1,18 @@
 import 'package:cosmic_match/game/match3_game.dart';
+import 'package:cosmic_match/game/world/grid_world.dart';
 import 'package:cosmic_match/models/tile_type.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
+
+/// Lands after the swap settles but before gravity settles (500 ms today).
+Duration midCascadePump() => Duration(
+    milliseconds: GridWorld.swapSettleMs + GridWorld.gravitySettleMs - 20);
+
+/// Covers swap + [levels] cascade levels plus 80 ms slack (1500 ms today).
+Duration settledPump({int levels = 2}) => Duration(
+    milliseconds: GridWorld.swapSettleMs +
+        levels * (GridWorld.gravitySettleMs + GridWorld.refillSettleMs) +
+        80);
 
 /// Suppresses the known flame_riverpod 'setState() called after dispose()' noise
 /// that fires during golden test widget teardown — this is a known library issue,

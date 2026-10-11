@@ -38,9 +38,9 @@ void main() {
     unawaited(game.world.runSwap(tileA, tileB));
 
     // Pump through full cascade cycle so the score bar updates with a non-zero score.
-    // Timing budget: 220 ms swap animation + 300 ms gravity + 300 ms refill = 820 ms
-    // per cascade level. 1500 ms covers up to ~2 cascade levels for seed 99.
-    await tester.pump(const Duration(milliseconds: 1500));
+    // Timing budget: swapSettleMs + gravitySettleMs + refillSettleMs per cascade
+    // level. settledPump() covers up to ~2 cascade levels for seed 99.
+    await tester.pump(settledPump());
 
     // Confirm the cascade completed and score is non-zero (score bar shows earned points).
     expect(game.phase, GamePhase.idle,
