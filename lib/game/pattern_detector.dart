@@ -30,7 +30,8 @@ class PatternDetector {
     final claimed = <TilePosition>{};
 
     // Pass 1: 5-in-a-row (Supernova) — highest priority
-    results.addAll(_scanRuns(grid, 5, BonusTileType.supernova, claimed));
+    results.addAll(_scanRuns(grid, 5, BonusTileType.supernova, claimed,
+        consumeLonger: true));
     // Pass 2: L/T shapes (Black Hole)
     results.addAll(_scanLT(grid, claimed));
     // Pass 3: 4-in-a-row (Pulsar)
@@ -43,8 +44,13 @@ class PatternDetector {
 
   /// Scan rows and columns for runs of exactly `length` same-type tiles.
   /// Tiles already in `claimed` are skipped. Matched tiles are added to `claimed`.
+  ///
+  /// When [consumeLonger] is true, a run that extends past `length` tiles is
+  /// fully consumed by this pass (used only for the Supernova pass, so a
+  /// straight run of 6+ tiles isn't left unclaimed by every pass).
   List<MatchResult> _scanRuns(
-      Grid grid, int length, BonusTileType? bonus, Set<TilePosition> claimed) {
+      Grid grid, int length, BonusTileType? bonus, Set<TilePosition> claimed,
+      {bool consumeLonger = false}) {
     final results = <MatchResult>[];
     final cols = grid.length;
     if (cols == 0) return results;
@@ -68,24 +74,44 @@ class PatternDetector {
           }
 
           // Ensure it's exactly `length` — not part of a longer run
-          // (longer runs are caught by higher-priority passes)
+          // (longer runs are caught by higher-priority passes, or fully
+          // consumed below when consumeLonger is set)
           if (positions.length == length) {
             final beforeX = x - dx, beforeY = y - dy;
-            final afterX = x + dx * length, afterY = y + dy * length;
             final beforeOk = beforeX < 0 ||
                 beforeY < 0 ||
                 grid[beforeX][beforeY] != type ||
                 claimed.contains(TilePosition(beforeX, beforeY));
-            final afterOk = afterX >= cols ||
-                afterY >= rows ||
-                grid[afterX][afterY] != type ||
-                claimed.contains(TilePosition(afterX, afterY));
+
+            bool afterOk;
+            if (consumeLonger && beforeOk) {
+              int nx = x + dx * positions.length, ny = y + dy * positions.length;
+              while (nx >= 0 &&
+                  nx < cols &&
+                  ny >= 0 &&
+                  ny < rows &&
+                  grid[nx][ny] == type &&
+                  !claimed.contains(TilePosition(nx, ny))) {
+                positions.add(TilePosition(nx, ny));
+                nx += dx;
+                ny += dy;
+              }
+              afterOk = true;
+            } else {
+              final afterX = x + dx * length, afterY = y + dy * length;
+              afterOk = afterX >= cols ||
+                  afterY >= rows ||
+                  grid[afterX][afterY] != type ||
+                  claimed.contains(TilePosition(afterX, afterY));
+            }
+
             if (beforeOk && afterOk) {
               claimed.addAll(positions);
               results.add(MatchResult(
                 tiles: positions,
                 bonusTile: bonus,
-                bonusPosition: bonus != null ? positions[length ~/ 2] : null,
+                bonusPosition:
+                    bonus != null ? positions[positions.length ~/ 2] : null,
               ));
             }
           }

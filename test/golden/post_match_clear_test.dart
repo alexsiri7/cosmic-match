@@ -35,11 +35,11 @@ void main() {
     unawaited(game.world.runSwap(tileA, tileB));
 
     // Pump to post-match-clear state (tiles removed, gravity in flight).
-    // Timing budget: 220 ms swap animation → swap executes, matches cleared (sync)
-    // → 300 ms gravity animation starts (completes at 520 ms).
-    // At 500 ms the gravity animation is in progress but not settled; refill
-    // (another 300 ms starting at 520 ms) has not begun yet.
-    await tester.pump(const Duration(milliseconds: 500));
+    // Timing budget: swapSettleMs → swap executes, matches cleared (sync)
+    // → gravitySettleMs animation starts.
+    // midCascadePump() lands while the gravity animation is in progress but
+    // not settled; refill (another refillSettleMs) has not begun yet.
+    await tester.pump(midCascadePump());
 
     // Verify we captured a mid-cascade state, not a fully settled board.
     expect(

@@ -5,11 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:cosmic_match/services/key_service.dart';
 import 'package:hive/hive.dart';
 
-// Note: KeyService.getCipher() and KeyService.getHmacKey() both require
-// platform channels (Android Keystore / FlutterSecureStorage) and cannot be
-// called in unit tests. These tests exercise the pure logic (base64
-// encode/decode round-trip and key length) that underpins both methods.
-// Full integration testing requires a device or emulator.
+import 'throwing_storage.dart';
 
 void main() {
   group('KeyService key encoding', () {
@@ -73,6 +69,74 @@ void main() {
       final encoded = KeyService.encodeKey(key);
 
       expect(encoded, matches(RegExp(r'^[A-Za-z0-9_-]+={0,2}$')));
+    });
+  });
+
+  group('KeyService with injected storage', () {
+    test('getHmacKey generates a 32-byte key and persists it under hive_hmac_key',
+        () async {
+      final storage = <String, String>{};
+      final service = KeyService(testStorage: storage);
+
+      final result = await service.getHmacKey();
+
+      expect(result, isNotNull);
+      expect(result!.length, 32);
+      expect(KeyService.decodeKey(storage['hive_hmac_key']!), equals(result));
+    });
+
+    test('getHmacKey returns the same bytes on a second call', () async {
+      final storage = <String, String>{};
+      final service = KeyService(testStorage: storage);
+
+      final first = await service.getHmacKey();
+      final second = await service.getHmacKey();
+
+      expect(second, equals(first));
+    });
+
+    test('getHmacKey decodes a pre-seeded value instead of regenerating',
+        () async {
+      final seeded = List.generate(32, (i) => i);
+      final storage = <String, String>{
+        'hive_hmac_key': KeyService.encodeKey(seeded),
+      };
+      final service = KeyService(testStorage: storage);
+
+      final result = await service.getHmacKey();
+
+      expect(result, equals(seeded));
+      expect(storage, hasLength(1));
+    });
+
+    test('cipher and HMAC keys are stored separately and differ', () async {
+      final storage = <String, String>{};
+      final service = KeyService(testStorage: storage);
+
+      await service.getCipher();
+      await service.getHmacKey();
+
+      expect(storage.keys, containsAll(['hive_aes_key', 'hive_hmac_key']));
+      final cipherKey = KeyService.decodeKey(storage['hive_aes_key']!);
+      final hmacKey = KeyService.decodeKey(storage['hive_hmac_key']!);
+      expect(cipherKey.length, 32);
+      expect(hmacKey.length, 32);
+      expect(cipherKey, isNot(equals(hmacKey)));
+    });
+
+    test('both getters return null when storage throws', () async {
+      final service = KeyService(testStorage: ThrowingStorage());
+
+      expect(await service.getCipher(), isNull);
+      expect(await service.getHmacKey(), isNull);
+    });
+
+    test('getHmacKey returns null when the stored value is not valid base64url',
+        () async {
+      final storage = <String, String>{'hive_hmac_key': '!!!'};
+      final service = KeyService(testStorage: storage);
+
+      expect(await service.getHmacKey(), isNull);
     });
   });
 }

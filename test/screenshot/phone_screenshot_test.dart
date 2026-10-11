@@ -77,7 +77,7 @@ void main() {
 
     final (tileA, tileB) = setupForcedMatch(game);
     unawaited(game.world.runSwap(tileA, tileB));
-    await tester.pump(const Duration(milliseconds: 500));
+    await tester.pump(midCascadePump());
 
     expect(
       game.phase,
@@ -123,7 +123,7 @@ void main() {
 
     final (tileA, tileB) = setupForcedMatch(game);
     unawaited(game.world.runSwap(tileA, tileB));
-    await tester.pump(const Duration(milliseconds: 1500));
+    await tester.pump(settledPump());
 
     expect(
       game.phase,

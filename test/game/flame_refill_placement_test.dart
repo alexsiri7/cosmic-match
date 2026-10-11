@@ -119,8 +119,8 @@ void main() {
 
     test('refill animation worst-case duration is under cascade await threshold', () {
       // Source: grid_world.dart _refillAllWithAnimation EffectController(duration: 0.035 * (y + 1))
-      // Source: grid_world.dart _runCascade await Future.delayed(const Duration(milliseconds: 300))
-      const cascadeAwaitSeconds = 0.300;
+      // Source: grid_world.dart _runCascade await Future.delayed(GridWorld.refillSettleMs)
+      final cascadeAwaitSeconds = GridWorld.refillSettleMs / 1000;
       final worstCase = 0.035 * GridWorld.rows;
       expect(worstCase, lessThan(cascadeAwaitSeconds),
           reason:

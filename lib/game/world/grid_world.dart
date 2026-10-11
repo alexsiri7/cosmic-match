@@ -25,6 +25,12 @@ class GridWorld extends World {
   /// a public constant so tests can reference the same value without hardcoding.
   static const double headerHeight = 60.0;
 
+  /// Wall-clock budgets awaited by the swap/cascade pipeline. Tests derive
+  /// their pump durations from these so a timing change fails at the source.
+  static const int swapSettleMs = 220; // both delays in runSwap
+  static const int gravitySettleMs = 300; // first delay in _runCascade
+  static const int refillSettleMs = 300; // second delay in _runCascade
+
   final Score score = Score();
   final CascadeController cascade = CascadeController();
   final PatternDetector detector = PatternDetector();
@@ -155,7 +161,7 @@ class GridWorld extends World {
       final posB = tileB.position.clone();
       tileA.add(MoveEffect.to(posB, EffectController(duration: 0.2)));
       tileB.add(MoveEffect.to(posA, EffectController(duration: 0.2)));
-      await Future<void>.delayed(const Duration(milliseconds: 220));
+      await Future<void>.delayed(const Duration(milliseconds: swapSettleMs));
 
       _swapTiles(tileA, tileB);
 
@@ -166,7 +172,7 @@ class GridWorld extends World {
       if (matches.isEmpty) {
         tileA.add(MoveEffect.to(posA, EffectController(duration: 0.2)));
         tileB.add(MoveEffect.to(posB, EffectController(duration: 0.2)));
-        await Future<void>.delayed(const Duration(milliseconds: 220));
+        await Future<void>.delayed(const Duration(milliseconds: swapSettleMs));
         _swapTiles(tileA, tileB);
         _game.transitionTo(GamePhase.idle);
         return;
@@ -205,12 +211,12 @@ class GridWorld extends World {
       _game.transitionTo(GamePhase.falling);
 
       _applyGravityWithAnimation();
-      await Future<void>.delayed(const Duration(milliseconds: 300));
+      await Future<void>.delayed(const Duration(milliseconds: gravitySettleMs));
 
       // Fill ALL null cells (not just row 0) so the board is fully packed
       // before checking for new matches. refillTop() is kept for unit tests.
       _refillAllWithAnimation();
-      await Future<void>.delayed(const Duration(milliseconds: 300));
+      await Future<void>.delayed(const Duration(milliseconds: refillSettleMs));
 
       final newMatches = detector.detectAll(grid);
       if (newMatches.isEmpty || !cascade.canContinue) {

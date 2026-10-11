@@ -85,4 +85,43 @@ void main() {
       await box.close();
     });
   });
+
+  group('ProgressService load with existing data', () {
+    test('null hmacKey returns initial even when valid signed data exists',
+        () async {
+      await ProgressService(hmacKey: _testKey)
+          .save(LevelProgress(level: 1, starsEarned: 2, bestScore: 500));
+
+      final loaded = await ProgressService().load(1);
+
+      expect(loaded.starsEarned, equals(0));
+      expect(loaded.bestScore, equals(0));
+      expect(loaded.level, equals(1));
+    });
+
+    test('data signed with a different key is treated as tampered', () async {
+      await ProgressService(hmacKey: _testKey)
+          .save(LevelProgress(level: 1, starsEarned: 2, bestScore: 500));
+
+      final loaded = await ProgressService(
+        hmacKey: List<int>.generate(32, (i) => 31 - i),
+      ).load(1);
+
+      expect(loaded.starsEarned, equals(0));
+      expect(loaded.bestScore, equals(0));
+      expect(loaded.level, equals(1));
+    });
+
+    test('non-Map stored value returns initial', () async {
+      final box = await Hive.openBox('progress');
+      await box.put('level_1', 'garbage');
+      await box.close();
+
+      final loaded = await ProgressService(hmacKey: _testKey).load(1);
+
+      expect(loaded.starsEarned, equals(0));
+      expect(loaded.bestScore, equals(0));
+      expect(loaded.level, equals(1));
+    });
+  });
 }

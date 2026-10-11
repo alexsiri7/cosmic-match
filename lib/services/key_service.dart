@@ -20,6 +20,25 @@ class KeyService {
   static const _keyName = 'hive_aes_key';
   static const _hmacKeyName = 'hive_hmac_key';
 
+  final Map<String, String>? _testStorage;
+
+  KeyService({@visibleForTesting Map<String, String>? testStorage})
+      : _testStorage = testStorage;
+
+  Future<String?> _read(String key) async {
+    final ts = _testStorage;
+    return ts != null ? ts[key] : await const FlutterSecureStorage().read(key: key);
+  }
+
+  Future<void> _write(String key, String value) async {
+    final ts = _testStorage;
+    if (ts != null) {
+      ts[key] = value;
+      return;
+    }
+    await const FlutterSecureStorage().write(key: key, value: value);
+  }
+
   /// Returns a [HiveAesCipher] backed by a Keystore-managed key, or `null`
   /// if secure storage is unavailable or key retrieval fails for any reason.
   Future<HiveAesCipher?> getCipher() async {
@@ -46,11 +65,10 @@ class KeyService {
 
   /// Loads an existing key from secure storage, or generates and stores a new one.
   Future<List<int>?> _loadOrGenerateKey(String storageKey) async {
-    const storage = FlutterSecureStorage();
-    final encoded = await storage.read(key: storageKey);
+    final encoded = await _read(storageKey);
     if (encoded != null) return base64Url.decode(encoded);
     final keyBytes = Hive.generateSecureKey();
-    await storage.write(key: storageKey, value: base64Url.encode(keyBytes));
+    await _write(storageKey, base64Url.encode(keyBytes));
     return keyBytes;
   }
 

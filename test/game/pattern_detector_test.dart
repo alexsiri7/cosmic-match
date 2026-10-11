@@ -231,5 +231,41 @@ void main() {
       expect(results[0].tiles, hasLength(6));
       expect(results.any((r) => r.bonusTile == BonusTileType.pulsar), isFalse);
     });
+
+    test('6-in-a-row horizontal yields one Supernova consuming all 6 tiles', () {
+      final grid = _buildHorizontalRun(0, 0, 6, TileType.red);
+      final results = detector.detectAll(grid);
+      expect(results, hasLength(1));
+      expect(results[0].bonusTile, BonusTileType.supernova);
+      expect(
+        results[0].tiles.toSet(),
+        {for (int x = 0; x < 6; x++) TilePosition(x, 0)},
+      );
+    });
+
+    test('7-in-a-row vertical yields one Supernova consuming all 7 tiles', () {
+      final grid = _buildVerticalRun(0, 0, 7, TileType.blue);
+      final results = detector.detectAll(grid);
+      expect(results, hasLength(1));
+      expect(results[0].bonusTile, BonusTileType.supernova);
+      expect(
+        results[0].tiles.toSet(),
+        {for (int y = 0; y < 7; y++) TilePosition(0, y)},
+      );
+    });
+
+    test('full 8-wide row yields one Supernova and no leftover basic match',
+        () {
+      final grid = _buildHorizontalRun(0, 0, 8, TileType.purple);
+      final results = detector.detectAll(grid);
+      expect(results, hasLength(1));
+      expect(results.any((r) => r.bonusTile == null), isFalse);
+    });
+
+    test('6-run bonusPosition is inside the run', () {
+      final grid = _buildHorizontalRun(0, 0, 6, TileType.red);
+      final results = detector.detectAll(grid);
+      expect(results[0].tiles, contains(results[0].bonusPosition));
+    });
   });
 }

@@ -34,10 +34,10 @@ void main() {
     unawaited(game.world.runSwap(tileA, tileB));
 
     // Pump through full cascade cycle.
-    // Timing budget: 220 ms swap animation + 300 ms gravity + 300 ms refill = 820 ms
-    // per cascade level. 1500 ms covers up to ~2 cascade levels for seed 42,
+    // Timing budget: swapSettleMs + gravitySettleMs + refillSettleMs per cascade
+    // level. settledPump() covers up to ~2 cascade levels for seed 42,
     // ensuring the board is fully settled after refill.
-    await tester.pump(const Duration(milliseconds: 1500));
+    await tester.pump(settledPump());
 
     // Confirm the full swap→match→fall→refill cycle completed and game returned to idle.
     expect(
