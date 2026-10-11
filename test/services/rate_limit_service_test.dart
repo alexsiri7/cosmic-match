@@ -178,5 +178,62 @@ void main() {
 
       await expectLater(throwingService.recordSubmission(), completes);
     });
+
+    test('checkStatus allowed when elapsed equals the cooldown exactly',
+        () async {
+      storage['feedback_last_submit_ms'] = fixedNow
+          .subtract(const Duration(seconds: kFeedbackCooldownSeconds))
+          .millisecondsSinceEpoch
+          .toString();
+
+      final status = await service.checkStatus();
+      expect(status.allowed, isTrue);
+      expect(status.cooldownSeconds, 0);
+    });
+
+    test('checkStatus blocked with 1 second remaining just under the cooldown',
+        () async {
+      storage['feedback_last_submit_ms'] = fixedNow
+          .subtract(Duration(milliseconds: kFeedbackCooldownSeconds * 1000 - 1))
+          .millisecondsSinceEpoch
+          .toString();
+
+      final status = await service.checkStatus();
+      expect(status.allowed, isFalse);
+      expect(status.cooldownSeconds, 1);
+    });
+
+    test('checkStatus hourly window exactly 60 minutes old is reset', () async {
+      storage['feedback_last_submit_ms'] = fixedNow
+          .subtract(const Duration(seconds: kFeedbackCooldownSeconds + 1))
+          .millisecondsSinceEpoch
+          .toString();
+      storage['feedback_hour_window'] = jsonEncode({
+        'count': kFeedbackMaxPerHour,
+        'windowStart':
+            fixedNow.subtract(const Duration(minutes: 60)).toIso8601String(),
+      });
+
+      final status = await service.checkStatus();
+      expect(status.allowed, isTrue);
+      expect(status.hourlyRemaining, kFeedbackMaxPerHour);
+    });
+
+    test('checkStatus one submission below the hourly cap is still allowed',
+        () async {
+      storage['feedback_last_submit_ms'] = fixedNow
+          .subtract(const Duration(seconds: kFeedbackCooldownSeconds + 1))
+          .millisecondsSinceEpoch
+          .toString();
+      storage['feedback_hour_window'] = jsonEncode({
+        'count': kFeedbackMaxPerHour - 1,
+        'windowStart':
+            fixedNow.subtract(const Duration(minutes: 30)).toIso8601String(),
+      });
+
+      final status = await service.checkStatus();
+      expect(status.allowed, isTrue);
+      expect(status.hourlyRemaining, 1);
+    });
   });
 }
