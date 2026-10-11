@@ -1066,6 +1066,232 @@ void main() {
     });
   });
 
+  group('FeedbackService.expireOldItems', () {
+    late Directory tempDir;
+
+    setUp(() {
+      tempDir = Directory.systemTemp.createTempSync('expire_test_');
+      Hive.init(tempDir.path);
+    });
+
+    tearDown(() async {
+      await Hive.deleteBoxFromDisk('feedback_worker_queue');
+      await Hive.close();
+      if (tempDir.existsSync()) {
+        tempDir.deleteSync(recursive: true);
+      }
+    });
+
+    final neverCalled = MockClient(
+        (_) async => throw StateError('expireOldItems must not POST'));
+
+    test('deletes items older than the TTL and keeps newer ones', () async {
+      final box = await Hive.openBox('feedback_worker_queue', encryptionCipher: _testCipher);
+      final old = PendingFeedback(
+        id: 'old',
+        type: 'bug',
+        message: 'stale item',
+        screenshotB64: '',
+        appVersion: '1.0.0+1',
+        os: 'android',
+        device: 'test',
+        createdAt: DateTime.now().subtract(const Duration(days: kFeedbackQueueTtlDays + 1)),
+      );
+      final fresh = PendingFeedback(
+        id: 'fresh',
+        type: 'bug',
+        message: 'recent item',
+        screenshotB64: '',
+        appVersion: '1.0.0+1',
+        os: 'android',
+        device: 'test',
+        createdAt: DateTime.now().subtract(const Duration(days: 1)),
+      );
+      await box.put(old.id, old.toMap(_testKey));
+      await box.put(fresh.id, fresh.toMap(_testKey));
+
+      final service = FeedbackService(
+        workerUrl: 'https://example.com/',
+        httpClient: neverCalled,
+        cipher: _testCipher,
+        hmacKey: _testKey,
+      );
+
+      await service.expireOldItems(kFeedbackQueueTtlDays);
+
+      expect(box.keys.toList(), ['fresh']);
+    });
+
+    test('drops tampered items during the sweep regardless of age', () async {
+      final box = await Hive.openBox('feedback_worker_queue', encryptionCipher: _testCipher);
+      final fresh = PendingFeedback(
+        id: 'fresh',
+        type: 'bug',
+        message: 'recent item',
+        screenshotB64: '',
+        appVersion: '1.0.0+1',
+        os: 'android',
+        device: 'test',
+        createdAt: DateTime.now().subtract(const Duration(days: 1)),
+      );
+      final map = fresh.toMap(_testKey);
+      map['message'] = 'tampered';
+      await box.put(fresh.id, map);
+
+      final service = FeedbackService(
+        workerUrl: 'https://example.com/',
+        httpClient: neverCalled,
+        cipher: _testCipher,
+        hmacKey: _testKey,
+      );
+
+      await service.expireOldItems(kFeedbackQueueTtlDays);
+
+      expect(box.length, 0);
+    });
+
+    test('drops non-Map rows', () async {
+      final box = await Hive.openBox('feedback_worker_queue', encryptionCipher: _testCipher);
+      await box.put('junk', 'not-a-map');
+      final fresh = PendingFeedback(
+        id: 'fresh',
+        type: 'bug',
+        message: 'recent item',
+        screenshotB64: '',
+        appVersion: '1.0.0+1',
+        os: 'android',
+        device: 'test',
+        createdAt: DateTime.now().subtract(const Duration(days: 1)),
+      );
+      await box.put(fresh.id, fresh.toMap(_testKey));
+
+      final service = FeedbackService(
+        workerUrl: 'https://example.com/',
+        httpClient: neverCalled,
+        cipher: _testCipher,
+        hmacKey: _testKey,
+      );
+
+      await service.expireOldItems(kFeedbackQueueTtlDays);
+
+      expect(box.keys.toList(), ['fresh']);
+    });
+
+    test('with a null hmacKey every item is dropped (fail-safe)', () async {
+      final box = await Hive.openBox('feedback_worker_queue', encryptionCipher: _testCipher);
+      final fresh = PendingFeedback(
+        id: 'fresh',
+        type: 'bug',
+        message: 'recent item',
+        screenshotB64: '',
+        appVersion: '1.0.0+1',
+        os: 'android',
+        device: 'test',
+        createdAt: DateTime.now().subtract(const Duration(days: 1)),
+      );
+      await box.put(fresh.id, fresh.toMap(_testKey));
+
+      final service = FeedbackService(
+        workerUrl: 'https://example.com/',
+        httpClient: neverCalled,
+        cipher: _testCipher,
+        // hmacKey: null
+      );
+
+      await service.expireOldItems(kFeedbackQueueTtlDays);
+
+      expect(box.length, 0);
+    });
+  });
+
+  group('FeedbackService.clearQueue', () {
+    late Directory tempDir;
+
+    setUp(() {
+      tempDir = Directory.systemTemp.createTempSync('clear_queue_test_');
+      Hive.init(tempDir.path);
+    });
+
+    tearDown(() async {
+      await Hive.deleteBoxFromDisk('feedback_worker_queue');
+      await Hive.close();
+      if (tempDir.existsSync()) {
+        tempDir.deleteSync(recursive: true);
+      }
+    });
+
+    test('clears a populated queue and returns true', () async {
+      final box = await Hive.openBox('feedback_worker_queue', encryptionCipher: _testCipher);
+      for (int i = 0; i < 3; i++) {
+        final item = PendingFeedback(
+          id: 'item-$i',
+          type: 'bug',
+          message: 'queued msg $i',
+          screenshotB64: '',
+          appVersion: '1.0.0+1',
+          os: 'android',
+          device: 'test',
+          createdAt: DateTime(2025, 1, 1),
+        );
+        await box.put(item.id, item.toMap(_testKey));
+      }
+      expect(box.length, 3);
+
+      final service = FeedbackService(
+        workerUrl: 'https://example.com/',
+        cipher: _testCipher,
+        hmacKey: _testKey,
+      );
+
+      final result = await service.clearQueue();
+
+      expect(result, isTrue);
+      expect(box.length, 0);
+    });
+
+    test('returns true on an empty queue', () async {
+      final service = FeedbackService(
+        workerUrl: 'https://example.com/',
+        cipher: _testCipher,
+        hmacKey: _testKey,
+      );
+
+      final result = await service.clearQueue();
+
+      expect(result, isTrue);
+      final box = await Hive.openBox('feedback_worker_queue', encryptionCipher: _testCipher);
+      expect(box.length, 0);
+    });
+
+    test('queue remains usable after clear', () async {
+      final service = FeedbackService(
+        workerUrl: 'https://example.com/',
+        cipher: _testCipher,
+        hmacKey: _testKey,
+      );
+      await service.clearQueue();
+
+      final client = MockClient((_) async => http.Response('', 503));
+      final submittingService = FeedbackService(
+        workerUrl: 'https://example.com/',
+        httpClient: client,
+        cipher: _testCipher,
+        hmacKey: _testKey,
+      );
+      await submittingService.submit(
+        type: 'bug',
+        message: 'after clear message',
+        screenshotB64: '',
+        appVersion: '1.0.0+1',
+        os: 'android',
+        device: 'test',
+      );
+
+      final box = await Hive.openBox('feedback_worker_queue', encryptionCipher: _testCipher);
+      expect(box.length, 1);
+    });
+  });
+
   group('FeedbackService null-hmacKey fail-safe', () {
     late Directory tempDir;
 
