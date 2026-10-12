@@ -6,6 +6,10 @@ on:
     tags:
       - 'v*'
   pull_request:
+  # Dispatched daily by the factory build-drift check. Every publish/notify
+  # step in the release job is gated on `github.event_name == 'push'`, so a
+  # dispatched run builds but never deploys.
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -222,7 +226,7 @@ jobs:
           retention-days: 7
 
       - name: Publish to Play Store internal track (non-tag)
-        if: steps.keystore.outputs.used_real == 'yes' && github.ref == 'refs/heads/main'
+        if: steps.keystore.outputs.used_real == 'yes' && github.event_name == 'push' && github.ref == 'refs/heads/main'
         uses: r0adkll/upload-google-play@e738b9dd8f2476ea806d921b64aacd24f34515a5 # v1
         with:
           serviceAccountJsonPlainText: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
@@ -237,7 +241,7 @@ jobs:
           releaseName: ${{ env.BUILD_NAME }}
 
       - name: Publish to Play Store production (tag release)
-        if: steps.keystore.outputs.used_real == 'yes' && startsWith(github.ref, 'refs/tags/v')
+        if: steps.keystore.outputs.used_real == 'yes' && github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
         uses: r0adkll/upload-google-play@e738b9dd8f2476ea806d921b64aacd24f34515a5 # v1
         with:
           serviceAccountJsonPlainText: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
@@ -252,7 +256,7 @@ jobs:
           releaseName: ${{ env.BUILD_NAME }}
 
       - name: Create GitHub Release (tag pushes only)
-        if: startsWith(github.ref, 'refs/tags/v')
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3
         with:
           files: |
@@ -262,7 +266,7 @@ jobs:
           fail_on_unmatched_files: true
 
       - name: Notify prod landing
-        if: success() && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v')) && steps.keystore.outputs.used_real == 'yes'
+        if: success() && github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v')) && steps.keystore.outputs.used_real == 'yes'
         # Best-effort: the Play Store upload above is the deliverable; a slow or
         # unreachable ntfy.sh must not turn the Release job red (#244).
         continue-on-error: true
@@ -289,3 +293,11 @@ jobs:
       - uses: actions/checkout@v4
       - name: Unit tests (system python3 + PyYAML, as the check uses)
         run: python3 -m unittest discover -s .github/unsafe-change
+
+  workflow-tests:
+    name: Workflow tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Release deploy gate (system python3 + PyYAML)
+        run: python3 -m unittest discover -s .github/workflow-tests
