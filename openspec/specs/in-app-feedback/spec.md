@@ -36,7 +36,22 @@ Submit SHALL be enabled only when the trimmed description is 10 to 500 character
 
 ### Requirement: Feedback is sent to the worker and signed
 
-Submitting SHALL send the type, description, screenshot, app version, OS and a human-readable device model to the configured feedback worker, timing out after 15 seconds. When a signing secret is configured at build time, each request SHALL carry a timestamp and an HMAC-SHA256 signature over the timestamp and the exact body. A created response SHALL count as success even if its body cannot be read; a bad-request, unauthorised or forbidden response SHALL be dropped for good; any other failure SHALL be retried later.
+Submitting SHALL send the type, description, screenshot, app version, OS and a human-readable device model to the configured feedback worker, timing out after 15 seconds. When a signing secret is configured at build time, each request SHALL carry a timestamp and an HMAC-SHA256 signature over the timestamp and the exact body.
+
+#### Scenario: Signed submission
+- GIVEN a signing secret configured at build time
+- WHEN feedback is submitted
+- THEN the type, description, screenshot, app version, OS and device model are sent to the configured feedback worker, timing out after 15 seconds
+- AND the request carries a timestamp and an HMAC-SHA256 signature over the timestamp and the exact body
+
+### Requirement: Worker responses decide success, drop or retry
+
+A created response SHALL count as success even if its body cannot be read; a bad-request, unauthorised or forbidden response SHALL be dropped for good; any other failure SHALL be retried later.
+
+#### Scenario: Created response
+- GIVEN the worker answers 201 with an unreadable body
+- WHEN feedback is submitted
+- THEN the submission counts as a success
 
 #### Scenario: Rejected signature
 - GIVEN the worker answers 401
