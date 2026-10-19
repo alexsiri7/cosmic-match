@@ -39,6 +39,26 @@ class FeedbackService {
 
   Future<Box> _openBox() => Hive.openBox(_boxName, encryptionCipher: _cipher);
 
+  Future<T?> _withBox<T>(
+    String opLabel,
+    Future<T> Function(Box box) action, {
+    bool logGenericAsError = false,
+  }) async {
+    try {
+      final box = await _openBox();
+      return await action(box);
+    } on HiveError catch (e, stack) {
+      gameLogger.e('FeedbackService.$opLabel: HiveError', error: e, stackTrace: stack);
+    } catch (e, stack) {
+      if (logGenericAsError) {
+        gameLogger.e('FeedbackService.$opLabel failed', error: e, stackTrace: stack);
+      } else {
+        gameLogger.w('FeedbackService.$opLabel failed', error: e, stackTrace: stack);
+      }
+    }
+    return null;
+  }
+
   /// Start listening for connectivity changes to flush queued feedback.
   void listenConnectivity() {
     _connectivitySub = Connectivity().onConnectivityChanged.listen(
@@ -140,37 +160,34 @@ class FeedbackService {
     _flushing = true;
     gameLogger.d('FeedbackService.flushQueue');
     try {
-      final box = await _openBox();
-      final keys = box.keys.toList();
-      for (final key in keys) {
-        // Per-item try/catch: a single bad row must not strand the rest of the queue.
-        try {
-          final raw = box.get(key);
-          if (raw == null || raw is! Map) {
-            await box.delete(key);
-            continue;
+      await _withBox('flushQueue', (box) async {
+        final keys = box.keys.toList();
+        for (final key in keys) {
+          // Per-item try/catch: a single bad row must not strand the rest of the queue.
+          try {
+            final raw = box.get(key);
+            if (raw == null || raw is! Map) {
+              await box.delete(key);
+              continue;
+            }
+            final map = Map<String, dynamic>.from(raw);
+            if (!_isValid(map)) {
+              gameLogger.w('FeedbackService.flushQueue: dropping invalid item key=$key');
+              await box.delete(key);
+              continue;
+            }
+            final item = PendingFeedback.fromMap(map);
+            final sent = await _postToWorker(item);
+            if (sent) {
+              await box.delete(key);
+            }
+          } catch (e, stack) {
+            gameLogger.w('FeedbackService.flushQueue: per-item error key=$key',
+                error: e, stackTrace: stack);
+            // Do not abort the loop — continue with the next key.
           }
-          final map = Map<String, dynamic>.from(raw);
-          if (!_isValid(map)) {
-            gameLogger.w('FeedbackService.flushQueue: dropping invalid item key=$key');
-            await box.delete(key);
-            continue;
-          }
-          final item = PendingFeedback.fromMap(map);
-          final sent = await _postToWorker(item);
-          if (sent) {
-            await box.delete(key);
-          }
-        } catch (e, stack) {
-          gameLogger.w('FeedbackService.flushQueue: per-item error key=$key',
-              error: e, stackTrace: stack);
-          // Do not abort the loop — continue with the next key.
         }
-      }
-    } on HiveError catch (e, stack) {
-      gameLogger.e('FeedbackService.flushQueue: HiveError', error: e, stackTrace: stack);
-    } catch (e, stack) {
-      gameLogger.e('FeedbackService.flushQueue failed', error: e, stackTrace: stack);
+      }, logGenericAsError: true);
     } finally {
       _flushing = false;
     }
@@ -256,25 +273,18 @@ class FeedbackService {
   /// Clear all queued feedback items.
   Future<bool> clearQueue() async {
     gameLogger.d('FeedbackService.clearQueue');
-    try {
-      final box = await _openBox();
+    final result = await _withBox<bool>('clearQueue', (box) async {
       await box.clear();
       gameLogger.i('FeedbackService.clearQueue: queue cleared');
       return true;
-    } on HiveError catch (e, stack) {
-      gameLogger.e('FeedbackService.clearQueue: HiveError', error: e, stackTrace: stack);
-      return false;
-    } catch (e, stack) {
-      gameLogger.w('FeedbackService.clearQueue failed', error: e, stackTrace: stack);
-      return false;
-    }
+    });
+    return result ?? false;
   }
 
   /// Remove items older than [ttlDays] or with invalid integrity.
   Future<void> expireOldItems(int ttlDays) async {
     gameLogger.d('FeedbackService.expireOldItems: ttlDays=$ttlDays');
-    try {
-      final box = await _openBox();
+    await _withBox('expireOldItems', (box) async {
       final cutoff = DateTime.now().subtract(Duration(days: ttlDays));
       final keysToDelete = <dynamic>[];
       for (final key in box.keys) {
@@ -299,32 +309,23 @@ class FeedbackService {
       if (keysToDelete.isNotEmpty) {
         gameLogger.i('FeedbackService.expireOldItems: deleted ${keysToDelete.length} item(s)');
       }
-    } on HiveError catch (e, stack) {
-      gameLogger.e('FeedbackService.expireOldItems: HiveError', error: e, stackTrace: stack);
-    } catch (e, stack) {
-      gameLogger.w('FeedbackService.expireOldItems failed', error: e, stackTrace: stack);
-    }
+    });
   }
 
   Future<void> _enqueue(PendingFeedback item) async {
-    if (_hmacKey == null) {
+    final hmacKey = _hmacKey;
+    if (hmacKey == null) {
       gameLogger.w('FeedbackService._enqueue: hmacKey unavailable — skipping persist for id=${item.id}');
       return;
     }
-    try {
-      final box = await _openBox();
-
+    await _withBox('_enqueue', (box) async {
       // Enforce max queue size — drop oldest if full
       while (box.length >= _maxQueueSize) {
         await box.deleteAt(0);
       }
 
-      await box.put(item.id, item.toMap(_hmacKey));
+      await box.put(item.id, item.toMap(hmacKey));
       gameLogger.d('FeedbackService: queued item ${item.id}');
-    } on HiveError catch (e, stack) {
-      gameLogger.e('FeedbackService._enqueue: HiveError', error: e, stackTrace: stack);
-    } catch (e, stack) {
-      gameLogger.e('FeedbackService._enqueue failed', error: e, stackTrace: stack);
-    }
+    }, logGenericAsError: true);
   }
 }
