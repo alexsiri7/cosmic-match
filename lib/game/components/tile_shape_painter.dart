@@ -2,9 +2,6 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import '../../models/tile_type.dart';
 
-// All tile painters below are immutable — they capture [color] at construction
-// time and never change it, so shouldRepaint always returns false. If a painter
-// ever gains mutable state (e.g. animation progress), update shouldRepaint accordingly.
 /// Returns the appropriate tile painter for [type].
 CustomPainter tilePainterFor(TileType type, Color color) => switch (type) {
   TileType.red    => MarsPainter(color),
@@ -15,10 +12,19 @@ CustomPainter tilePainterFor(TileType type, Color color) => switch (type) {
   TileType.orange => CometPainter(color),
 };
 
-/// Mars — filled circle with radial gradient + 2 crater dots.
-class MarsPainter extends CustomPainter {
+/// Base class for tile painters — immutable [color] captured at construction
+/// time and never changed, so [shouldRepaint] always returns false.
+abstract class ColorPainter extends CustomPainter {
   final Color color;
-  MarsPainter(this.color);
+  const ColorPainter(this.color);
+
+  @override
+  bool shouldRepaint(covariant ColorPainter oldDelegate) => false;
+}
+
+/// Mars — filled circle with radial gradient + 2 crater dots.
+class MarsPainter extends ColorPainter {
+  MarsPainter(super.color);
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -40,15 +46,11 @@ class MarsPainter extends CustomPainter {
     canvas.drawCircle(center + Offset(-r * 0.25, -r * 0.1), r * 0.08,
         Paint()..color = Colors.black.withValues(alpha: 0.15));
   }
-
-  @override
-  bool shouldRepaint(covariant MarsPainter old) => false;
 }
 
 /// Neptune — planet body + elliptical ring.
-class NeptunePainter extends CustomPainter {
-  final Color color;
-  NeptunePainter(this.color);
+class NeptunePainter extends ColorPainter {
+  NeptunePainter(super.color);
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -86,15 +88,11 @@ class NeptunePainter extends CustomPainter {
     final ovalRect = Rect.fromCenter(center: center, width: r * 3.4, height: r * 0.84);
     canvas.drawArc(ovalRect, 0, pi, false, frontRingPaint);
   }
-
-  @override
-  bool shouldRepaint(covariant NeptunePainter old) => false;
 }
 
 /// Sol — 4-point star polygon with center glow.
-class SolPainter extends CustomPainter {
-  final Color color;
-  SolPainter(this.color);
+class SolPainter extends ColorPainter {
+  SolPainter(super.color);
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -129,15 +127,11 @@ class SolPainter extends CustomPainter {
     canvas.drawCircle(Offset(cx, cy), s * 0.07,
         Paint()..color = Colors.white.withValues(alpha: 0.85));
   }
-
-  @override
-  bool shouldRepaint(covariant SolPainter old) => false;
 }
 
 /// Nebula — rounded lozenge with cloud wisps.
-class NebulaPainter extends CustomPainter {
-  final Color color;
-  NebulaPainter(this.color);
+class NebulaPainter extends ColorPainter {
+  NebulaPainter(super.color);
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -169,15 +163,11 @@ class NebulaPainter extends CustomPainter {
       Paint()..color = Colors.white.withValues(alpha: 0.22),
     );
   }
-
-  @override
-  bool shouldRepaint(covariant NebulaPainter old) => false;
 }
 
 /// Luna — crescent via circle-minus-circle mask.
-class LunaPainter extends CustomPainter {
-  final Color color;
-  LunaPainter(this.color);
+class LunaPainter extends ColorPainter {
+  LunaPainter(super.color);
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -203,15 +193,11 @@ class LunaPainter extends CustomPainter {
       ..shader = gradient.createShader(Rect.fromCircle(center: Offset(cx, cy), radius: r));
     canvas.drawPath(crescent, paint);
   }
-
-  @override
-  bool shouldRepaint(covariant LunaPainter old) => false;
 }
 
 /// Comet — circular head with radial gradient + dual quadratic bezier tails.
-class CometPainter extends CustomPainter {
-  final Color color;
-  CometPainter(this.color);
+class CometPainter extends ColorPainter {
+  CometPainter(super.color);
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -252,7 +238,4 @@ class CometPainter extends CustomPainter {
       );
     canvas.drawCircle(headCenter, s * 0.22, headPaint);
   }
-
-  @override
-  bool shouldRepaint(covariant CometPainter old) => false;
 }
