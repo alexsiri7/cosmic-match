@@ -69,6 +69,12 @@ class GridTile extends RectangleComponent
 
   Match3Game? _match3Game() => findGame() as Match3Game?;
 
+  Match3Game? _idleGame() {
+    final game = _match3Game();
+    if (game == null || game.phase != GamePhase.idle) return null;
+    return game;
+  }
+
   void select() => _selected = true;
   void deselect() => _selected = false;
 
@@ -92,8 +98,8 @@ class GridTile extends RectangleComponent
   @override
   void onTapDown(TapDownEvent event) {
     // INPUT GATE — drop all taps except when idle
-    final game = _match3Game();
-    if (game == null || game.phase != GamePhase.idle) return;
+    final game = _idleGame();
+    if (game == null) return;
 
     game.onTileTap(this);
     event.handled = true;
@@ -128,8 +134,8 @@ class GridTile extends RectangleComponent
   @override
   void onDragStart(DragStartEvent event) {
     super.onDragStart(event);
-    final game = _match3Game();
-    if (game == null || game.phase != GamePhase.idle) return;
+    final game = _idleGame();
+    if (game == null) return;
 
     _dragging = true;
     _dragOriginPosition = position.clone();
