@@ -2,6 +2,7 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../game/theme/app_theme.dart';
+import '../widgets/frosted_card.dart';
 import '../widgets/star_row.dart';
 
 class ModalShell extends StatelessWidget {
@@ -88,14 +89,9 @@ class LevelCompleteModal extends StatelessWidget {
           ),
           const SizedBox(height: 24),
           // Score card
-          Container(
-            width: double.infinity,
+          FrostedCard(
             padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.06),
-              border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
-              borderRadius: BorderRadius.circular(12),
-            ),
+            borderRadius: 12,
             child: Column(
               children: [
                 Row(

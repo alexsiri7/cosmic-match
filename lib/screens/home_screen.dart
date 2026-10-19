@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../game/theme/app_theme.dart';
+import '../widgets/frosted_card.dart';
 import '../widgets/star_row.dart';
 
 class HomeScreen extends StatelessWidget {
@@ -150,14 +151,9 @@ class HomeScreen extends StatelessWidget {
   }
 
   Widget _buildResumeCard() {
-    return Container(
-      width: double.infinity,
+    return FrostedCard(
       padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.06),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
-        borderRadius: BorderRadius.circular(16),
-      ),
+      borderRadius: 16,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
