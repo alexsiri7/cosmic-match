@@ -55,6 +55,18 @@ void main() {
       expect(isValidHmac(raw, canonicalize: canonicalizeMap, key: testKey), isFalse);
     });
 
+    test('returns false when hmac value is not a string', () {
+      final raw = {'level': 1, 'hmac': 42};
+      expect(isValidHmac(raw, canonicalize: canonicalizeMap, key: testKey), isFalse);
+    });
+
+    for (final value in [DateTime(2020, 1, 1), double.nan, double.infinity]) {
+      test('returns false instead of throwing for a non-JSON value ($value)', () {
+        final raw = {'level': value, 'hmac': 'bogus'};
+        expect(isValidHmac(raw, canonicalize: canonicalizeMap, key: testKey), isFalse);
+      });
+    }
+
     test('returns false when stored hmac differs only in its last character', () {
       final data = {'level': 1};
       final hmac = computeHmac(canonicalizeMap(data), testKey);

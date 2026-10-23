@@ -1050,6 +1050,34 @@ void main() {
           reason: 'tampered item should be dropped, not sent to worker');
     });
 
+    test('drops items whose tampered field JSON cannot encode on flush', () async {
+      final box = await Hive.openBox('feedback_worker_queue', encryptionCipher: _testCipher);
+      final item = PendingFeedback(
+        id: 'tampered-date',
+        type: 'bug',
+        message: 'original',
+        screenshotB64: '',
+        appVersion: '1.0.0+1',
+        os: 'android',
+        device: 'test',
+        createdAt: DateTime(2025, 1, 1),
+      );
+      final map = item.toMap(_testKey);
+      map['message'] = DateTime(2020, 1, 1);
+      await box.put(item.id, map);
+
+      final client = MockClient((_) async => http.Response('{"url":"x"}', 201));
+      final service = FeedbackService(
+        workerUrl: 'https://example.com/',
+        httpClient: client,
+        cipher: _testCipher,
+        hmacKey: _testKey,
+      );
+
+      await service.flushQueue();
+      expect(box.length, 0);
+    });
+
     test('drops items missing HMAC on flush (CLAUDE.md persistence contract)', () async {
       final box = await Hive.openBox('feedback_worker_queue', encryptionCipher: _testCipher);
       // Legacy/tampered row without an `hmac` key.
@@ -1399,6 +1427,45 @@ void main() {
       final map = fresh.toMap(_testKey);
       map['message'] = 'tampered';
       await box.put(fresh.id, map);
+
+      final service = FeedbackService(
+        workerUrl: 'https://example.com/',
+        httpClient: neverCalled,
+        cipher: _testCipher,
+        hmacKey: _testKey,
+      );
+
+      await service.expireOldItems(kFeedbackQueueTtlDays);
+
+      expect(box.length, 0);
+    });
+
+    test('a tampered field JSON cannot encode does not abort the sweep', () async {
+      final box = await Hive.openBox('feedback_worker_queue', encryptionCipher: _testCipher);
+      final fresh = PendingFeedback(
+        id: 'fresh',
+        type: 'bug',
+        message: 'recent item',
+        screenshotB64: '',
+        appVersion: '1.0.0+1',
+        os: 'android',
+        device: 'test',
+        createdAt: DateTime.now().subtract(const Duration(days: 1)),
+      );
+      final old = PendingFeedback(
+        id: 'old',
+        type: 'bug',
+        message: 'stale item',
+        screenshotB64: '',
+        appVersion: '1.0.0+1',
+        os: 'android',
+        device: 'test',
+        createdAt: DateTime.now().subtract(const Duration(days: kFeedbackQueueTtlDays + 1)),
+      );
+      final map = fresh.toMap(_testKey);
+      map['message'] = DateTime(2020, 1, 1);
+      await box.put(fresh.id, map);
+      await box.put(old.id, old.toMap(_testKey));
 
       final service = FeedbackService(
         workerUrl: 'https://example.com/',
