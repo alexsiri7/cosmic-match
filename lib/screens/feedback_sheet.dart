@@ -15,9 +15,10 @@ import '../models/feedback_result.dart';
 /// called with the selected type, description, and annotated screenshot.
 /// When the report was sent or queued for later, the sheet is dismissed and a
 /// SnackBar says which (with an action to copy the issue link when the filed
-/// issue's number is known). When it was rate-limited or not sent, the sheet
-/// stays open with the description kept, a SnackBar says why, and the
-/// cooldown is refreshed.
+/// issue's number is known). When it was rate-limited, not sent, or the
+/// submit failed, the sheet stays open with the description kept and says why
+/// above the Submit button; a rate-limited or not-sent result also refreshes
+/// the cooldown.
 Future<void> showFeedbackSheet(
   BuildContext context, {
   required Uint8List screenshotBytes,
@@ -69,6 +70,7 @@ class _FeedbackSheetState extends State<_FeedbackSheet> {
   bool _drawMode = true;
   bool _privacyAccepted = false;
   bool _policyLinkCopied = false;
+  String? _submitError;
   Offset _imageOffset = Offset.zero;
   // Updated by LayoutBuilder on each build; read by `_renderAnnotatedScreenshot()`
   // to scale annotation coordinates from preview space to image space.
@@ -121,9 +123,14 @@ class _FeedbackSheetState extends State<_FeedbackSheet> {
 
   Future<void> _handleSubmit() async {
     if (!_canSubmit) return;
-    setState(() => _submitting = true);
+    setState(() {
+      _submitting = true;
+      _submitError = null;
+    });
     // Captured before the sheet pops so the confirmation lands on the page
-    // underneath rather than on the dismissed sheet.
+    // underneath rather than on the dismissed sheet. Outcomes that keep the
+    // sheet open are shown in the sheet itself, since the modal route covers
+    // the page's SnackBars.
     final messenger = ScaffoldMessenger.of(context);
 
     try {
@@ -160,21 +167,24 @@ class _FeedbackSheetState extends State<_FeedbackSheet> {
             ),
           );
         case FeedbackOutcome.rateLimited:
-          _showMessage(
-            messenger,
+          _showSubmitError(
             'Too many reports — please wait before sending again.',
           );
           await _initCooldown();
         case FeedbackOutcome.notSent:
-          _showMessage(messenger, "Feedback couldn't be sent.");
+          _showSubmitError("Feedback couldn't be sent.");
           await _initCooldown();
       }
     } catch (e, stack) {
       gameLogger.e('FeedbackSheet: submit failed', error: e, stackTrace: stack);
-      if (mounted) _showMessage(messenger, 'Failed to send feedback.');
+      _showSubmitError('Failed to send feedback.');
     } finally {
       if (mounted) setState(() => _submitting = false);
     }
+  }
+
+  void _showSubmitError(String text) {
+    if (mounted) setState(() => _submitError = text);
   }
 
   void _showMessage(ScaffoldMessengerState messenger, String text) {
@@ -467,6 +477,20 @@ class _FeedbackSheetState extends State<_FeedbackSheet> {
                     ],
                   ),
                 ),
+                if (_submitError case final error?)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: Center(
+                      child: Text(
+                        error,
+                        textAlign: TextAlign.center,
+                        style: GoogleFonts.ibmPlexMono(
+                          fontSize: 12,
+                          color: Colors.redAccent,
+                        ),
+                      ),
+                    ),
+                  ),
                 // Cooldown countdown
                 if (_cooldownSeconds > 0)
                   Padding(

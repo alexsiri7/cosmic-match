@@ -430,7 +430,7 @@ void main() {
         }) async =>
             (outcome: outcome, issueNumber: null);
 
-    testWidgets('failed submit shows SnackBar and re-enables button',
+    testWidgets('failed submit shows the error in the sheet and re-enables button',
         (tester) async {
       await openSheet(
         tester,
@@ -445,8 +445,7 @@ void main() {
 
       await fillAndSubmit(tester);
 
-      // SnackBar should appear with error message
-      expect(find.text('Failed to send feedback.'), findsOneWidget);
+      expect(find.text('Failed to send feedback.').hitTestable(), findsOneWidget);
 
       // Submit button should be re-enabled (sheet still visible)
       expect(find.text('SEND FEEDBACK'), findsOneWidget);
@@ -491,7 +490,9 @@ void main() {
         'the board froze mid-cascade',
       );
       expect(
-        find.text('Too many reports — please wait before sending again.'),
+        find
+            .text('Too many reports — please wait before sending again.')
+            .hitTestable(),
         findsOneWidget,
       );
       expect(find.text('Try again in 20 seconds'), findsOneWidget);
@@ -508,7 +509,10 @@ void main() {
       await fillAndSubmit(tester);
 
       expect(find.text('SEND FEEDBACK'), findsOneWidget);
-      expect(find.text("Feedback couldn't be sent."), findsOneWidget);
+      expect(
+        find.text("Feedback couldn't be sent.").hitTestable(),
+        findsOneWidget,
+      );
     });
 
     testWidgets('shows privacy policy URL', (tester) async {
