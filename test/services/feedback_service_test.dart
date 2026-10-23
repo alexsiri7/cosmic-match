@@ -8,6 +8,7 @@ import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:cosmic_match/core/constants.dart';
 import 'package:cosmic_match/core/crc_integrity.dart';
+import 'package:cosmic_match/models/feedback_result.dart';
 import 'package:cosmic_match/models/pending_feedback.dart';
 import 'package:cosmic_match/services/feedback_service.dart';
 import 'package:cosmic_match/services/rate_limit_service.dart';
@@ -191,7 +192,7 @@ void main() {
         httpClient: client,
       );
 
-      final issueNumber = await service.submit(
+      final result = await service.submit(
         type: 'bug',
         message: 'test message',
         screenshotB64: '',
@@ -200,7 +201,8 @@ void main() {
         device: 'Pixel',
       );
 
-      expect(issueNumber, 42);
+      expect(result.outcome, FeedbackOutcome.sent);
+      expect(result.issueNumber, 42);
       final box = await Hive.openBox('feedback_worker_queue');
       expect(box.length, 0);
     });
@@ -212,7 +214,7 @@ void main() {
         httpClient: client,
       );
 
-      final issueNumber = await service.submit(
+      final result = await service.submit(
         type: 'bug',
         message: 'test message',
         screenshotB64: '',
@@ -221,7 +223,9 @@ void main() {
         device: 'Pixel',
       );
 
-      expect(issueNumber, isNull, reason: 'url is outside the feedback repo');
+      expect(result.outcome, FeedbackOutcome.sent);
+      expect(result.issueNumber, isNull,
+          reason: 'url is outside the feedback repo');
       final box = await Hive.openBox('feedback_worker_queue');
       expect(box.length, 0);
     });
@@ -298,7 +302,7 @@ void main() {
         hmacKey: _testKey,
       );
 
-      final issueNumber = await service.submit(
+      final result = await service.submit(
         type: 'bug',
         message: 'offline test',
         screenshotB64: '',
@@ -307,7 +311,7 @@ void main() {
         device: 'Pixel',
       );
 
-      expect(issueNumber, isNull);
+      expect(result.outcome, FeedbackOutcome.queued);
       final box = await Hive.openBox('feedback_worker_queue', encryptionCipher: _testCipher);
       expect(box.length, 1);
     });
@@ -319,7 +323,7 @@ void main() {
         httpClient: client,
       );
 
-      await service.submit(
+      final result = await service.submit(
         type: 'bug',
         message: 'test message',
         screenshotB64: '',
@@ -328,14 +332,43 @@ void main() {
         device: 'test',
       );
 
+      expect(result.outcome, FeedbackOutcome.notSent);
       final box = await Hive.openBox('feedback_worker_queue');
       expect(box.length, 0); // dropped, not queued
     });
 
+    for (final status in [401, 403]) {
+      test('does not retry on $status response (auth failure)', () async {
+        final client = MockClient((_) async => http.Response('', status));
+        final service = FeedbackService(
+          workerUrl: 'https://example.com/feedback',
+          httpClient: client,
+          cipher: _testCipher,
+          hmacKey: _testKey,
+        );
+
+        final result = await service.submit(
+          type: 'bug',
+          message: 'test message',
+          screenshotB64: '',
+          appVersion: '1.0.0+1',
+          os: 'android',
+          device: 'test',
+        );
+
+        expect(result.outcome, FeedbackOutcome.notSent);
+        final box = await Hive.openBox(
+          'feedback_worker_queue',
+          encryptionCipher: _testCipher,
+        );
+        expect(box.length, 0);
+      });
+    }
+
     test('returns early without enqueue when workerUrl is empty', () async {
       final service = FeedbackService(workerUrl: '');
 
-      await service.submit(
+      final result = await service.submit(
         type: 'bug',
         message: 'test message',
         screenshotB64: '',
@@ -344,6 +377,7 @@ void main() {
         device: 'Pixel',
       );
 
+      expect(result.outcome, FeedbackOutcome.notSent);
       final box = await Hive.openBox('feedback_worker_queue');
       expect(box.length, 0);
     });
@@ -402,7 +436,7 @@ void main() {
         rateLimitService: RateLimitService(testStorage: storage),
       );
 
-      await service.submit(
+      final result = await service.submit(
         type: 'bug',
         message: 'too short', // 9 chars after trim
         screenshotB64: '',
@@ -411,6 +445,7 @@ void main() {
         device: 'Pixel',
       );
 
+      expect(result.outcome, FeedbackOutcome.notSent);
       expect(posted, isFalse);
       expect(storage, isEmpty, reason: 'a rejected message must not use a rate-limit slot');
       final box = await Hive.openBox('feedback_worker_queue');
@@ -431,7 +466,7 @@ void main() {
         httpClient: client,
       );
 
-      await service.submit(
+      final result = await service.submit(
         type: 'bug',
         message: '          ', // 10 spaces — trims to 0
         screenshotB64: '',
@@ -440,6 +475,7 @@ void main() {
         device: 'Pixel',
       );
 
+      expect(result.outcome, FeedbackOutcome.notSent);
       expect(posted, isFalse);
       final box = await Hive.openBox('feedback_worker_queue');
       expect(box.length, 0);
@@ -494,7 +530,7 @@ void main() {
             RateLimitService(testStorage: storage, now: () => fixedNow),
       );
 
-      await service.submit(
+      final result = await service.submit(
         type: 'bug',
         message: 'rate limit test message',
         screenshotB64: '',
@@ -503,6 +539,7 @@ void main() {
         device: 'Pixel',
       );
 
+      expect(result.outcome, FeedbackOutcome.rateLimited);
       expect(posted, isFalse, reason: 'should not POST when rate-limited');
       final box = await Hive.openBox('feedback_worker_queue');
       expect(box.length, 0, reason: 'should not enqueue when rate-limited');
@@ -620,7 +657,7 @@ void main() {
         hmacKey: _testKey,
         cipher: _testCipher,
       );
-      await service.submit(
+      final result = await service.submit(
         type: 'bug',
         message: 'x' * (kMaxFeedbackMessageLength + 1),
         screenshotB64: '',
@@ -628,6 +665,7 @@ void main() {
         os: 'android',
         device: 'Pixel',
       );
+      expect(result.outcome, FeedbackOutcome.notSent);
       expect(capturedRequests, isEmpty,
           reason: 'oversized message must be rejected without making a network call');
     });
@@ -1643,7 +1681,7 @@ void main() {
         httpClient: client,
         // hmacKey: null — simulates storage failure
       );
-      await service.submit(
+      final result = await service.submit(
         type: 'bug',
         message: 'test message for null key path',
         screenshotB64: '',
@@ -1652,6 +1690,8 @@ void main() {
         device: 'test',
       );
 
+      expect(result.outcome, FeedbackOutcome.notSent,
+          reason: 'nothing was stored, so it must not be reported as queued');
       final box = await Hive.openBox('feedback_worker_queue');
       expect(box.length, 0,
           reason: '_enqueue must skip write when hmacKey is null');

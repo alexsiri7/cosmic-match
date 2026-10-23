@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -7,6 +9,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:cosmic_match/core/constants.dart';
 import 'package:cosmic_match/game/match3_game.dart';
 import 'package:cosmic_match/main.dart';
+import 'package:cosmic_match/models/feedback_result.dart';
 import 'package:cosmic_match/screens/feedback_sheet.dart';
 import 'package:cosmic_match/services/feedback_service.dart';
 import 'package:cosmic_match/services/progress_service.dart';
@@ -162,7 +165,7 @@ void main() {
                 context,
                 screenshotBytes: kTransparentPng,
                 checkCooldown: () async => 15, // 15 seconds remaining
-                onSubmit: ({required type, required message, required screenshotB64}) async => null,
+                onSubmit: ({required type, required message, required screenshotB64}) async => _sentResult,
               ),
               child: const Text('open'),
             );
@@ -200,7 +203,7 @@ void main() {
                 context,
                 screenshotBytes: kTransparentPng,
                 checkCooldown: () async => 0,
-                onSubmit: ({required type, required message, required screenshotB64}) async => null,
+                onSubmit: ({required type, required message, required screenshotB64}) async => _sentResult,
               ),
               child: const Text('open'),
             );
@@ -234,7 +237,7 @@ void main() {
               onPressed: () => showFeedbackSheet(
                 context,
                 screenshotBytes: kTransparentPng,
-                onSubmit: ({required type, required message, required screenshotB64}) async => null,
+                onSubmit: ({required type, required message, required screenshotB64}) async => _sentResult,
               ),
               child: const Text('open'),
             );
@@ -260,7 +263,7 @@ void main() {
               onPressed: () => showFeedbackSheet(
                 context,
                 screenshotBytes: kTransparentPng,
-                onSubmit: ({required type, required message, required screenshotB64}) async => null,
+                onSubmit: ({required type, required message, required screenshotB64}) async => _sentResult,
               ),
               child: const Text('open'),
             );
@@ -298,7 +301,7 @@ void main() {
               onPressed: () => showFeedbackSheet(
                 context,
                 screenshotBytes: kTransparentPng,
-                onSubmit: ({required type, required message, required screenshotB64}) async => null,
+                onSubmit: ({required type, required message, required screenshotB64}) async => _sentResult,
               ),
               child: const Text('open'),
             );
@@ -327,7 +330,7 @@ void main() {
               onPressed: () => showFeedbackSheet(
                 context,
                 screenshotBytes: kTransparentPng,
-                onSubmit: ({required type, required message, required screenshotB64}) async => null,
+                onSubmit: ({required type, required message, required screenshotB64}) async => _sentResult,
               ),
               child: const Text('open'),
             );
@@ -352,11 +355,12 @@ void main() {
   group('FeedbackSheet submit', () {
     Future<void> openSheet(
       WidgetTester tester, {
-      required Future<int?> Function({
+      required Future<FeedbackResult> Function({
         required String type,
         required String message,
         required String screenshotB64,
       }) onSubmit,
+      Future<int> Function() checkCooldown = _noCooldown,
     }) async {
       tester.view.physicalSize = const Size(1080, 2400);
       tester.view.devicePixelRatio = 1.0;
@@ -369,9 +373,9 @@ void main() {
             builder: (context) => ElevatedButton(
               onPressed: () => showFeedbackSheet(
                 context,
-                screenshotBytes: kTransparentPng,
+                screenshotBytes: _decodablePng,
                 onSubmit: onSubmit,
-                checkCooldown: () async => 0,
+                checkCooldown: checkCooldown,
               ),
               child: const Text('Open'),
             ),
@@ -383,33 +387,24 @@ void main() {
       await tester.pumpAndSettle();
     }
 
-    testWidgets('failed submit shows SnackBar and re-enables button',
-        (tester) async {
-      await openSheet(
-        tester,
-        onSubmit: ({
-          required String type,
-          required String message,
-          required String screenshotB64,
-        }) async {
-          throw Exception('Network error');
-        },
-      );
-
-      // Fill form
+    Future<void> fillAndSubmit(WidgetTester tester, {String? text}) async {
       await tester.tap(find.byType(Checkbox));
       await tester.pump();
       await tester.enterText(
         find.byType(TextField),
-        'A' * kMinFeedbackMessageLength,
+        text ?? 'A' * kMinFeedbackMessageLength,
       );
       await tester.pump();
 
-      // Tap Submit, then use runAsync to let the dart:ui image codec
-      // future settle (it fails, which triggers the catch block).
+      // Tap Submit, then alternate real-async waits (for each dart:ui render
+      // step) with pumps (to run its continuation in the test zone) until the
+      // submit callback has settled.
       await tester.tap(find.text('Submit'));
-      await tester.runAsync(
-          () => Future<void>.delayed(const Duration(seconds: 1)));
+      for (var i = 0; i < 10; i++) {
+        await tester.runAsync(
+            () => Future<void>.delayed(const Duration(milliseconds: 50)));
+        await tester.pump();
+      }
       // Consume only known test-infrastructure exceptions (image codec / font
       // loading) that fire during runAsync in the test backend. Re-throw
       // anything unexpected so real regressions surface immediately.
@@ -424,12 +419,35 @@ void main() {
         }
       }
       await tester.pump();
+    }
 
-      // SnackBar should appear with error message
-      expect(
-        find.text('Failed to send feedback — will retry when online.'),
-        findsOneWidget,
+    Future<FeedbackResult> Function({
+      required String type,
+      required String message,
+      required String screenshotB64,
+    }) answering(FeedbackOutcome outcome) => ({
+          required String type,
+          required String message,
+          required String screenshotB64,
+        }) async =>
+            (outcome: outcome, issueNumber: null);
+
+    testWidgets('failed submit shows the error in the sheet and re-enables button',
+        (tester) async {
+      await openSheet(
+        tester,
+        onSubmit: ({
+          required String type,
+          required String message,
+          required String screenshotB64,
+        }) async {
+          throw Exception('Network error');
+        },
       );
+
+      await fillAndSubmit(tester);
+
+      expect(find.text('Failed to send feedback.').hitTestable(), findsOneWidget);
 
       // Submit button should be re-enabled (sheet still visible)
       expect(find.text('SEND FEEDBACK'), findsOneWidget);
@@ -438,6 +456,111 @@ void main() {
       );
       expect(submitButton.onPressed, isNotNull);
     });
+
+    testWidgets('queued submit closes the sheet and says it will send later',
+        (tester) async {
+      await openSheet(tester, onSubmit: answering(FeedbackOutcome.queued));
+
+      await fillAndSubmit(tester);
+      await tester.pumpAndSettle();
+
+      expect(find.text('SEND FEEDBACK'), findsNothing);
+      expect(
+        find.textContaining(
+          "Couldn't reach the server — your feedback will be sent "
+          'automatically later.',
+        ),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets(
+        'rate-limited submit keeps the sheet and text and shows the countdown',
+        (tester) async {
+      var cooldownChecks = 0;
+      await openSheet(
+        tester,
+        onSubmit: answering(FeedbackOutcome.rateLimited),
+        checkCooldown: () async => cooldownChecks++ == 0 ? 0 : 20,
+      );
+
+      await fillAndSubmit(tester, text: 'the board froze mid-cascade');
+
+      expect(find.text('SEND FEEDBACK'), findsOneWidget);
+      expect(
+        tester.widget<TextField>(find.byType(TextField)).controller!.text,
+        'the board froze mid-cascade',
+      );
+      expect(
+        find
+            .text('Too many reports — please wait before sending again.')
+            .hitTestable(),
+        findsOneWidget,
+      );
+      expect(find.text('Try again in 20 seconds'), findsOneWidget);
+      final submitButton = tester.widget<ElevatedButton>(
+        find.widgetWithText(ElevatedButton, 'Submit'),
+      );
+      expect(submitButton.onPressed, isNull);
+    });
+
+    testWidgets('not-sent submit keeps the sheet open and says so',
+        (tester) async {
+      await openSheet(tester, onSubmit: answering(FeedbackOutcome.notSent));
+
+      await fillAndSubmit(tester);
+
+      expect(find.text('SEND FEEDBACK'), findsOneWidget);
+      expect(
+        find.text("Feedback couldn't be sent.").hitTestable(),
+        findsOneWidget,
+      );
+    });
+
+    for (final (label, outcome, text) in [
+      (
+        'rate-limited',
+        FeedbackOutcome.rateLimited,
+        'Too many reports — please wait before sending again.',
+      ),
+      ('not-sent', FeedbackOutcome.notSent, "Feedback couldn't be sent."),
+      ('failed', null, 'Failed to send feedback.'),
+    ]) {
+      testWidgets(
+          '$label submit resolving after the sheet is dismissed still tells '
+          'the player', (tester) async {
+        final pending = Completer<FeedbackResult>();
+        var submitted = false;
+        await openSheet(
+          tester,
+          onSubmit: ({
+            required String type,
+            required String message,
+            required String screenshotB64,
+          }) {
+            submitted = true;
+            return pending.future;
+          },
+        );
+
+        await fillAndSubmit(tester);
+        expect(submitted, isTrue);
+        await tester.tapAt(const Offset(10, 10));
+        await tester.pumpAndSettle();
+        expect(find.text('SEND FEEDBACK'), findsNothing);
+
+        if (outcome == null) {
+          pending.completeError(Exception('Network error'));
+        } else {
+          pending.complete((outcome: outcome, issueNumber: null));
+        }
+        await tester.runAsync(
+            () => Future<void>.delayed(const Duration(milliseconds: 50)));
+        await tester.pump();
+
+        expect(find.text(text), findsOneWidget);
+      });
+    }
 
     testWidgets('shows privacy policy URL', (tester) async {
       await openSheet(tester, onSubmit: _noSubmit);
@@ -473,9 +596,25 @@ void main() {
   });
 }
 
-Future<int?> _noSubmit({
+const FeedbackResult _sentResult =
+    (outcome: FeedbackOutcome.sent, issueNumber: null);
+
+Future<FeedbackResult> _noSubmit({
   required String type,
   required String message,
   required String screenshotB64,
 }) async =>
-    null;
+    _sentResult;
+
+Future<int> _noCooldown() async => 0;
+
+// A valid 1×1 transparent PNG, so the sheet's screenshot render succeeds and
+// submit reaches `onSubmit`.
+final _decodablePng = Uint8List.fromList([
+  0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0x00, 0x00, 0x00, 0x0D, //
+  0x49, 0x48, 0x44, 0x52, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01,
+  0x08, 0x06, 0x00, 0x00, 0x00, 0x1F, 0x15, 0xC4, 0x89, 0x00, 0x00, 0x00,
+  0x0B, 0x49, 0x44, 0x41, 0x54, 0x78, 0x9C, 0x63, 0x60, 0x00, 0x02, 0x00,
+  0x00, 0x05, 0x00, 0x01, 0x7A, 0x5E, 0xAB, 0x3F, 0x00, 0x00, 0x00, 0x00,
+  0x49, 0x45, 0x4E, 0x44, 0xAE, 0x42, 0x60, 0x82,
+]);

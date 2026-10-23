@@ -162,6 +162,20 @@ void main() {
       expect(secs, 25);
     });
 
+    test(
+        'remainingCooldownSeconds returns the time until the hourly window '
+        'resets when capped', () async {
+      storage['feedback_hour_window'] = jsonEncode({
+        'count': kFeedbackMaxPerHour,
+        'windowStart': fixedNow
+            .subtract(const Duration(minutes: 20))
+            .toIso8601String(),
+      });
+
+      final secs = await service.remainingCooldownSeconds();
+      expect(secs, 2400);
+    });
+
     test('checkStatus fails open when storage read throws', () async {
       final throwingService =
           RateLimitService(testStorage: ThrowingStorage(), now: () => fixedNow);

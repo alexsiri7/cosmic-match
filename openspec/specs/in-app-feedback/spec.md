@@ -46,7 +46,7 @@ Submitting SHALL send the type, description, screenshot, app version, OS and a h
 
 ### Requirement: Worker responses decide success, drop or retry
 
-A created response SHALL count as success even if its body cannot be read; a bad-request, unauthorised or forbidden response SHALL be dropped for good; any other failure SHALL be retried later. On an immediate created response whose body links an issue in the feedback repository, the player SHALL be shown the issue number.
+A created response SHALL count as success even if its body cannot be read; a bad-request, unauthorised or forbidden response SHALL be dropped for good; any other failure SHALL be retried later. On an immediate created response whose body links an issue in the feedback repository, the player SHALL be shown the issue number. The sheet SHALL tell the player whether the report was sent, queued to be sent later, or not sent; when it was not sent, the sheet SHALL stay open with the description kept.
 
 #### Scenario: Created response
 - GIVEN the worker answers 201 with an unreadable body
@@ -67,6 +67,11 @@ A created response SHALL count as success even if its body cannot be read; a bad
 - GIVEN the worker answers 503
 - WHEN feedback is submitted
 - THEN the report is queued for retry
+
+#### Scenario: Report not delivered
+- GIVEN the worker answers 503
+- WHEN feedback is submitted from the sheet
+- THEN the player is told it will be sent later
 
 ### Requirement: Unsent feedback waits offline, briefly
 
@@ -91,6 +96,11 @@ The system SHALL block a submission within 30 seconds of the previous one, and a
 - GIVEN five reports sent in the last 40 minutes
 - WHEN the player tries to send another
 - THEN it is blocked until the hour window allows it
+
+#### Scenario: Blocked submission keeps the report
+- GIVEN a cooldown or hourly cap is active when Submit is tapped
+- WHEN the limiter refuses
+- THEN the sheet stays open with the description kept and the countdown shown
 
 #### Scenario: Storage fault
 - GIVEN the rate-limit storage throws

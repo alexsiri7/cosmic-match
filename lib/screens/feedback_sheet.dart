@@ -9,16 +9,21 @@ import 'package:google_fonts/google_fonts.dart';
 import '../core/constants.dart';
 import '../core/logger.dart';
 import '../game/theme/app_theme.dart';
+import '../models/feedback_result.dart';
 
 /// Shows the feedback bottom sheet. When the user taps Submit, [onSubmit] is
 /// called with the selected type, description, and annotated screenshot.
-/// On success the sheet is dismissed and, when [onSubmit] returns the filed
-/// issue's number, a SnackBar shows it with an action to copy the issue link;
-/// on failure a SnackBar is shown.
+/// When the report was sent or queued for later, the sheet is dismissed and a
+/// SnackBar says which (with an action to copy the issue link when the filed
+/// issue's number is known). When it was rate-limited, not sent, or the
+/// submit failed, the sheet stays open with the description kept and says why
+/// above the Submit button (in a SnackBar instead if the player dismissed the
+/// sheet while waiting); a rate-limited or not-sent result also refreshes the
+/// cooldown.
 Future<void> showFeedbackSheet(
   BuildContext context, {
   required Uint8List screenshotBytes,
-  required Future<int?> Function({
+  required Future<FeedbackResult> Function({
     required String type,
     required String message,
     required String screenshotB64,
@@ -39,7 +44,7 @@ Future<void> showFeedbackSheet(
 
 class _FeedbackSheet extends StatefulWidget {
   final Uint8List screenshotBytes;
-  final Future<int?> Function({
+  final Future<FeedbackResult> Function({
     required String type,
     required String message,
     required String screenshotB64,
@@ -66,6 +71,7 @@ class _FeedbackSheetState extends State<_FeedbackSheet> {
   bool _drawMode = true;
   bool _privacyAccepted = false;
   bool _policyLinkCopied = false;
+  String? _submitError;
   Offset _imageOffset = Offset.zero;
   // Updated by LayoutBuilder on each build; read by `_renderAnnotatedScreenshot()`
   // to scale annotation coordinates from preview space to image space.
@@ -118,39 +124,87 @@ class _FeedbackSheetState extends State<_FeedbackSheet> {
 
   Future<void> _handleSubmit() async {
     if (!_canSubmit) return;
-    setState(() => _submitting = true);
+    setState(() {
+      _submitting = true;
+      _submitError = null;
+    });
     // Captured before the sheet pops so the confirmation lands on the page
-    // underneath rather than on the dismissed sheet.
+    // underneath rather than on the dismissed sheet. Outcomes that keep the
+    // sheet open are shown in the sheet itself, since the modal route covers
+    // the page's SnackBars — unless the player has already dismissed it.
     final messenger = ScaffoldMessenger.of(context);
 
     try {
       final annotatedB64 = await _renderAnnotatedScreenshot();
       if (!mounted) return;
-      final issueNumber = await widget.onSubmit(
+      final result = await widget.onSubmit(
         type: _selectedType,
         message: _descController.text.trim(),
         screenshotB64: annotatedB64,
       );
-      if (mounted) Navigator.pop(context);
-      if (issueNumber != null) _showIssueReference(messenger, issueNumber);
+      String withScreenshotNote(String text) => annotatedB64.isEmpty
+          ? "$text The screenshot couldn't be attached."
+          : text;
+      switch (result.outcome) {
+        case FeedbackOutcome.sent:
+          if (mounted) Navigator.pop(context);
+          final issueNumber = result.issueNumber;
+          if (issueNumber != null) {
+            _showIssueReference(
+              messenger,
+              issueNumber,
+              withScreenshotNote('Feedback sent as issue #$issueNumber.'),
+            );
+          } else {
+            _showMessage(messenger, withScreenshotNote('Feedback sent.'));
+          }
+        case FeedbackOutcome.queued:
+          if (mounted) Navigator.pop(context);
+          _showMessage(
+            messenger,
+            withScreenshotNote(
+              "Couldn't reach the server — your feedback will be sent "
+              'automatically later.',
+            ),
+          );
+        case FeedbackOutcome.rateLimited:
+          _showSubmitError(
+            messenger,
+            'Too many reports — please wait before sending again.',
+          );
+          await _initCooldown();
+        case FeedbackOutcome.notSent:
+          _showSubmitError(messenger, "Feedback couldn't be sent.");
+          await _initCooldown();
+      }
     } catch (e, stack) {
       gameLogger.e('FeedbackSheet: submit failed', error: e, stackTrace: stack);
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Failed to send feedback — will retry when online.'),
-          ),
-        );
-      }
+      _showSubmitError(messenger, 'Failed to send feedback.');
     } finally {
       if (mounted) setState(() => _submitting = false);
     }
   }
 
-  void _showIssueReference(ScaffoldMessengerState messenger, int issueNumber) {
+  void _showSubmitError(ScaffoldMessengerState messenger, String text) {
+    if (mounted) {
+      setState(() => _submitError = text);
+    } else {
+      _showMessage(messenger, text);
+    }
+  }
+
+  void _showMessage(ScaffoldMessengerState messenger, String text) {
+    messenger.showSnackBar(SnackBar(content: Text(text)));
+  }
+
+  void _showIssueReference(
+    ScaffoldMessengerState messenger,
+    int issueNumber,
+    String text,
+  ) {
     messenger.showSnackBar(
       SnackBar(
-        content: Text('Feedback sent as issue #$issueNumber'),
+        content: Text(text),
         duration: const Duration(seconds: 10),
         action: SnackBarAction(
           label: 'COPY LINK',
@@ -429,6 +483,20 @@ class _FeedbackSheetState extends State<_FeedbackSheet> {
                     ],
                   ),
                 ),
+                if (_submitError case final error?)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: Center(
+                      child: Text(
+                        error,
+                        textAlign: TextAlign.center,
+                        style: GoogleFonts.ibmPlexMono(
+                          fontSize: 12,
+                          color: Colors.redAccent,
+                        ),
+                      ),
+                    ),
+                  ),
                 // Cooldown countdown
                 if (_cooldownSeconds > 0)
                   Padding(
