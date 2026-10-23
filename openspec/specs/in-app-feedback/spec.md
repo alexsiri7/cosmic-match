@@ -22,7 +22,7 @@ Send feedback SHALL be reachable from the home screen and the game screen. It SH
 
 ### Requirement: Submission requires a real description and consent
 
-Submit SHALL be enabled only when the trimmed description is 10 to 500 characters, the player has ticked a consent box that states exactly what is sent (type, description, annotated screenshot, app version, OS and device model) and where it goes (a public GitHub issue) and for how long, no submission is in flight and no cooldown is active. The service SHALL independently reject descriptions outside those bounds.
+Submit SHALL be enabled only when the trimmed description is 10 to 500 characters, the player has ticked a consent box that states exactly what is sent (type, description, annotated screenshot, app version, OS and device model) and where it goes (a public GitHub issue) and for how long, no submission is in flight and no cooldown is active. The service SHALL independently reject descriptions outside those bounds. The sheet SHALL show the privacy policy's address and offer to copy it.
 
 #### Scenario: Too short
 - GIVEN a description of "bad"
@@ -46,12 +46,17 @@ Submitting SHALL send the type, description, screenshot, app version, OS and a h
 
 ### Requirement: Worker responses decide success, drop or retry
 
-A created response SHALL count as success even if its body cannot be read; a bad-request, unauthorised or forbidden response SHALL be dropped for good; any other failure SHALL be retried later.
+A created response SHALL count as success even if its body cannot be read; a bad-request, unauthorised or forbidden response SHALL be dropped for good; any other failure SHALL be retried later. On an immediate created response whose body links an issue in the feedback repository, the player SHALL be shown the issue number.
 
 #### Scenario: Created response
 - GIVEN the worker answers 201 with an unreadable body
 - WHEN feedback is submitted
 - THEN the submission counts as a success
+
+#### Scenario: Issue reference shown
+- GIVEN the worker answers 201 with the URL of an issue in the feedback repository
+- WHEN feedback is submitted from the sheet
+- THEN the player is shown that issue's number and can copy its link
 
 #### Scenario: Rejected signature
 - GIVEN the worker answers 401

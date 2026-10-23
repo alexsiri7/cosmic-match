@@ -12,6 +12,18 @@ import '../core/logger.dart';
 import '../models/pending_feedback.dart';
 import 'rate_limit_service.dart';
 
+/// The issue number in [url] when it names an issue in [kFeedbackIssuesRepo],
+/// else null. The worker supplies the URL, so only a number in the expected
+/// shape is kept and nothing else from the response reaches the user.
+@visibleForTesting
+int? feedbackIssueNumber(String? url) {
+  if (url == null) return null;
+  final match = RegExp(
+    '^https://github\\.com/${RegExp.escape(kFeedbackIssuesRepo)}/issues/(\\d+)\$',
+  ).firstMatch(url);
+  return match == null ? null : int.tryParse(match.group(1)!);
+}
+
 class FeedbackService {
   static const _boxName = 'feedback_worker_queue';
   static const _maxQueueSize = 20;
@@ -86,7 +98,11 @@ class FeedbackService {
 
   /// Submit feedback — attempts an immediate POST; queues locally on failure
   /// (network error or non-400 HTTP error) for retry by [flushQueue].
-  Future<void> submit({
+  ///
+  /// Returns the filed issue's number when the immediate POST succeeds and the
+  /// worker reports an issue in [kFeedbackIssuesRepo]; null otherwise
+  /// (including when the item is queued).
+  Future<int?> submit({
     required String type,
     required String message,
     required String screenshotB64,
@@ -96,11 +112,11 @@ class FeedbackService {
   }) async {
     // Log attempt (not content) for rate-limit analysis (SEC-RPT-008).
     gameLogger.d('FeedbackService.submit: attempt type=$type');
-    if (await _rateLimitRefusal('submit') != null) return;
+    if (await _rateLimitRefusal('submit') != null) return null;
 
     if (workerUrl.isEmpty) {
       gameLogger.w('FeedbackService.submit: workerUrl is empty — skipping');
-      return;
+      return null;
     }
 
     final trimmed = message.trim();
@@ -110,14 +126,14 @@ class FeedbackService {
         'FeedbackService.submit: message too short '
         '($trimmedLen < $kMinFeedbackMessageLength) — skipping',
       );
-      return;
+      return null;
     }
     if (trimmedLen > kMaxFeedbackMessageLength) {
       gameLogger.w(
         'FeedbackService.submit: message too long '
         '($trimmedLen > $kMaxFeedbackMessageLength) — skipping',
       );
-      return;
+      return null;
     }
 
     String effectiveScreenshot = screenshotB64;
@@ -143,10 +159,11 @@ class FeedbackService {
     // Every POST is charged, even one that fails and is queued; otherwise
     // toggling connectivity bypasses the limiter (#306).
     await _rateLimitService?.recordSubmission();
-    final sent = await _postToWorker(item);
-    if (!sent) {
+    final result = await _postToWorker(item);
+    if (!result.done) {
       await _enqueue(item);
     }
+    return result.issueNumber;
   }
 
   /// Returns the limiter's refusal, or null when the POST may proceed.
@@ -200,8 +217,8 @@ class FeedbackService {
               break;
             }
             await _rateLimitService?.recordSubmission();
-            final sent = await _postToWorker(item);
-            if (sent) {
+            final result = await _postToWorker(item);
+            if (result.done) {
               await box.delete(key);
             }
           } catch (e, stack) {
@@ -232,7 +249,8 @@ class FeedbackService {
     return isValidHmac(raw, canonicalize: canonicalizeMap, key: key);
   }
 
-  Future<bool> _postToWorker(PendingFeedback item) async {
+  /// `done` is false when the item should be retried later.
+  Future<({bool done, int? issueNumber})> _postToWorker(PendingFeedback item) async {
     try {
       // `id` is stable across retries of the same queued item, so the signed
       // body identifies one submission and the worker can de-duplicate replays.
@@ -279,26 +297,26 @@ class FeedbackService {
           gameLogger.d('FeedbackService: 201 body parse failed — treating as success', error: e);
         }
         gameLogger.i('FeedbackService: posted successfully. Issue: ${issueUrl ?? '(url unavailable)'}');
-        return true;
+        return (done: true, issueNumber: feedbackIssueNumber(issueUrl));
       }
 
       // 400 = bad body — permanent failure, do not retry
       if (response.statusCode == 400) {
         gameLogger.w('FeedbackService: worker returned 400 — dropping item');
-        return true; // treat as "done" so it is not retried
+        return (done: true, issueNumber: null); // not retried
       }
 
       // 401/403 = auth failure — permanent, wrong HMAC key will never self-heal on retry
       if (response.statusCode == 401 || response.statusCode == 403) {
         gameLogger.e('FeedbackService: worker returned ${response.statusCode} — auth failure, dropping item (check FEEDBACK_HMAC_SECRET)');
-        return true; // permanent — wrong key will never succeed on retry
+        return (done: true, issueNumber: null); // permanent — wrong key will never succeed on retry
       }
 
       gameLogger.w('FeedbackService: worker returned ${response.statusCode} — will retry');
-      return false;
+      return (done: false, issueNumber: null);
     } catch (e, stack) {
       gameLogger.w('FeedbackService: POST failed — queuing', error: e, stackTrace: stack);
-      return false;
+      return (done: false, issueNumber: null);
     }
   }
 
