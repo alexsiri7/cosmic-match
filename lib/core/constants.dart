@@ -36,7 +36,8 @@ const int kFeedbackQueueTtlDays = 7;
 
 /// GitHub repository the feedback worker files reports into. Shown to the
 /// user in the consent text and sent in the worker payload; keep the two in
-/// sync (SEC-02).
+/// sync (SEC-02). The payload field is client-supplied: the worker must not
+/// trust it for routing or access control (#307).
 const String kFeedbackIssuesRepo = 'alexsiri7/cosmic-match';
 
 /// Minimum seconds between feedback submissions on the same device (SEC-RPT-008).

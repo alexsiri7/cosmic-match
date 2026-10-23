@@ -252,7 +252,7 @@ Or with a file (Flutter 3.17+):
 flutter build apk --dart-define-from-file=.env
 ```
 
-Values passed via `--dart-define` are compiled into the binary and are not bundled as extractable text assets. Never commit actual `.env` files to the repository.
+Values passed via `--dart-define` are compiled into the binary as string literals. They are not bundled as asset files, but they are **not confidential**: anyone with the APK can recover them by static analysis, and `--obfuscate` does not hide string literals. Treat every dart-define value as public — including `FEEDBACK_HMAC_SECRET`, which is shared by every install and only raises the bar for casual abuse of the feedback worker; it is not client authentication. Never commit actual `.env` files to the repository.
 
 > ⚠️ Do **not** use `flutter_dotenv` in release builds — it bundles the `.env` file into the APK's assets directory, where it can be extracted from a downloaded APK.
 

@@ -783,6 +783,7 @@ void main() {
       );
 
       expect(capturedBody, isNotNull);
+      expect(capturedBody!['id'], isA<String>());
       expect(capturedBody!['repo'], 'alexsiri7/cosmic-match');
       expect(capturedBody!['type'], 'bug');
       expect(capturedBody!['message'], 'detailed bug report here');
@@ -925,6 +926,45 @@ void main() {
         captured!.headers['x-feedback-signature'],
         'sha256=${computeHmac('$ts.${captured!.body}', utf8.encode('test-secret'))}',
       );
+      expect((jsonDecode(captured!.body) as Map)['id'], 'flush-signed',
+          reason: 'the signed body must identify the queued item (#307)');
+      expect(box.length, 0);
+    });
+
+    test('a failed submit and its flushed retry send the same body id (#307)', () async {
+      final ids = <Object?>[];
+      var online = false;
+      final client = MockClient((req) async {
+        ids.add((jsonDecode(req.body) as Map)['id']);
+        return online
+            ? http.Response('{"url": "https://github.com/issue/1"}', 201)
+            : http.Response('', 503);
+      });
+      final service = FeedbackService(
+        workerUrl: 'https://example.com/',
+        httpClient: client,
+        cipher: _testCipher,
+        hmacKey: _testKey,
+        workerHmacSecret: 'test-secret',
+      );
+
+      await service.submit(
+        type: 'bug',
+        message: 'retry me later',
+        screenshotB64: '',
+        appVersion: '1.0.0+1',
+        os: 'android',
+        device: 'test',
+      );
+      final box = await Hive.openBox('feedback_worker_queue', encryptionCipher: _testCipher);
+      expect(box.length, 1);
+
+      online = true;
+      await service.flushQueue();
+
+      expect(ids, hasLength(2));
+      expect(ids.first, isA<String>());
+      expect(ids.last, ids.first);
       expect(box.length, 0);
     });
 
