@@ -88,17 +88,7 @@ class FeedbackService {
   }) async {
     // Log attempt (not content) for rate-limit analysis (SEC-RPT-008).
     gameLogger.d('FeedbackService.submit: attempt type=$type');
-    final rl = _rateLimitService;
-    if (rl != null) {
-      final status = await rl.checkStatus();
-      if (!status.allowed) {
-        gameLogger.w(
-          'FeedbackService.submit: rate-limited — '
-          'cooldown=${status.cooldownSeconds}s hourlyRemaining=${status.hourlyRemaining}',
-        );
-        return;
-      }
-    }
+    if (await _isRateLimited('submit')) return;
 
     if (workerUrl.isEmpty) {
       gameLogger.w('FeedbackService.submit: workerUrl is empty — skipping');
@@ -142,19 +132,34 @@ class FeedbackService {
       createdAt: DateTime.now(),
     );
 
+    // Every POST is charged, even one that fails and is queued; otherwise
+    // toggling connectivity bypasses the limiter (#306).
+    await _rateLimitService?.recordSubmission();
     final sent = await _postToWorker(item);
-    if (sent) {
-      await _rateLimitService?.recordSubmission();
-    } else {
+    if (!sent) {
       await _enqueue(item);
     }
+  }
+
+  Future<bool> _isRateLimited(String opLabel) async {
+    final rl = _rateLimitService;
+    if (rl == null) return false;
+    final status = await rl.checkStatus();
+    if (status.allowed) return false;
+    gameLogger.w(
+      'FeedbackService.$opLabel: rate-limited — '
+      'cooldown=${status.cooldownSeconds}s hourlyRemaining=${status.hourlyRemaining}',
+    );
+    return true;
   }
 
   /// Returns the remaining cooldown in seconds (0 = no cooldown active).
   Future<int> remainingCooldownSeconds() async =>
       await _rateLimitService?.remainingCooldownSeconds() ?? 0;
 
-  /// Flush all queued items — called on connectivity change.
+  /// Flush queued items — called on connectivity change. Each POST is
+  /// rate-limited like a direct submission; once the limiter refuses, the
+  /// remaining items stay queued for a later flush.
   Future<void> flushQueue() async {
     if (_flushing) return;
     _flushing = true;
@@ -177,6 +182,8 @@ class FeedbackService {
               continue;
             }
             final item = PendingFeedback.fromMap(map);
+            if (await _isRateLimited('flushQueue')) break;
+            await _rateLimitService?.recordSubmission();
             final sent = await _postToWorker(item);
             if (sent) {
               await box.delete(key);

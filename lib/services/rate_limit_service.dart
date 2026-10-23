@@ -111,7 +111,7 @@ class RateLimitService {
     }
   }
 
-  /// Record a successful submission — updates cooldown timestamp and hourly count.
+  /// Record a submission attempt — updates cooldown timestamp and hourly count.
   Future<void> recordSubmission() async {
     try {
       await _write(

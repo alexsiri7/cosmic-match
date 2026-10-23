@@ -346,7 +346,7 @@ requirements:
       - "The 6th submission within an hour is blocked; the window resets after 60 minutes"
       - "A storage exception yields allowed=true (legitimate users are never blocked by a storage fault)"
       - "The sheet shows 'Try again in N seconds' and disables Submit while N > 0"
-    notes: "recordSubmission is only called for direct successful posts, not for queue flushes — flushed items bypass the hourly count. Likely an accepted trade-off (flushes are retries of already-created items), but flagged for review."
+      - "Every POST to the worker is charged, including a failed direct POST whose item is queued and each offline-queue flush POST; a flush stops once the limiter refuses and leaves the remaining items queued (#306)"
 
   - id: CM-028
     title: Manual feedback-queue clearing
