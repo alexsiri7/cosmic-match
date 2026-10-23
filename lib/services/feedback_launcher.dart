@@ -69,7 +69,7 @@ Future<void> launchFeedback({
       required String screenshotB64,
     }) async {
       final packageInfo = await PackageInfo.fromPlatform();
-      await service.submit(
+      return service.submit(
         type: type,
         message: message,
         screenshotB64: screenshotB64,

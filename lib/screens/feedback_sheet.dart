@@ -1,9 +1,9 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:typed_data';
 import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../core/constants.dart';
@@ -12,11 +12,13 @@ import '../game/theme/app_theme.dart';
 
 /// Shows the feedback bottom sheet. When the user taps Submit, [onSubmit] is
 /// called with the selected type, description, and annotated screenshot.
-/// On success the sheet is dismissed; on failure a SnackBar is shown.
+/// On success the sheet is dismissed and, when [onSubmit] returns the filed
+/// issue's number, a SnackBar shows it with an action to copy the issue link;
+/// on failure a SnackBar is shown.
 Future<void> showFeedbackSheet(
   BuildContext context, {
   required Uint8List screenshotBytes,
-  required Future<void> Function({
+  required Future<int?> Function({
     required String type,
     required String message,
     required String screenshotB64,
@@ -37,7 +39,7 @@ Future<void> showFeedbackSheet(
 
 class _FeedbackSheet extends StatefulWidget {
   final Uint8List screenshotBytes;
-  final Future<void> Function({
+  final Future<int?> Function({
     required String type,
     required String message,
     required String screenshotB64,
@@ -63,6 +65,7 @@ class _FeedbackSheetState extends State<_FeedbackSheet> {
   Timer? _cooldownTimer;
   bool _drawMode = true;
   bool _privacyAccepted = false;
+  bool _policyLinkCopied = false;
   Offset _imageOffset = Offset.zero;
   // Updated by LayoutBuilder on each build; read by `_renderAnnotatedScreenshot()`
   // to scale annotation coordinates from preview space to image space.
@@ -116,16 +119,20 @@ class _FeedbackSheetState extends State<_FeedbackSheet> {
   Future<void> _handleSubmit() async {
     if (!_canSubmit) return;
     setState(() => _submitting = true);
+    // Captured before the sheet pops so the confirmation lands on the page
+    // underneath rather than on the dismissed sheet.
+    final messenger = ScaffoldMessenger.of(context);
 
     try {
       final annotatedB64 = await _renderAnnotatedScreenshot();
       if (!mounted) return;
-      await widget.onSubmit(
+      final issueNumber = await widget.onSubmit(
         type: _selectedType,
         message: _descController.text.trim(),
         screenshotB64: annotatedB64,
       );
       if (mounted) Navigator.pop(context);
+      if (issueNumber != null) _showIssueReference(messenger, issueNumber);
     } catch (e, stack) {
       gameLogger.e('FeedbackSheet: submit failed', error: e, stackTrace: stack);
       if (mounted) {
@@ -138,6 +145,21 @@ class _FeedbackSheetState extends State<_FeedbackSheet> {
     } finally {
       if (mounted) setState(() => _submitting = false);
     }
+  }
+
+  void _showIssueReference(ScaffoldMessengerState messenger, int issueNumber) {
+    messenger.showSnackBar(
+      SnackBar(
+        content: Text('Feedback sent as issue #$issueNumber'),
+        duration: const Duration(seconds: 10),
+        action: SnackBarAction(
+          label: 'COPY LINK',
+          onPressed: () => Clipboard.setData(ClipboardData(
+            text: 'https://github.com/$kFeedbackIssuesRepo/issues/$issueNumber',
+          )),
+        ),
+      ),
+    );
   }
 
   Future<String> _renderAnnotatedScreenshot() async {
@@ -373,6 +395,36 @@ class _FeedbackSheetState extends State<_FeedbackSheet> {
                             ),
                           ),
                         ),
+                      ),
+                    ],
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: Row(
+                    children: [
+                      Flexible(
+                        child: Text(
+                          'Privacy policy: $kPrivacyPolicyUrl',
+                          style: GoogleFonts.ibmPlexMono(
+                            fontSize: 11,
+                            color: Colors.white.withValues(alpha: 0.55),
+                          ),
+                        ),
+                      ),
+                      IconButton(
+                        icon: Icon(
+                          _policyLinkCopied ? Icons.check : Icons.copy,
+                          color: Colors.white.withValues(alpha: 0.6),
+                          size: 18,
+                        ),
+                        tooltip: 'Copy privacy policy link',
+                        onPressed: () async {
+                          await Clipboard.setData(
+                            const ClipboardData(text: kPrivacyPolicyUrl),
+                          );
+                          if (mounted) setState(() => _policyLinkCopied = true);
+                        },
                       ),
                     ],
                   ),

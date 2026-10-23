@@ -40,6 +40,10 @@ const int kFeedbackQueueTtlDays = 7;
 /// trust it for routing or access control (#307).
 const String kFeedbackIssuesRepo = 'alexsiri7/cosmic-match';
 
+/// Published from `docs/privacy.html` via GitHub Pages; shown in the feedback
+/// sheet (#313).
+const String kPrivacyPolicyUrl = 'https://alexsiri7.github.io/cosmic-match/privacy.html';
+
 /// Minimum seconds between feedback submissions on the same device (SEC-RPT-008).
 const int kFeedbackCooldownSeconds = 30;
 

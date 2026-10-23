@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -161,7 +162,7 @@ void main() {
                 context,
                 screenshotBytes: kTransparentPng,
                 checkCooldown: () async => 15, // 15 seconds remaining
-                onSubmit: ({required type, required message, required screenshotB64}) async {},
+                onSubmit: ({required type, required message, required screenshotB64}) async => null,
               ),
               child: const Text('open'),
             );
@@ -199,7 +200,7 @@ void main() {
                 context,
                 screenshotBytes: kTransparentPng,
                 checkCooldown: () async => 0,
-                onSubmit: ({required type, required message, required screenshotB64}) async {},
+                onSubmit: ({required type, required message, required screenshotB64}) async => null,
               ),
               child: const Text('open'),
             );
@@ -233,7 +234,7 @@ void main() {
               onPressed: () => showFeedbackSheet(
                 context,
                 screenshotBytes: kTransparentPng,
-                onSubmit: ({required type, required message, required screenshotB64}) async {},
+                onSubmit: ({required type, required message, required screenshotB64}) async => null,
               ),
               child: const Text('open'),
             );
@@ -259,7 +260,7 @@ void main() {
               onPressed: () => showFeedbackSheet(
                 context,
                 screenshotBytes: kTransparentPng,
-                onSubmit: ({required type, required message, required screenshotB64}) async {},
+                onSubmit: ({required type, required message, required screenshotB64}) async => null,
               ),
               child: const Text('open'),
             );
@@ -297,7 +298,7 @@ void main() {
               onPressed: () => showFeedbackSheet(
                 context,
                 screenshotBytes: kTransparentPng,
-                onSubmit: ({required type, required message, required screenshotB64}) async {},
+                onSubmit: ({required type, required message, required screenshotB64}) async => null,
               ),
               child: const Text('open'),
             );
@@ -326,7 +327,7 @@ void main() {
               onPressed: () => showFeedbackSheet(
                 context,
                 screenshotBytes: kTransparentPng,
-                onSubmit: ({required type, required message, required screenshotB64}) async {},
+                onSubmit: ({required type, required message, required screenshotB64}) async => null,
               ),
               child: const Text('open'),
             );
@@ -351,7 +352,7 @@ void main() {
   group('FeedbackSheet submit', () {
     Future<void> openSheet(
       WidgetTester tester, {
-      required Future<void> Function({
+      required Future<int?> Function({
         required String type,
         required String message,
         required String screenshotB64,
@@ -437,5 +438,44 @@ void main() {
       );
       expect(submitButton.onPressed, isNotNull);
     });
+
+    testWidgets('shows privacy policy URL', (tester) async {
+      await openSheet(tester, onSubmit: _noSubmit);
+
+      expect(find.textContaining(kPrivacyPolicyUrl), findsOneWidget);
+    });
+
+    testWidgets('copy button puts privacy policy URL on clipboard',
+        (tester) async {
+      String? copied;
+      tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+        SystemChannels.platform,
+        (call) async {
+          if (call.method == 'Clipboard.setData') {
+            copied = (call.arguments as Map)['text'] as String?;
+          }
+          return null;
+        },
+      );
+      addTearDown(() => tester.binding.defaultBinaryMessenger
+          .setMockMethodCallHandler(SystemChannels.platform, null));
+      await openSheet(tester, onSubmit: _noSubmit);
+
+      final copyButton = find.byTooltip('Copy privacy policy link');
+      await tester.ensureVisible(copyButton);
+      await tester.pumpAndSettle();
+      await tester.tap(copyButton);
+      await tester.pump();
+
+      expect(copied, kPrivacyPolicyUrl);
+      expect(find.byIcon(Icons.check), findsOneWidget);
+    });
   });
 }
+
+Future<int?> _noSubmit({
+  required String type,
+  required String message,
+  required String screenshotB64,
+}) async =>
+    null;

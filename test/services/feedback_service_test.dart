@@ -143,6 +143,30 @@ void main() {
     });
   });
 
+  group('feedbackIssueNumber', () {
+    const base = 'https://github.com/$kFeedbackIssuesRepo/issues';
+
+    test('returns the number of an issue in the feedback repo', () {
+      expect(feedbackIssueNumber('$base/42'), 42);
+    });
+
+    for (final (label, url) in [
+      ('null', null),
+      ('empty', ''),
+      ('another repo', 'https://github.com/someone/else/issues/42'),
+      ('http scheme', 'http://github.com/$kFeedbackIssuesRepo/issues/42'),
+      ('trailing path', '$base/42/comments'),
+      ('query string', '$base/42?x=1'),
+      ('non-numeric id', '$base/abc'),
+      ('pull request', 'https://github.com/$kFeedbackIssuesRepo/pull/42'),
+      ('lookalike host', 'https://github.com.evil.example/$kFeedbackIssuesRepo/issues/42'),
+    ]) {
+      test('returns null for $label', () {
+        expect(feedbackIssueNumber(url), isNull);
+      });
+    }
+  });
+
   group('FeedbackService.submit', () {
     late Directory tempDir;
 
@@ -159,14 +183,15 @@ void main() {
       }
     });
 
-    test('does not enqueue when POST succeeds (201)', () async {
-      final client = MockClient((_) async => http.Response('{"url": "https://github.com/issue/1"}', 201));
+    test('returns issue number when 201 links an issue in the feedback repo', () async {
+      final client = MockClient((_) async => http.Response(
+          '{"url":"https://github.com/$kFeedbackIssuesRepo/issues/42"}', 201));
       final service = FeedbackService(
         workerUrl: 'https://example.com/feedback',
         httpClient: client,
       );
 
-      await service.submit(
+      final issueNumber = await service.submit(
         type: 'bug',
         message: 'test message',
         screenshotB64: '',
@@ -175,6 +200,28 @@ void main() {
         device: 'Pixel',
       );
 
+      expect(issueNumber, 42);
+      final box = await Hive.openBox('feedback_worker_queue');
+      expect(box.length, 0);
+    });
+
+    test('does not enqueue when POST succeeds (201)', () async {
+      final client = MockClient((_) async => http.Response('{"url": "https://github.com/issue/1"}', 201));
+      final service = FeedbackService(
+        workerUrl: 'https://example.com/feedback',
+        httpClient: client,
+      );
+
+      final issueNumber = await service.submit(
+        type: 'bug',
+        message: 'test message',
+        screenshotB64: '',
+        appVersion: '1.0.0+1',
+        os: 'android',
+        device: 'Pixel',
+      );
+
+      expect(issueNumber, isNull, reason: 'url is outside the feedback repo');
       final box = await Hive.openBox('feedback_worker_queue');
       expect(box.length, 0);
     });
@@ -251,7 +298,7 @@ void main() {
         hmacKey: _testKey,
       );
 
-      await service.submit(
+      final issueNumber = await service.submit(
         type: 'bug',
         message: 'offline test',
         screenshotB64: '',
@@ -260,6 +307,7 @@ void main() {
         device: 'Pixel',
       );
 
+      expect(issueNumber, isNull);
       final box = await Hive.openBox('feedback_worker_queue', encryptionCipher: _testCipher);
       expect(box.length, 1);
     });
