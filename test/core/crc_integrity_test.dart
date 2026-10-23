@@ -5,15 +5,20 @@ void main() {
   group('canonicalizeMap', () {
     test('sorts keys alphabetically', () {
       final result = canonicalizeMap({'z': 1, 'a': 2, 'm': 3});
-      expect(result, 'a:2,m:3,z:1');
+      expect(result, 'v1:{"a":2,"m":3,"z":1}');
     });
 
-    test('empty map returns empty string', () {
-      expect(canonicalizeMap({}), '');
+    test('empty map encodes as an empty object', () {
+      expect(canonicalizeMap({}), 'v1:{}');
     });
 
-    test('single entry has no trailing comma', () {
-      expect(canonicalizeMap({'key': 'val'}), 'key:val');
+    test('delimiters inside values do not collide (regression #315)', () {
+      final a = {'message': 'a,os:b', 'os': 'c'};
+      final b = {'message': 'a', 'os': 'b,os:c'};
+      expect(canonicalizeMap(a), isNot(equals(canonicalizeMap(b))));
+      final key = List<int>.generate(32, (i) => i);
+      final raw = {...b, 'hmac': computeHmac(canonicalizeMap(a), key)};
+      expect(isValidHmac(raw, canonicalize: canonicalizeMap, key: key), isFalse);
     });
 
     test('is deterministic regardless of insertion order', () {
@@ -50,6 +55,33 @@ void main() {
       expect(isValidHmac(raw, canonicalize: canonicalizeMap, key: testKey), isFalse);
     });
 
+    test('returns false when hmac value is not a string', () {
+      final raw = {'level': 1, 'hmac': 42};
+      expect(isValidHmac(raw, canonicalize: canonicalizeMap, key: testKey), isFalse);
+    });
+
+    for (final value in [DateTime(2020, 1, 1), double.nan, double.infinity]) {
+      test('returns false instead of throwing for a non-JSON value ($value)', () {
+        final raw = {'level': value, 'hmac': 'bogus'};
+        expect(isValidHmac(raw, canonicalize: canonicalizeMap, key: testKey), isFalse);
+      });
+    }
+
+    test('returns false when stored hmac differs only in its last character', () {
+      final data = {'level': 1};
+      final hmac = computeHmac(canonicalizeMap(data), testKey);
+      final last = hmac.endsWith('0') ? '1' : '0';
+      final raw = {...data, 'hmac': hmac.substring(0, hmac.length - 1) + last};
+      expect(isValidHmac(raw, canonicalize: canonicalizeMap, key: testKey), isFalse);
+    });
+
+    test('returns false when stored hmac is a truncated prefix', () {
+      final data = {'level': 1};
+      final hmac = computeHmac(canonicalizeMap(data), testKey);
+      final raw = {...data, 'hmac': hmac.substring(0, 32)};
+      expect(isValidHmac(raw, canonicalize: canonicalizeMap, key: testKey), isFalse);
+    });
+
     test('different key produces different HMAC', () {
       final data = {'level': 1};
       final key1 = List<int>.generate(32, (i) => i);
@@ -59,13 +91,15 @@ void main() {
     });
 
     test('computeHmac output is stable for known input (regression)', () {
-      // Canonical form (keys alphabetical): "bestScore:100,level:1,starsEarned:2"
-      // Key: bytes 0..31. This pin catches any future crypto package change that
-      // would silently invalidate all persisted save data.
+      // Key: bytes 0..31. This pin catches any future canonicalization or
+      // crypto package change that would silently invalidate all persisted
+      // save data.
       final key = List<int>.generate(32, (i) => i);
-      const canonical = 'bestScore:100,level:1,starsEarned:2';
+      final canonical =
+          canonicalizeMap({'level': 1, 'starsEarned': 2, 'bestScore': 100});
+      expect(canonical, 'v1:{"bestScore":100,"level":1,"starsEarned":2}');
       expect(computeHmac(canonical, key),
-          equals('b93200584ccda45dd46fdbbbbcff0e91c9616c9d486a40a6c8aa401e71309551'));
+          equals('fa3cdeaacbefc447d1cb99dc0d86db90691ce9b3cdd008d033a102a375f5d04b'));
     });
   });
 }

@@ -1,13 +1,15 @@
+import 'dart:collection';
 import 'dart:convert';
 import 'package:crypto/crypto.dart';
 
 /// Canonical string representation of a map for integrity computation.
 ///
 /// Keys are sorted alphabetically so the result is stable regardless of
-/// map insertion order.
+/// map insertion order. JSON encoding escapes delimiters inside values, so
+/// distinct maps never share a canonical form. The `v1:` prefix versions the
+/// format; changing it invalidates every persisted signature.
 String canonicalizeMap(Map<String, dynamic> data) {
-  final keys = data.keys.toList()..sort();
-  return keys.map((k) => '$k:${data[k]}').join(',');
+  return 'v1:${jsonEncode(SplayTreeMap<String, dynamic>.of(data))}';
 }
 
 /// Computes an HMAC-SHA256 over [canonical] using [key].
@@ -21,13 +23,24 @@ String computeHmac(String canonical, List<int> key) {
 /// Validates an HMAC-SHA256 integrity field inside a persisted map.
 ///
 /// Returns `false` when the `hmac` key is missing or its value does not match
-/// the HMAC of the canonicalized payload (all fields except `hmac`).
+/// the HMAC of the canonicalized payload (all fields except `hmac`). A payload
+/// that cannot be canonicalized (e.g. a tampered `DateTime` or `NaN` field,
+/// which Hive stores but JSON cannot encode) is rejected rather than thrown,
+/// so callers can drop the row.
 bool isValidHmac(Map raw, {
   required String Function(Map<String, dynamic>) canonicalize,
   required List<int> key,
 }) {
-  final storedHmac = raw['hmac'] as String?;
-  if (storedHmac == null) return false;
+  final storedHmac = raw['hmac'];
+  if (storedHmac is! String) return false;
   final data = Map<String, dynamic>.from(raw)..remove('hmac');
-  return computeHmac(canonicalize(data), key) == storedHmac;
+  final String canonical;
+  try {
+    canonical = canonicalize(data);
+  } on JsonUnsupportedObjectError {
+    return false;
+  }
+  // Digest's == runs in time independent of where the digests first differ.
+  return Digest(utf8.encode(computeHmac(canonical, key))) ==
+      Digest(utf8.encode(storedHmac));
 }
