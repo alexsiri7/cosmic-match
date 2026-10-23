@@ -44,7 +44,7 @@ configured send nothing to Sentry.
 
 ### 1.1 Client-Side Integrity Controls (SEC-008)
 
-Five mitigations make trivial client-side manipulation harder.
+Six mitigations make trivial client-side manipulation harder.
 They do not stop a determined attacker on a rooted device, but raise the effort bar and
 will become more meaningful when leaderboards are added (see §2).
 
@@ -54,6 +54,7 @@ will become more meaningful when leaderboards are added (see §2).
 | Score Clamp | `Score.add()` ignores non-positive inputs and clamps to 999,999,999 | Prevents integer overflow exploits |
 | Cascade Depth Limit | `CascadeController.maxDepth = 20`; `increment()` is a no-op once cap is reached | Prevents infinite cascade loops from bugs in gravity/refill logic |
 | HMAC-SHA256 Save Integrity | `LevelProgress.toMap()` and `PendingFeedback.toMap()` store an HMAC-SHA256 over canonicalized (key-sorted) fields, keyed with a device-local key from `KeyService` (`lib/core/crc_integrity.dart`); `ProgressService._isValid()` resets tampered progress to `LevelProgress.initial()` and `FeedbackService._isValid()` drops tampered queue entries. Without a key, saves are skipped and loads treat data as invalid | Prevents forging save data off-device; the key lives in the Android Keystore, so it does not stop an attacker with root on the device. Replaced a forgeable CRC32 in #201 |
+| Save Semantic Validation | `LevelProgress.fromMap()` rejects `starsEarned` outside 0–3 and `bestScore` outside 0–999,999,999; `ProgressService.load()` rejects a record whose `level` differs from the level it was stored under. Either resets that level to `LevelProgress.initial()` | Stops an attacker holding the HMAC key from signing impossible values or replaying one level's record under another; values inside the valid ranges are still accepted |
 | Feedback Rate Limit | `RateLimitService`, checked by `FeedbackService.submit()` and `flushQueue()` | 30 s cooldown and 5 submissions per hour per device (SEC-RPT-008); fails open on a storage error |
 
 **Note**: If leaderboards are added (post-V1), SEC-008 risk level rises to MEDIUM. Server-side score validation will be required at that point — see §2.

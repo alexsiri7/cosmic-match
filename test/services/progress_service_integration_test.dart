@@ -55,6 +55,33 @@ void main() {
       expect(loaded.bestScore, equals(0));
     });
 
+    test('validly signed record for another level returns initial', () async {
+      final service = ProgressService(hmacKey: _testKey);
+      final box = await Hive.openBox('progress');
+      await box.put('level_1',
+          LevelProgress(level: 2, starsEarned: 3, bestScore: 500).toMap(_testKey));
+      await box.close();
+      final loaded = await service.load(1);
+      expect(loaded.level, equals(1));
+      expect(loaded.starsEarned, equals(0));
+      expect(loaded.bestScore, equals(0));
+    });
+
+    for (final (stars, score) in [(4, 500), (3, -1), (3, 1000000000)]) {
+      test('validly signed out-of-range record (stars=$stars, score=$score) '
+          'returns initial', () async {
+        final service = ProgressService(hmacKey: _testKey);
+        final box = await Hive.openBox('progress');
+        await box.put('level_1',
+            LevelProgress(level: 1, starsEarned: stars, bestScore: score)
+                .toMap(_testKey));
+        await box.close();
+        final loaded = await service.load(1);
+        expect(loaded.starsEarned, equals(0));
+        expect(loaded.bestScore, equals(0));
+      });
+    }
+
     test('ProgressService() constructs with null cipher by default', () {
       // Verifies the optional cipher parameter is truly optional.
       expect(() => ProgressService(), returnsNormally);

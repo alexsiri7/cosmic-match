@@ -32,7 +32,12 @@ class ProgressService {
       if (raw == null || raw is! Map || !_isValid(raw)) {
         return LevelProgress.initial(level);
       }
-      return LevelProgress.fromMap(raw);
+      final progress = LevelProgress.fromMap(raw);
+      if (progress.level != level) {
+        gameLogger.w('ProgressService.load($level): stored record claims level=${progress.level}. Resetting to initial.');
+        return LevelProgress.initial(level);
+      }
+      return progress;
     } on HiveError catch (e, stack) {
       gameLogger.e('ProgressService.load($level): HiveError — possible cipher mismatch. Resetting to initial.', error: e, stackTrace: stack);
       return LevelProgress.initial(level);
