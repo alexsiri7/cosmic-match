@@ -1176,6 +1176,43 @@ void main() {
       );
     });
 
+    test('queue operations without the cipher fail safe and leave queued items intact',
+        () async {
+      await FeedbackService(
+        workerUrl: 'https://example.com/feedback',
+        httpClient: MockClient((_) async => http.Response('', 503)),
+        cipher: _testCipher,
+        hmacKey: _testKey,
+      ).submit(
+        type: 'bug',
+        message: 'queued before the cipher went missing',
+        screenshotB64: '',
+        appVersion: '1.0.0+1',
+        os: 'android',
+        device: 'Pixel',
+      );
+      await Hive.close();
+
+      var posts = 0;
+      final mismatched = FeedbackService(
+        workerUrl: 'https://example.com/feedback',
+        httpClient: MockClient((_) async {
+          posts++;
+          return http.Response('{"url":"x"}', 201);
+        }),
+        hmacKey: _testKey,
+      );
+      await mismatched.flushQueue();
+      await mismatched.expireOldItems(0);
+      expect(await mismatched.clearQueue(), isFalse);
+      expect(posts, 0);
+      await Hive.close();
+
+      final box = await Hive.openBox('feedback_worker_queue', encryptionCipher: _testCipher);
+      expect(box.length, 1,
+          reason: 'a cipher-mismatched open must not destroy queued feedback');
+    });
+
     test('a malformed row does not strand later valid items', () async {
       final box = await Hive.openBox('feedback_worker_queue', encryptionCipher: _testCipher);
 
