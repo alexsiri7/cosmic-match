@@ -206,7 +206,7 @@ class FeedbackService {
   Future<bool> _postToWorker(PendingFeedback item) async {
     try {
       final body = jsonEncode({
-        'repo': 'alexsiri7/cosmic-match',
+        'repo': kFeedbackIssuesRepo,
         'type': item.type,
         'message': item.message,
         'screenshot': item.screenshotB64,

@@ -9,38 +9,40 @@
   h1 { color: #3a1a6b; } h2 { color: #5a2a90; margin-top: 2em; }
   p, li { color: #444; }
 </style>
-</style>
 </head>
 <body>
 <h1>Privacy Policy — Cosmic Match</h1>
-<p><em>Last updated: April 2026</em></p>
+<p><em>Last updated: October 2026</em></p>
 
 <p>Cosmic Match is a puzzle game. This policy explains what data is collected and how it is used.</p>
 
 <h2>Data stored on your device</h2>
-<p>Your game scores and progress are stored locally on your device using an encrypted database. This data is never transmitted to any external server.</p>
+<p>Your game scores and progress are stored locally on your device in an encrypted database. They are not uploaded as game data. A screenshot you attach to feedback may show the current score on screen.</p>
 
-<h2>No personal data collected</h2>
-<p>Cosmic Match does not collect, store, or transmit any personally identifiable information. No account is required to play.</p>
+<h2>Personal data</h2>
+<p>No account is required and the app does not read contacts, location, advertising identifiers or other device identifiers. The app does not collect personal data on its own; any personal data in feedback you submit is data you chose to include.</p>
 
 <h2>Crash reporting</h2>
-<p>If a Sentry DSN is configured at build time, anonymous crash reports (stack traces, device model, OS version) may be sent to Sentry.io. No game data or personally identifiable information is included in crash reports.</p>
+<p>Release builds send crash reports and app-start/stop session events to Sentry.io. These include a stack trace, app version, device model, OS version and a random per-install identifier so Sentry can count how many installs an error affects. No name, email, account, IP address or advertising ID is stored. Sentry retains this data for 90 days.</p>
 
 <h2>Feedback (optional)</h2>
-<p>If you use the in-app feedback feature, a description and optional screenshot are submitted to the developer. This is always user-initiated. If a submission cannot be delivered immediately (e.g. offline), it is held in an encrypted local queue and automatically deleted after 7 days. You can also clear the queue at any time using the "Clear feedback queue" button on the home screen.</p>
+<p>If you use the in-app feedback feature and tick the consent box, the feedback type, your description, the annotated screenshot, app version, OS and device model are sent to a Cloudflare Worker operated by the developer, which files them as an issue on the public GitHub repository <a href="https://github.com/alexsiri7/cosmic-match/issues">github.com/alexsiri7/cosmic-match</a>. Public issues can be read by anyone and indexed by search engines, and are kept until deleted. Please do not include personal information in feedback. If a submission cannot be delivered immediately (for example offline), it is held in an encrypted local queue, retried when connectivity returns, and deleted after 7 days.</p>
 
 <h2>Internet permission</h2>
-<p>The app requests internet access solely for optional crash reporting and feedback submission. The game itself works fully offline.</p>
+<p>The app requests internet access for crash reporting, feedback submission, checking Google Play for app updates, and downloading the app font from Google Fonts on first launch. Gameplay works offline.</p>
 
 <h2>Third-party services</h2>
 <ul>
-  <li><strong>Sentry.io</strong> — optional crash reporting. Subject to Sentry's privacy policy.</li>
+  <li><strong>Sentry.io</strong> — crash reporting. <a href="https://sentry.io/privacy/">Sentry privacy policy</a>.</li>
+  <li><strong>Cloudflare Workers</strong> — transport for feedback submissions. <a href="https://www.cloudflare.com/privacypolicy/">Cloudflare privacy policy</a>.</li>
+  <li><strong>GitHub, Inc.</strong> — storage of submitted feedback as public issues. <a href="https://docs.github.com/site-policy/privacy-policies/github-general-privacy-statement">GitHub privacy statement</a>.</li>
+  <li><strong>Google Play / Google Fonts</strong> — update checks and font download. <a href="https://policies.google.com/privacy">Google privacy policy</a>.</li>
 </ul>
 
-<h2>Data deletion</h2>
-<p>Uninstalling the app removes all locally stored game data. Unsubmitted feedback items are also automatically expired after 7 days, and can be deleted immediately via the "Clear feedback queue" button in the app.</p>
+<h2>Data deletion and your rights</h2>
+<p>Uninstalling the app removes all locally stored game data. Unsent feedback expires after 7 days and can be deleted at any time with the "Clear feedback queue" button on the home screen. To have a submitted feedback issue (including its screenshot) deleted, or to ask what was stored, contact the developer at the address below quoting the issue number shown after submission; the issue will be closed and deleted and the screenshot purged.</p>
 
 <h2>Contact</h2>
-<p>Questions about this policy can be directed to the developer via GitHub Issues on the project repository.</p>
+<p>PRIVACY_CONTACT_EMAIL — replace with a monitored address before merging. GitHub Issues on the project repository may also be used for non-private questions.</p>
 </body>
 </html>

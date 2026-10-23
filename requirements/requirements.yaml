@@ -276,7 +276,7 @@ requirements:
 
   - id: CM-022
     title: Feedback input validation and consent
-    statement: "While the feedback sheet is open, the system shall enable Submit only when the trimmed description is 10–500 characters, the privacy-consent checkbox is checked, no submission is in flight, and no cooldown is active; the service layer shall independently reject messages outside those bounds."
+    statement: "While the feedback sheet is open, the system shall enable Submit only when the trimmed description is 10–500 characters, the privacy-consent checkbox is checked (stating exactly what is sent and where it goes (a public GitHub issue) and for how long), no submission is in flight, and no cooldown is active; the service layer shall independently reject messages outside those bounds."
     category: functional
     priority: must
     status: active

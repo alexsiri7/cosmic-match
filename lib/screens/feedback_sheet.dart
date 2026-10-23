@@ -362,8 +362,11 @@ class _FeedbackSheetState extends State<_FeedbackSheet> {
                           child: Text(
                             'Your feedback type, description, annotated screenshot, '
                             'app version, OS, and device model will be sent to our '
-                            'server and may be used to improve the game. Data is '
-                            'retained for up to $kFeedbackQueueTtlDays days.',
+                            'server and filed as an issue on the public GitHub '
+                            'repository github.com/$kFeedbackIssuesRepo, where it '
+                            'stays until deleted. Do not include personal information. '
+                            'If it cannot be sent right away it is kept on this device '
+                            'for up to $kFeedbackQueueTtlDays days.',
                             style: GoogleFonts.ibmPlexMono(
                               fontSize: 11,
                               color: Colors.white.withValues(alpha: 0.55),

