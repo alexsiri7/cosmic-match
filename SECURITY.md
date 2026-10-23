@@ -11,7 +11,8 @@
 
 Cosmic Match V1 has no backend of its own and gameplay works offline, but the app does
 make outbound HTTPS requests to the third-party endpoints listed below. Cleartext HTTP is
-blocked by `network_security_config.xml` (§4.2).
+blocked by `network_security_config.xml` (§4.2), and `FeedbackService` sends nothing when
+`FEEDBACK_WORKER_URL` is not an `https` URL.
 
 | Aspect | Status |
 |---|---|
