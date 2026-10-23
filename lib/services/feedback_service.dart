@@ -29,7 +29,8 @@ class FeedbackService {
   static const _boxName = 'feedback_worker_queue';
   static const _maxQueueSize = 20;
 
-  final String workerUrl;
+  /// Null when the configured URL is empty or not HTTPS; nothing is sent then.
+  final Uri? _workerUri;
   final http.Client _httpClient;
   final RateLimitService? _rateLimitService;
   final HiveAesCipher? _cipher;
@@ -41,19 +42,32 @@ class FeedbackService {
   bool _flushing = false;
 
   FeedbackService({
-    required this.workerUrl,
+    required String workerUrl,
     http.Client? httpClient,
     RateLimitService? rateLimitService,
     HiveAesCipher? cipher,
     List<int>? hmacKey,
     String workerHmacSecret = '',
     @visibleForTesting Timer Function(Duration, void Function())? createTimer,
-  })  : _httpClient = httpClient ?? http.Client(),
+  })  : _workerUri = _httpsUriOrNull(workerUrl),
+        _httpClient = httpClient ?? http.Client(),
         _rateLimitService = rateLimitService,
         _cipher = cipher,
         _hmacKey = hmacKey,
         _workerHmacSecret = workerHmacSecret,
         _createTimer = createTimer ?? Timer.new;
+
+  // Defence in depth alongside network_security_config.xml (SEC-28): a
+  // misconfigured FEEDBACK_WORKER_URL must never carry feedback over cleartext.
+  static Uri? _httpsUriOrNull(String workerUrl) {
+    if (workerUrl.isEmpty) return null;
+    final uri = Uri.tryParse(workerUrl);
+    if (uri == null || uri.scheme != 'https' || uri.host.isEmpty) {
+      gameLogger.e('FeedbackService: workerUrl is not an https URL — feedback disabled');
+      return null;
+    }
+    return uri;
+  }
 
   Future<Box> _openBox() => Hive.openBox(_boxName, encryptionCipher: _cipher);
 
@@ -122,8 +136,9 @@ class FeedbackService {
       return (outcome: FeedbackOutcome.rateLimited, issueNumber: null);
     }
 
-    if (workerUrl.isEmpty) {
-      gameLogger.w('FeedbackService.submit: workerUrl is empty — skipping');
+    final workerUri = _workerUri;
+    if (workerUri == null) {
+      gameLogger.w('FeedbackService.submit: no valid workerUrl — skipping');
       return _notSent;
     }
 
@@ -167,7 +182,7 @@ class FeedbackService {
     // Every POST is charged, even one that fails and is queued; otherwise
     // toggling connectivity bypasses the limiter (#306).
     await _rateLimitService?.recordSubmission();
-    final result = await _postToWorker(item);
+    final result = await _postToWorker(workerUri, item);
     if (result.accepted) {
       return (outcome: FeedbackOutcome.sent, issueNumber: result.issueNumber);
     }
@@ -204,7 +219,8 @@ class FeedbackService {
   /// for when it expires, so the queue keeps draining without a further
   /// connectivity event; an hourly-cap refusal waits for the next one.
   Future<void> flushQueue() async {
-    if (_flushing) return;
+    final workerUri = _workerUri;
+    if (workerUri == null || _flushing) return;
     _flushing = true;
     gameLogger.d('FeedbackService.flushQueue');
     try {
@@ -231,7 +247,7 @@ class FeedbackService {
               break;
             }
             await _rateLimitService?.recordSubmission();
-            final result = await _postToWorker(item);
+            final result = await _postToWorker(workerUri, item);
             if (result.done) {
               await box.delete(key);
             }
@@ -265,7 +281,10 @@ class FeedbackService {
 
   /// `done` is false when the item should be retried later; `accepted` is
   /// true only when the worker filed it (201).
-  Future<({bool done, bool accepted, int? issueNumber})> _postToWorker(PendingFeedback item) async {
+  Future<({bool done, bool accepted, int? issueNumber})> _postToWorker(
+    Uri workerUri,
+    PendingFeedback item,
+  ) async {
     try {
       // `id` is stable across retries of the same queued item, so the signed
       // body identifies one submission and the worker can de-duplicate replays.
@@ -294,7 +313,7 @@ class FeedbackService {
 
       final response = await _httpClient
           .post(
-            Uri.parse(workerUrl),
+            workerUri,
             headers: headers,
             body: body,
           )
