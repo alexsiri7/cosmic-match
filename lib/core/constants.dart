@@ -34,6 +34,11 @@ const int kMaxScreenshotB64Bytes = 2 * 1024 * 1024; // 2 MB
 /// in line with GDPR/CCPA data-minimisation principles.
 const int kFeedbackQueueTtlDays = 7;
 
+/// GitHub repository the feedback worker files reports into. Shown to the
+/// user in the consent text and sent in the worker payload; keep the two in
+/// sync (SEC-02).
+const String kFeedbackIssuesRepo = 'alexsiri7/cosmic-match';
+
 /// Minimum seconds between feedback submissions on the same device (SEC-RPT-008).
 const int kFeedbackCooldownSeconds = 30;
 
