@@ -6,6 +6,7 @@ import 'package:cosmic_match/services/progress_service.dart';
 import 'package:cosmic_match/models/level_progress.dart';
 
 final _testKey = List<int>.generate(32, (i) => i);
+final _testCipher = HiveAesCipher(List<int>.generate(32, (i) => i + 100));
 
 void main() {
   late Directory tempDir;
@@ -20,9 +21,9 @@ void main() {
     await tempDir.delete(recursive: true);
   });
 
-  group('ProgressService null-cipher integration', () {
+  group('ProgressService encrypted integration', () {
     test('save and load round-trip preserves data', () async {
-      final service = ProgressService(hmacKey: _testKey);
+      final service = ProgressService(cipher: _testCipher, hmacKey: _testKey);
       final progress =
           LevelProgress(level: 1, starsEarned: 2, bestScore: 500);
       await service.save(progress);
@@ -33,7 +34,7 @@ void main() {
     });
 
     test('missing key returns initial progress', () async {
-      final service = ProgressService(hmacKey: _testKey);
+      final service = ProgressService(cipher: _testCipher, hmacKey: _testKey);
       final loaded = await service.load(99);
       expect(loaded.level, equals(99));
       expect(loaded.starsEarned, equals(0));
@@ -41,8 +42,8 @@ void main() {
     });
 
     test('tampered HMAC returns initial progress', () async {
-      final service = ProgressService(hmacKey: _testKey);
-      final box = await Hive.openBox('progress');
+      final service = ProgressService(cipher: _testCipher, hmacKey: _testKey);
+      final box = await Hive.openBox('progress', encryptionCipher: _testCipher);
       await box.put('level_1', {
         'level': 1,
         'starsEarned': 3,
@@ -56,8 +57,8 @@ void main() {
     });
 
     test('validly signed record for another level returns initial', () async {
-      final service = ProgressService(hmacKey: _testKey);
-      final box = await Hive.openBox('progress');
+      final service = ProgressService(cipher: _testCipher, hmacKey: _testKey);
+      final box = await Hive.openBox('progress', encryptionCipher: _testCipher);
       await box.put('level_1',
           LevelProgress(level: 2, starsEarned: 3, bestScore: 500).toMap(_testKey));
       await box.close();
@@ -70,8 +71,8 @@ void main() {
     for (final (stars, score) in [(4, 500), (3, -1), (3, 1000000000)]) {
       test('validly signed out-of-range record (stars=$stars, score=$score) '
           'returns initial', () async {
-        final service = ProgressService(hmacKey: _testKey);
-        final box = await Hive.openBox('progress');
+        final service = ProgressService(cipher: _testCipher, hmacKey: _testKey);
+        final box = await Hive.openBox('progress', encryptionCipher: _testCipher);
         await box.put('level_1',
             LevelProgress(level: 1, starsEarned: stars, bestScore: score)
                 .toMap(_testKey));
@@ -82,9 +83,32 @@ void main() {
       });
     }
 
-    test('ProgressService() constructs with null cipher by default', () {
-      // Verifies the optional cipher parameter is truly optional.
+    test('ProgressService() constructs without keys', () {
       expect(() => ProgressService(), returnsNormally);
+    });
+  });
+
+  group('ProgressService null-cipher fail-safe (#317)', () {
+    test('save with hmacKey but no cipher skips persist and keeps encrypted data intact',
+        () async {
+      await ProgressService(cipher: _testCipher, hmacKey: _testKey)
+          .save(LevelProgress(level: 1, starsEarned: 2, bestScore: 500));
+      await Hive.close();
+
+      // Transient Keystore failure: the cipher is unavailable, the HMAC key is not.
+      final degraded = ProgressService(hmacKey: _testKey);
+      await degraded.save(LevelProgress(level: 2, starsEarned: 1, bestScore: 100));
+      final degradedLoad = await degraded.load(1);
+      expect(degradedLoad.bestScore, equals(0));
+      await Hive.close();
+
+      final service = ProgressService(cipher: _testCipher, hmacKey: _testKey);
+      final loaded = await service.load(1);
+      expect(loaded.starsEarned, equals(2),
+          reason: 'opening the encrypted box without its cipher must not truncate it');
+      expect(loaded.bestScore, equals(500));
+      expect((await service.load(2)).bestScore, equals(0),
+          reason: 'no record may be written while the cipher is unavailable');
     });
   });
 
@@ -116,7 +140,7 @@ void main() {
   group('ProgressService load with existing data', () {
     test('null hmacKey returns initial even when valid signed data exists',
         () async {
-      await ProgressService(hmacKey: _testKey)
+      await ProgressService(cipher: _testCipher, hmacKey: _testKey)
           .save(LevelProgress(level: 1, starsEarned: 2, bestScore: 500));
 
       final loaded = await ProgressService().load(1);
@@ -127,10 +151,11 @@ void main() {
     });
 
     test('data signed with a different key is treated as tampered', () async {
-      await ProgressService(hmacKey: _testKey)
+      await ProgressService(cipher: _testCipher, hmacKey: _testKey)
           .save(LevelProgress(level: 1, starsEarned: 2, bestScore: 500));
 
       final loaded = await ProgressService(
+        cipher: _testCipher,
         hmacKey: List<int>.generate(32, (i) => 31 - i),
       ).load(1);
 
@@ -140,11 +165,11 @@ void main() {
     });
 
     test('non-Map stored value returns initial', () async {
-      final box = await Hive.openBox('progress');
+      final box = await Hive.openBox('progress', encryptionCipher: _testCipher);
       await box.put('level_1', 'garbage');
       await box.close();
 
-      final loaded = await ProgressService(hmacKey: _testKey).load(1);
+      final loaded = await ProgressService(cipher: _testCipher, hmacKey: _testKey).load(1);
 
       expect(loaded.starsEarned, equals(0));
       expect(loaded.bestScore, equals(0));

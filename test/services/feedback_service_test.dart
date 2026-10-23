@@ -1919,7 +1919,7 @@ void main() {
       expect(box.keys.toList(), ['fresh']);
     });
 
-    test('with a null hmacKey every item is dropped (fail-safe)', () async {
+    test('with a null hmacKey the box is left untouched (fail-safe)', () async {
       final box = await Hive.openBox('feedback_worker_queue', encryptionCipher: _testCipher);
       final fresh = PendingFeedback(
         id: 'fresh',
@@ -1942,7 +1942,8 @@ void main() {
 
       await service.expireOldItems(kFeedbackQueueTtlDays);
 
-      expect(box.length, 0);
+      expect(box.keys.toList(), ['fresh'],
+          reason: 'an unavailable key must not destroy queued feedback');
     });
   });
 
@@ -2070,6 +2071,46 @@ void main() {
       final box = await Hive.openBox('feedback_worker_queue');
       expect(box.length, 0,
           reason: '_enqueue must skip write when hmacKey is null');
+    });
+
+    test('with hmacKey but no cipher nothing is written and the encrypted queue survives (#317)',
+        () async {
+      final queued = PendingFeedback(
+        id: 'queued',
+        type: 'bug',
+        message: 'queued before the Keystore failed',
+        screenshotB64: '',
+        appVersion: '1.0.0+1',
+        os: 'android',
+        device: 'test',
+        createdAt: DateTime.now(),
+      );
+      final encrypted = await Hive.openBox('feedback_worker_queue', encryptionCipher: _testCipher);
+      await encrypted.put(queued.id, queued.toMap(_testKey));
+      await Hive.close();
+
+      // Transient Keystore failure: the cipher is unavailable, the HMAC key is not.
+      final service = FeedbackService(
+        workerUrl: 'https://example.com/',
+        httpClient: MockClient((_) async => throw Exception('network error')),
+        hmacKey: _testKey,
+      );
+      await service.submit(
+        type: 'bug',
+        message: 'submitted while the cipher is unavailable',
+        screenshotB64: '',
+        appVersion: '1.0.0+1',
+        os: 'android',
+        device: 'test',
+      );
+      await service.flushQueue();
+      await service.expireOldItems(kFeedbackQueueTtlDays);
+      expect(await service.clearQueue(), isFalse);
+      await Hive.close();
+
+      final box = await Hive.openBox('feedback_worker_queue', encryptionCipher: _testCipher);
+      expect(box.keys.toList(), ['queued'],
+          reason: 'no plaintext write, and opening without the cipher must not truncate the box');
     });
   });
 }

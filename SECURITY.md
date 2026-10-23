@@ -62,12 +62,13 @@ will become more meaningful when leaderboards are added (see §2).
 
 ### 1.2 Hive Encryption at Rest (SEC-004)
 
-`KeyService` generates a 32-byte AES-256 key on first launch and stores it in the Android
 Keystore via `flutter_secure_storage`. `main()` passes the resulting `HiveAesCipher` to both
 `ProgressService` and `FeedbackService`, which pass it to `Hive.openBox()`, rendering the
-on-disk boxes opaque ciphertext. If the Keystore is unavailable (emulator, broken hardware),
-`getCipher()` returns `null` and the boxes open unencrypted; the HMAC-SHA256 integrity layer
-(SEC-008) still applies whenever an HMAC key is available.
+on-disk boxes opaque ciphertext. If the Keystore is unavailable (emulator, broken hardware,
+a transient failure), `getCipher()` returns `null` and the services never open their boxes:
+nothing is saved or loaded for that session (#317). Opening the encrypted box without its
+cipher would make Hive's crash recovery truncate it, and writing would store records in
+plaintext.
 
 ---
 
