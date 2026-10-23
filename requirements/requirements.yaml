@@ -301,7 +301,7 @@ requirements:
 
   - id: CM-024
     title: Feedback request authentication (HMAC)
-    statement: "When a feedback HMAC secret is configured at build time, the system shall sign `<timestamp>.<body>` with HMAC-SHA256 and send X-Feedback-Timestamp and X-Feedback-Signature: sha256=<hex> headers; when no secret is configured (dev builds), requests are sent unsigned and the production worker will reject them once it enforces signatures."
+    statement: "When a feedback HMAC secret is configured at build time, the system shall sign `<timestamp>.<body>` with HMAC-SHA256, where the body includes the queued item's stable `id`, and send X-Feedback-Timestamp and X-Feedback-Signature: sha256=<hex> headers; when no secret is configured (dev builds), requests are sent unsigned and the production worker will reject them once it enforces signatures."
     category: functional
     priority: must
     status: active
@@ -309,7 +309,8 @@ requirements:
     acceptance:
       - "Release CI injects FEEDBACK_HMAC_SECRET and outgoing requests carry a timestamp header and a valid signature over `<timestamp>.<exact JSON body>`"
       - "With an empty secret neither header is sent; once the production worker enforces signatures it rejects the request with 401 and the item is dropped, not re-queued"
-    notes: "The production worker (alexsiri7/interstellarai.net, workers/feedback/) does not yet verify signatures or timestamps; unsigned requests are currently accepted. Enforcement is tracked in #253."
+      - "The signed body carries the PendingFeedback `id`, identical on every retry of the same item (#307)"
+    notes: "The production worker (alexsiri7/interstellarai.net, workers/feedback/) does not yet verify signatures or timestamps; unsigned requests are currently accepted. Enforcement is tracked in #253. The secret is compiled into the APK and shared by every install, so it is recoverable and is not client authentication (#307). The body's `repo` field is client-supplied; the worker must not trust it for routing or access control (#307)."
 
   - id: CM-025
     title: Offline feedback queue

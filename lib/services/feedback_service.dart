@@ -234,7 +234,10 @@ class FeedbackService {
 
   Future<bool> _postToWorker(PendingFeedback item) async {
     try {
+      // `id` is stable across retries of the same queued item, so the signed
+      // body identifies one submission and the worker can de-duplicate replays.
       final body = jsonEncode({
+        'id': item.id,
         'repo': kFeedbackIssuesRepo,
         'type': item.type,
         'message': item.message,

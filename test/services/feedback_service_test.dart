@@ -783,6 +783,7 @@ void main() {
       );
 
       expect(capturedBody, isNotNull);
+      expect(capturedBody!['id'], isA<String>());
       expect(capturedBody!['repo'], 'alexsiri7/cosmic-match');
       expect(capturedBody!['type'], 'bug');
       expect(capturedBody!['message'], 'detailed bug report here');
@@ -925,6 +926,8 @@ void main() {
         captured!.headers['x-feedback-signature'],
         'sha256=${computeHmac('$ts.${captured!.body}', utf8.encode('test-secret'))}',
       );
+      expect((jsonDecode(captured!.body) as Map)['id'], 'flush-signed',
+          reason: 'the signed body must identify the queued item (#307)');
       expect(box.length, 0);
     });
 
