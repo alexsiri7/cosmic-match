@@ -505,6 +505,7 @@ All direct dependencies use caret (`^`) constraints in `pubspec.yaml`, allowing 
 |---------|---------------|---------|
 | Lockfile commit | `pubspec.lock` tracked in git | Deterministic builds across machines and CI |
 | Caret constraints | `^` prefix on all direct deps | Allow security patches; block breaking changes |
+| Gradle wrapper checksum | `distributionSha256Sum` in `android/gradle/wrapper/gradle-wrapper.properties` | Wrapper refuses a distribution ZIP whose SHA-256 differs from the official hash for the pinned `distributionUrl`; update both together on a Gradle bump |
 | Automated CVE monitoring | `.github/dependabot.yml` (weekly; `pub`, `github-actions`, `pip` for `store-listing/`, `gradle` for `android/`) | Dependabot opens PRs when vulnerabilities found |
 
 **Note**: `pubspec.lock` must be updated and recommitted whenever a dependency is added, removed, or upgraded. Never run `flutter pub upgrade` without reviewing the resulting lock diff.
