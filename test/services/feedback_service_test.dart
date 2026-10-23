@@ -337,10 +337,38 @@ void main() {
       expect(box.length, 0); // dropped, not queued
     });
 
+    for (final status in [401, 403]) {
+      test('does not retry on $status response (auth failure)', () async {
+        final client = MockClient((_) async => http.Response('', status));
+        final service = FeedbackService(
+          workerUrl: 'https://example.com/feedback',
+          httpClient: client,
+          cipher: _testCipher,
+          hmacKey: _testKey,
+        );
+
+        final result = await service.submit(
+          type: 'bug',
+          message: 'test message',
+          screenshotB64: '',
+          appVersion: '1.0.0+1',
+          os: 'android',
+          device: 'test',
+        );
+
+        expect(result.outcome, FeedbackOutcome.notSent);
+        final box = await Hive.openBox(
+          'feedback_worker_queue',
+          encryptionCipher: _testCipher,
+        );
+        expect(box.length, 0);
+      });
+    }
+
     test('returns early without enqueue when workerUrl is empty', () async {
       final service = FeedbackService(workerUrl: '');
 
-      await service.submit(
+      final result = await service.submit(
         type: 'bug',
         message: 'test message',
         screenshotB64: '',
@@ -349,6 +377,7 @@ void main() {
         device: 'Pixel',
       );
 
+      expect(result.outcome, FeedbackOutcome.notSent);
       final box = await Hive.openBox('feedback_worker_queue');
       expect(box.length, 0);
     });
@@ -407,7 +436,7 @@ void main() {
         rateLimitService: RateLimitService(testStorage: storage),
       );
 
-      await service.submit(
+      final result = await service.submit(
         type: 'bug',
         message: 'too short', // 9 chars after trim
         screenshotB64: '',
@@ -416,6 +445,7 @@ void main() {
         device: 'Pixel',
       );
 
+      expect(result.outcome, FeedbackOutcome.notSent);
       expect(posted, isFalse);
       expect(storage, isEmpty, reason: 'a rejected message must not use a rate-limit slot');
       final box = await Hive.openBox('feedback_worker_queue');
@@ -436,7 +466,7 @@ void main() {
         httpClient: client,
       );
 
-      await service.submit(
+      final result = await service.submit(
         type: 'bug',
         message: '          ', // 10 spaces — trims to 0
         screenshotB64: '',
@@ -445,6 +475,7 @@ void main() {
         device: 'Pixel',
       );
 
+      expect(result.outcome, FeedbackOutcome.notSent);
       expect(posted, isFalse);
       final box = await Hive.openBox('feedback_worker_queue');
       expect(box.length, 0);
@@ -626,7 +657,7 @@ void main() {
         hmacKey: _testKey,
         cipher: _testCipher,
       );
-      await service.submit(
+      final result = await service.submit(
         type: 'bug',
         message: 'x' * (kMaxFeedbackMessageLength + 1),
         screenshotB64: '',
@@ -634,6 +665,7 @@ void main() {
         os: 'android',
         device: 'Pixel',
       );
+      expect(result.outcome, FeedbackOutcome.notSent);
       expect(capturedRequests, isEmpty,
           reason: 'oversized message must be rejected without making a network call');
     });
