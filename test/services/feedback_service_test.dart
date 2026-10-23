@@ -351,6 +351,33 @@ void main() {
       expect(scheduled, [const Duration(seconds: kFeedbackRetryBaseSeconds)]);
     });
 
+    test('a submit honours the worker\'s Retry-After when backing the item off (#327)', () async {
+      final now = DateTime(2026, 9, 25, 12);
+      final scheduled = <Duration>[];
+      final service = FeedbackService(
+        workerUrl: 'https://example.com/feedback',
+        httpClient: MockClient(
+          (_) async => http.Response('', 429, headers: {'retry-after': '3600'}),
+        ),
+        cipher: _testCipher,
+        hmacKey: _testKey,
+        createTimer: (d, cb) {
+          scheduled.add(d);
+          return Timer(const Duration(days: 1), () {});
+        },
+        now: () => now,
+      );
+      addTearDown(service.dispose);
+
+      final result = await submitOnce(service);
+
+      expect(result.outcome, FeedbackOutcome.queued);
+      final box = await Hive.openBox('feedback_worker_queue', encryptionCipher: _testCipher);
+      final item = PendingFeedback.fromMap(Map<String, dynamic>.from(box.values.single as Map));
+      expect(item.nextRetryAt, now.add(const Duration(seconds: 3600)));
+      expect(scheduled, [const Duration(seconds: 3600)]);
+    });
+
     test('a network error queues the item due immediately, with no attempt counted (CM-025, #327)', () async {
       final scheduled = <Duration>[];
       final service = FeedbackService(
@@ -1617,6 +1644,23 @@ void main() {
       await r.service.flushQueue();
       expect(r.posts(), 1);
       expect(box.length, 0);
+    });
+
+    test('an item still backing off does not hold up a due item behind it', () async {
+      final box = await Hive.openBox('feedback_worker_queue', encryptionCipher: _testCipher);
+      await queueItems(box, 2);
+      final now = DateTime(2026, 9, 25, 12);
+      final waiting = storedItem(box, 'q-0')
+          .afterFailedAttempt(now.add(const Duration(minutes: 5)));
+      await box.put('q-0', waiting.toMap(_testKey));
+      final before = Map<String, dynamic>.from(box.get('q-0') as Map);
+      final r = retryService(() => http.Response('{"url":"x"}', 201), now: () => now);
+
+      await r.service.flushQueue();
+
+      expect(r.posts(), 1);
+      expect(box.keys, ['q-0']);
+      expect(Map<String, dynamic>.from(box.get('q-0') as Map), before);
     });
 
     test('an item is dropped after kFeedbackMaxAttempts retryable responses', () async {
