@@ -13,14 +13,14 @@ dependencies:
   flame: ^1.38.2
   flame_riverpod: ^5.5.5  # pinned <6.0.0 due to flutter_riverpod ^3 conflict; revisit on next dep update
   flutter_riverpod: ^3.3.2
-  hive: ^2.2.3
-  hive_flutter: ^1.1.0
+  hive_ce: ^2.22.0
+  hive_ce_flutter: ^2.5.0
   logger: ^2.8.0
   crypto: ^3.0.6
   connectivity_plus: ^7.3.2
   flutter_secure_storage: ^11.2.0
   http: ^1.2.2
-  sentry_flutter: ^8.12.0
+  sentry_flutter: ^10.2.0
   package_info_plus: ^10.2.2
   device_info_plus: ^13.3.0
   google_fonts: ^9.0.0

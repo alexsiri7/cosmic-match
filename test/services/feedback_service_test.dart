@@ -3,7 +3,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:hive/hive.dart';
+import 'package:hive_ce/hive_ce.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:cosmic_match/core/constants.dart';
@@ -1167,12 +1167,11 @@ void main() {
       await Hive.close();
 
       // Re-opening the AES-encrypted box without the cipher must not expose data.
-      // Hive returns an empty view when it cannot decrypt the frames, proving the
-      // data is not accessible in plaintext (SEC-RPT-005 encryption-at-rest).
-      final unencryptedView = await Hive.openBox('feedback_worker_queue');
-      expect(
-        unencryptedView.length,
-        0,
+      // hive_ce refuses to open it (HiveError) rather than returning plaintext,
+      // proving the data is not accessible without the key (SEC-RPT-005).
+      await expectLater(
+        Hive.openBox('feedback_worker_queue'),
+        throwsA(isA<HiveError>()),
         reason: 'Encrypted box must not expose data without the cipher (SEC-RPT-005)',
       );
     });

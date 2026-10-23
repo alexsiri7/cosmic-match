@@ -1,4 +1,4 @@
-import 'package:hive/hive.dart';
+import 'package:hive_ce/hive_ce.dart';
 import '../core/crc_integrity.dart';
 import '../core/logger.dart';
 import '../models/level_progress.dart';
@@ -18,8 +18,9 @@ class ProgressService {
   /// Pass `null` if secure storage is unavailable (saves will lack HMAC and
   /// be treated as tampered on load — intentional fail-safe).
   ///
-  /// Note: opening a previously-unencrypted box with a cipher will throw.
-  /// For V1 (no existing users) this is acceptable.
+  /// Note: opening the box with a cipher that differs from the one it was
+  /// written with (including cipher vs. none) throws a [HiveError]; [load] and
+  /// [save] catch it, and the on-disk data is left intact.
   ProgressService({HiveAesCipher? cipher, List<int>? hmacKey})
       : _cipher = cipher,
         _hmacKey = hmacKey;
