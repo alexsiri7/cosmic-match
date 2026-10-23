@@ -113,12 +113,6 @@ ensure the cipher parameter is consistent across all instantiation sites.
 
 ### SEC-008 Integrity Controls
 
-Five mitigations protect against trivial client-side manipulation (see SECURITY.md §1.1):
-
-| Control | Location | Behaviour |
-|---------|----------|-----------|
-| FSM Input Gate | `GridTile.onTapDown`, `GridTile.onDragStart` | Drops all tap and swipe input when `phase != idle` |
-| Score Clamp | `Score.add()` | Clamps to 999,999,999; ignores negative inputs |
-| Cascade Depth Limit | `CascadeController.increment()` | Caps at 20; no-op beyond max |
-| HMAC-SHA256 Save Integrity | `LevelProgress.toMap()` / `ProgressService._isValid()` | Resets tampered save data; fail-safe (skip save / treat as invalid) when key unavailable |
-| Feedback Rate Limit | `RateLimitService` / `FeedbackService.submit()` & `flushQueue()` | Blocks submissions within 30 s cooldown or after 5/hour cap (SEC-RPT-008); fails open on storage error |
+SECURITY.md §1.1 is the single reference for the client-side integrity controls: what each
+does, where it lives, and its limits. Update that table when a control changes; do not copy
+it here.
