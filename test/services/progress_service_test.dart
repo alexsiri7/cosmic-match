@@ -36,6 +36,31 @@ void main() {
       expect(restored.bestScore, original.bestScore);
     });
 
+    test('fromMap accepts boundary values', () {
+      final restored = LevelProgress.fromMap(
+          LevelProgress(level: 1, starsEarned: 3, bestScore: 999999999)
+              .toMap(_testKey));
+      expect(restored.starsEarned, 3);
+      expect(restored.bestScore, 999999999);
+    });
+
+    for (final (field, value) in [
+      ('starsEarned', -1),
+      ('starsEarned', 4),
+      ('bestScore', -1),
+      ('bestScore', 1000000000),
+    ]) {
+      test('fromMap rejects $field=$value', () {
+        final map = <String, dynamic>{
+          'level': 1,
+          'starsEarned': 0,
+          'bestScore': 0,
+          field: value,
+        };
+        expect(() => LevelProgress.fromMap(map), throwsFormatException);
+      });
+    }
+
     test('HMAC is stable across repeated toMap calls', () {
       final progress =
           LevelProgress(level: 1, starsEarned: 2, bestScore: 100);
