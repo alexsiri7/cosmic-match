@@ -19,4 +19,10 @@ jobs:
         with:
           persist-credentials: false
 
-      - run: npx -y @fission-ai/openspec@latest validate --specs --strict
+      # OpenSpec is pinned (with integrity hashes) by .github/openspec/package-lock.json
+      # and kept on the latest release by Dependabot (#318). If a Dependabot bump fails
+      # --strict, fix the specs in that PR; do not hold the pin back (#270).
+      - run: npm ci --ignore-scripts
+        working-directory: .github/openspec
+
+      - run: .github/openspec/node_modules/.bin/openspec validate --specs --strict

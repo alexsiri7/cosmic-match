@@ -1,0 +1,8 @@
+{
+  "name": "cosmic-match-openspec",
+  "private": true,
+  "description": "Pins the OpenSpec CLI run by .github/workflows/openspec.yml. Dependabot keeps it on the latest release.",
+  "devDependencies": {
+    "@fission-ai/openspec": "1.14.3"
+  }
+}
