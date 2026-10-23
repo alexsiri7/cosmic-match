@@ -17,8 +17,9 @@ import '../models/feedback_result.dart';
 /// SnackBar says which (with an action to copy the issue link when the filed
 /// issue's number is known). When it was rate-limited, not sent, or the
 /// submit failed, the sheet stays open with the description kept and says why
-/// above the Submit button; a rate-limited or not-sent result also refreshes
-/// the cooldown.
+/// above the Submit button (in a SnackBar instead if the player dismissed the
+/// sheet while waiting); a rate-limited or not-sent result also refreshes the
+/// cooldown.
 Future<void> showFeedbackSheet(
   BuildContext context, {
   required Uint8List screenshotBytes,
@@ -130,7 +131,7 @@ class _FeedbackSheetState extends State<_FeedbackSheet> {
     // Captured before the sheet pops so the confirmation lands on the page
     // underneath rather than on the dismissed sheet. Outcomes that keep the
     // sheet open are shown in the sheet itself, since the modal route covers
-    // the page's SnackBars.
+    // the page's SnackBars — unless the player has already dismissed it.
     final messenger = ScaffoldMessenger.of(context);
 
     try {
@@ -168,23 +169,28 @@ class _FeedbackSheetState extends State<_FeedbackSheet> {
           );
         case FeedbackOutcome.rateLimited:
           _showSubmitError(
+            messenger,
             'Too many reports — please wait before sending again.',
           );
           await _initCooldown();
         case FeedbackOutcome.notSent:
-          _showSubmitError("Feedback couldn't be sent.");
+          _showSubmitError(messenger, "Feedback couldn't be sent.");
           await _initCooldown();
       }
     } catch (e, stack) {
       gameLogger.e('FeedbackSheet: submit failed', error: e, stackTrace: stack);
-      _showSubmitError('Failed to send feedback.');
+      _showSubmitError(messenger, 'Failed to send feedback.');
     } finally {
       if (mounted) setState(() => _submitting = false);
     }
   }
 
-  void _showSubmitError(String text) {
-    if (mounted) setState(() => _submitError = text);
+  void _showSubmitError(ScaffoldMessengerState messenger, String text) {
+    if (mounted) {
+      setState(() => _submitError = text);
+    } else {
+      _showMessage(messenger, text);
+    }
   }
 
   void _showMessage(ScaffoldMessengerState messenger, String text) {

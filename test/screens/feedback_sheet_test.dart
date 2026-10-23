@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -514,6 +516,51 @@ void main() {
         findsOneWidget,
       );
     });
+
+    for (final (label, outcome, text) in [
+      (
+        'rate-limited',
+        FeedbackOutcome.rateLimited,
+        'Too many reports — please wait before sending again.',
+      ),
+      ('not-sent', FeedbackOutcome.notSent, "Feedback couldn't be sent."),
+      ('failed', null, 'Failed to send feedback.'),
+    ]) {
+      testWidgets(
+          '$label submit resolving after the sheet is dismissed still tells '
+          'the player', (tester) async {
+        final pending = Completer<FeedbackResult>();
+        var submitted = false;
+        await openSheet(
+          tester,
+          onSubmit: ({
+            required String type,
+            required String message,
+            required String screenshotB64,
+          }) {
+            submitted = true;
+            return pending.future;
+          },
+        );
+
+        await fillAndSubmit(tester);
+        expect(submitted, isTrue);
+        await tester.tapAt(const Offset(10, 10));
+        await tester.pumpAndSettle();
+        expect(find.text('SEND FEEDBACK'), findsNothing);
+
+        if (outcome == null) {
+          pending.completeError(Exception('Network error'));
+        } else {
+          pending.complete((outcome: outcome, issueNumber: null));
+        }
+        await tester.runAsync(
+            () => Future<void>.delayed(const Duration(milliseconds: 50)));
+        await tester.pump();
+
+        expect(find.text(text), findsOneWidget);
+      });
+    }
 
     testWidgets('shows privacy policy URL', (tester) async {
       await openSheet(tester, onSubmit: _noSubmit);
