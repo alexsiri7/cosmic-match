@@ -13,6 +13,12 @@ class PendingFeedback {
   final String device;
   final DateTime createdAt;
 
+  /// Retryable worker responses this item has received (#327).
+  final int attempts;
+
+  /// When the item may next be posted; null means it is due now.
+  final DateTime? nextRetryAt;
+
   const PendingFeedback({
     required this.id,
     required this.type,
@@ -22,7 +28,22 @@ class PendingFeedback {
     required this.os,
     required this.device,
     required this.createdAt,
+    this.attempts = 0,
+    this.nextRetryAt,
   });
+
+  PendingFeedback afterFailedAttempt(DateTime nextRetryAt) => PendingFeedback(
+        id: id,
+        type: type,
+        message: message,
+        screenshotB64: screenshotB64,
+        appVersion: appVersion,
+        os: os,
+        device: device,
+        createdAt: createdAt,
+        attempts: attempts + 1,
+        nextRetryAt: nextRetryAt,
+      );
 
   Map<String, dynamic> toMap(List<int>? hmacKey) {
     final data = <String, dynamic>{
@@ -34,6 +55,8 @@ class PendingFeedback {
       'os': os,
       'device': device,
       'createdAt': createdAt.toIso8601String(),
+      'attempts': attempts,
+      if (nextRetryAt != null) 'nextRetryAt': nextRetryAt!.toIso8601String(),
     };
     if (hmacKey != null) {
       data['hmac'] = computeHmac(canonicalizeMap(data), hmacKey);
@@ -51,6 +74,11 @@ class PendingFeedback {
       os: map['os'] as String,
       device: map['device'] as String,
       createdAt: DateTime.parse(map['createdAt'] as String),
+      attempts: map['attempts'] as int? ?? 0,
+      nextRetryAt: switch (map['nextRetryAt']) {
+        final String s => DateTime.parse(s),
+        _ => null,
+      },
     );
   }
 }

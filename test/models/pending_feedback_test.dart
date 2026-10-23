@@ -84,5 +84,48 @@ void main() {
 
       expect(_isValid(map), isFalse);
     });
+
+    test('attempts and nextRetryAt round-trip and are covered by the HMAC (#327)', () {
+      final item = PendingFeedback(
+        id: 'retry-1',
+        type: 'bug',
+        message: 'retry state',
+        screenshotB64: '',
+        appVersion: '1.0.0+1',
+        os: 'android',
+        device: 'Pixel',
+        createdAt: DateTime(2025, 1, 1),
+        attempts: 3,
+        nextRetryAt: DateTime(2025, 1, 2, 8),
+      );
+
+      final map = item.toMap(_testKey);
+      expect(_isValid(map), isTrue);
+      final restored = PendingFeedback.fromMap(map);
+      expect(restored.attempts, 3);
+      expect(restored.nextRetryAt, DateTime(2025, 1, 2, 8));
+
+      map['attempts'] = 0;
+      expect(_isValid(map), isFalse);
+    });
+
+    test('a row stored without attempts/nextRetryAt still validates and is due with 0 attempts (#327)', () {
+      final legacy = <String, dynamic>{
+        'id': 'legacy-1',
+        'type': 'bug',
+        'message': 'queued before #327',
+        'screenshotB64': '',
+        'appVersion': '1.0.0+1',
+        'os': 'android',
+        'device': 'test',
+        'createdAt': DateTime(2025, 1, 1).toIso8601String(),
+      };
+      legacy['hmac'] = computeHmac(canonicalizeMap(legacy), _testKey);
+
+      expect(_isValid(legacy), isTrue);
+      final item = PendingFeedback.fromMap(legacy);
+      expect(item.attempts, 0);
+      expect(item.nextRetryAt, isNull);
+    });
   });
 }
