@@ -40,16 +40,7 @@ bool isValidHmac(Map raw, {
   } on JsonUnsupportedObjectError {
     return false;
   }
-  return _constantTimeEquals(computeHmac(canonical, key), storedHmac);
-}
-
-/// Compares in time that depends only on the lengths, not on where the
-/// strings first differ, so a mismatch leaks no prefix of the digest.
-bool _constantTimeEquals(String a, String b) {
-  if (a.length != b.length) return false;
-  var diff = 0;
-  for (var i = 0; i < a.length; i++) {
-    diff |= a.codeUnitAt(i) ^ b.codeUnitAt(i);
-  }
-  return diff == 0;
+  // Digest's == runs in time independent of where the digests first differ.
+  return Digest(utf8.encode(computeHmac(canonical, key))) ==
+      Digest(utf8.encode(storedHmac));
 }
