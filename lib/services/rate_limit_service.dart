@@ -7,6 +7,13 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../core/constants.dart';
 import '../core/logger.dart';
 
+typedef RateLimitStatus = ({
+  bool allowed,
+  int cooldownSeconds,
+  int hourlyRemaining,
+  DateTime? hourlyWindowStart,
+});
+
 /// Client-side rate limiter for feedback submissions (SEC-RPT-008).
 ///
 /// Enforces a per-submission cooldown ([kFeedbackCooldownSeconds]) and an
@@ -69,8 +76,9 @@ class RateLimitService {
   /// - `cooldownSeconds`: seconds remaining until the cooldown expires (0 if none)
   /// - `hourlyRemaining`: submissions left in the current hourly window;
   ///   `-1` when the per-submission cooldown fired first (hourly window not checked)
-  Future<({bool allowed, int cooldownSeconds, int hourlyRemaining})>
-      checkStatus() async {
+  /// - `hourlyWindowStart`: start of the capped hourly window; null unless the
+  ///   hourly cap is what refused the submission
+  Future<RateLimitStatus> checkStatus() async {
     try {
       // --- Per-submission cooldown ---
       final lastMs = await _read(_keyLastSubmit);
@@ -84,22 +92,29 @@ class RateLimitService {
               allowed: false,
               cooldownSeconds: remaining,
               hourlyRemaining: -1,
+              hourlyWindowStart: null,
             );
           }
         }
       }
 
       // --- Hourly cap ---
-      final count = (await _readHourlyWindow()).count;
+      final (:count, :windowStart) = await _readHourlyWindow();
 
       if (count >= kFeedbackMaxPerHour) {
-        return (allowed: false, cooldownSeconds: 0, hourlyRemaining: 0);
+        return (
+          allowed: false,
+          cooldownSeconds: 0,
+          hourlyRemaining: 0,
+          hourlyWindowStart: windowStart,
+        );
       }
 
       return (
         allowed: true,
         cooldownSeconds: 0,
         hourlyRemaining: kFeedbackMaxPerHour - count,
+        hourlyWindowStart: null,
       );
     } catch (e, stack) {
       gameLogger.w('RateLimitService.checkStatus: storage error — failing open',
@@ -108,6 +123,7 @@ class RateLimitService {
         allowed: true,
         cooldownSeconds: 0,
         hourlyRemaining: kFeedbackMaxPerHour,
+        hourlyWindowStart: null,
       );
     }
   }
@@ -140,13 +156,8 @@ class RateLimitService {
     final status = await checkStatus();
     if (status.allowed) return 0;
     if (status.cooldownSeconds > 0) return status.cooldownSeconds;
-    try {
-      final window = await _readHourlyWindow();
-      return max(1, 3600 - _now().difference(window.windowStart).inSeconds);
-    } catch (e, stack) {
-      gameLogger.w('RateLimitService.remainingCooldownSeconds: storage error',
-          error: e, stackTrace: stack);
-      return 0;
-    }
+    final windowStart = status.hourlyWindowStart;
+    if (windowStart == null) return 0;
+    return max(1, 3600 - _now().difference(windowStart).inSeconds);
   }
 }

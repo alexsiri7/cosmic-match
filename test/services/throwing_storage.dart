@@ -23,34 +23,3 @@ class ThrowingStorage extends MapBase<String, String> {
   @override
   void clear() {}
 }
-
-/// A [Map] backed by [initial] that serves the first [readsBeforeFailure]
-/// reads and throws on every later one, simulating storage that fails between
-/// two consecutive reads of the same call.
-class FailingAfterStorage extends MapBase<String, String> {
-  FailingAfterStorage(this.initial, {required this.readsBeforeFailure});
-
-  final Map<String, String> initial;
-  final int readsBeforeFailure;
-  int reads = 0;
-
-  @override
-  String? operator [](Object? key) {
-    if (reads++ >= readsBeforeFailure) {
-      throw PlatformException(code: 'storage');
-    }
-    return initial[key];
-  }
-
-  @override
-  void operator []=(String key, String value) => initial[key] = value;
-
-  @override
-  Iterable<String> get keys => initial.keys;
-
-  @override
-  String? remove(Object? key) => initial.remove(key);
-
-  @override
-  void clear() => initial.clear();
-}

@@ -176,27 +176,6 @@ void main() {
       expect(secs, 2400);
     });
 
-    test(
-        'remainingCooldownSeconds returns 0 when the hourly window re-read '
-        'fails after checkStatus saw the cap', () async {
-      // checkStatus reads the last-submit key and the hourly window; the third
-      // read is remainingCooldownSeconds' own window lookup.
-      final flakyStorage = FailingAfterStorage({
-        'feedback_hour_window': jsonEncode({
-          'count': kFeedbackMaxPerHour,
-          'windowStart': fixedNow
-              .subtract(const Duration(minutes: 20))
-              .toIso8601String(),
-        }),
-      }, readsBeforeFailure: 2);
-      final flakyService =
-          RateLimitService(testStorage: flakyStorage, now: () => fixedNow);
-
-      final secs = await flakyService.remainingCooldownSeconds();
-      expect(secs, 0);
-      expect(flakyStorage.reads, 3);
-    });
-
     test('checkStatus fails open when storage read throws', () async {
       final throwingService =
           RateLimitService(testStorage: ThrowingStorage(), now: () => fixedNow);

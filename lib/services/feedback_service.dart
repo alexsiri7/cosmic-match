@@ -181,8 +181,7 @@ class FeedbackService {
       (outcome: FeedbackOutcome.notSent, issueNumber: null);
 
   /// Returns the limiter's refusal, or null when the POST may proceed.
-  Future<({bool allowed, int cooldownSeconds, int hourlyRemaining})?>
-      _rateLimitRefusal(String opLabel) async {
+  Future<RateLimitStatus?> _rateLimitRefusal(String opLabel) async {
     final rl = _rateLimitService;
     if (rl == null) return null;
     final status = await rl.checkStatus();
