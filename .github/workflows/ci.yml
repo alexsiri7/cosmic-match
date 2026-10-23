@@ -279,11 +279,12 @@ jobs:
           NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
         run: |
           [ -z "$NTFY_TOPIC" ] && exit 0
-          curl -sS -o /dev/null --connect-timeout 5 --max-time 10 \
+          # The topic is a secret; --proto =https refuses any non-HTTPS transfer (#314).
+          curl -sS -o /dev/null --proto =https --connect-timeout 5 --max-time 10 \
             -H "Title: cosmic-match landed in prod" \
             -H "Tags: tada" \
             -d "Cosmic Match uploaded to Play Store ✓" \
-            "ntfy.sh/$NTFY_TOPIC"
+            "https://ntfy.sh/$NTFY_TOPIC"
 
       - name: Clean up signing credentials
         if: always()
