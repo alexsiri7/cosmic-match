@@ -53,9 +53,11 @@ def main():
             ).execute()
             print(f"Cleared {img_type}")
         except HttpError as e:
+            status = f"HTTP {e.resp.status} ({e.reason})"
             if e.resp.status != 404:
-                raise
-            print(f"No existing {img_type} (HTTP 404)")
+                # `from None` keeps the HttpError's URI and error details out of the public CI log.
+                raise RuntimeError(f"Failed to clear {img_type}: {status}") from None
+            print(f"No existing {img_type}: {status}")
 
     for n in range(1, 4):
         upload_image(svc, eid, 'phoneScreenshots',     shots / f'phone_{n}.png')
