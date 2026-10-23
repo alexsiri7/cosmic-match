@@ -42,7 +42,7 @@ class Passes(unittest.TestCase):
             f("lib/game/grid_logic.dart", "modified", added("final x = y.clamp(0, 7);")),
             f("lib/screens/home_screen.dart", "modified", added("const Text('hi'),")),
             f("lib/widgets/star_row.dart", "modified", added("color: Colors.amber,")),
-            f("lib/services/progress_service.dart", "modified", added("final best = max(a, b);")),
+            f("lib/models/tile_type.dart", "modified", added("final best = max(a, b);")),
             f("test/game/pattern_detector_test.dart", patch=added("test('L-shape', () {});")),
             f("integration_test/scripted_match_test.dart", "modified", added("await tester.pump();")),
             f("test/fixtures/levels/nebula-1.json"),
@@ -88,6 +88,14 @@ class Fails(unittest.TestCase):
                      ".env", "backend/.env.production", "build.rs", "CLAUDE.md", ".archon/workflows/x.yaml",
                      "app/build.gradle.kts", "android/key.properties", "lib/services/key_service.dart",
                      "store-listing/upload_listing.py"]:
+            self.assertFlags([f(path, "modified", added("x"))], needle=path)
+
+    def test_integrity_call_sites_fail(self):
+        for path in ["lib/services/progress_service.dart", "lib/services/rate_limit_service.dart",
+                     "lib/services/feedback_service.dart", "lib/services/feedback_launcher.dart",
+                     "lib/models/level_progress.dart", "lib/models/pending_feedback.dart",
+                     "lib/screens/feedback_sheet.dart", "android/app/proguard-rules.pro",
+                     "android/app/src/main/res/xml/network_security_config.xml"]:
             self.assertFlags([f(path, "modified", added("x"))], needle=path)
 
     def test_removing_or_renaming_away_from_a_denied_path_fails(self):
