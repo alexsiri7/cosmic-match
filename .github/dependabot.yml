@@ -12,3 +12,15 @@ updates:
       interval: "weekly"
     labels:
       - "dependencies"
+  - package-ecosystem: "pip"
+    directory: "/store-listing"
+    schedule:
+      interval: "weekly"
+    labels:
+      - "dependencies"
+  - package-ecosystem: "gradle"
+    directory: "/android"
+    schedule:
+      interval: "weekly"
+    labels:
+      - "dependencies"
