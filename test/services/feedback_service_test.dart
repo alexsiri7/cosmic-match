@@ -316,6 +316,92 @@ void main() {
       expect(box.length, 1);
     });
 
+    Future<FeedbackResult> submitOnce(FeedbackService service) => service.submit(
+          type: 'bug',
+          message: 'retry state test',
+          screenshotB64: '',
+          appVersion: '1.0.0+1',
+          os: 'android',
+          device: 'Pixel',
+        );
+
+    test('a retryable worker response queues the item backed off and schedules a flush (#327)', () async {
+      final now = DateTime(2026, 9, 25, 12);
+      final scheduled = <Duration>[];
+      final service = FeedbackService(
+        workerUrl: 'https://example.com/feedback',
+        httpClient: MockClient((_) async => http.Response('', 503)),
+        cipher: _testCipher,
+        hmacKey: _testKey,
+        createTimer: (d, cb) {
+          scheduled.add(d);
+          return Timer(const Duration(days: 1), () {});
+        },
+        now: () => now,
+      );
+      addTearDown(service.dispose);
+
+      final result = await submitOnce(service);
+
+      expect(result.outcome, FeedbackOutcome.queued);
+      final box = await Hive.openBox('feedback_worker_queue', encryptionCipher: _testCipher);
+      final item = PendingFeedback.fromMap(Map<String, dynamic>.from(box.values.single as Map));
+      expect(item.attempts, 1);
+      expect(item.nextRetryAt, now.add(const Duration(seconds: kFeedbackRetryBaseSeconds)));
+      expect(scheduled, [const Duration(seconds: kFeedbackRetryBaseSeconds)]);
+    });
+
+    test('a submit honours the worker\'s Retry-After when backing the item off (#327)', () async {
+      final now = DateTime(2026, 9, 25, 12);
+      final scheduled = <Duration>[];
+      final service = FeedbackService(
+        workerUrl: 'https://example.com/feedback',
+        httpClient: MockClient(
+          (_) async => http.Response('', 429, headers: {'retry-after': '3600'}),
+        ),
+        cipher: _testCipher,
+        hmacKey: _testKey,
+        createTimer: (d, cb) {
+          scheduled.add(d);
+          return Timer(const Duration(days: 1), () {});
+        },
+        now: () => now,
+      );
+      addTearDown(service.dispose);
+
+      final result = await submitOnce(service);
+
+      expect(result.outcome, FeedbackOutcome.queued);
+      final box = await Hive.openBox('feedback_worker_queue', encryptionCipher: _testCipher);
+      final item = PendingFeedback.fromMap(Map<String, dynamic>.from(box.values.single as Map));
+      expect(item.nextRetryAt, now.add(const Duration(seconds: 3600)));
+      expect(scheduled, [const Duration(seconds: 3600)]);
+    });
+
+    test('a network error queues the item due immediately, with no attempt counted (CM-025, #327)', () async {
+      final scheduled = <Duration>[];
+      final service = FeedbackService(
+        workerUrl: 'https://example.com/feedback',
+        httpClient: MockClient((_) async => throw const SocketException('offline')),
+        cipher: _testCipher,
+        hmacKey: _testKey,
+        createTimer: (d, cb) {
+          scheduled.add(d);
+          return Timer(const Duration(days: 1), () {});
+        },
+      );
+      addTearDown(service.dispose);
+
+      final result = await submitOnce(service);
+
+      expect(result.outcome, FeedbackOutcome.queued);
+      final box = await Hive.openBox('feedback_worker_queue', encryptionCipher: _testCipher);
+      final item = PendingFeedback.fromMap(Map<String, dynamic>.from(box.values.single as Map));
+      expect(item.attempts, 0);
+      expect(item.nextRetryAt, isNull);
+      expect(scheduled, isEmpty);
+    });
+
     test('does not retry on 400 response (permanent failure)', () async {
       final client = MockClient((_) async => http.Response('bad request', 400));
       final service = FeedbackService(
@@ -1026,13 +1112,17 @@ void main() {
             ? http.Response('{"url": "https://github.com/issue/1"}', 201)
             : http.Response('', 503);
       });
+      var now = DateTime(2026, 9, 25, 12);
       final service = FeedbackService(
         workerUrl: 'https://example.com/',
         httpClient: client,
         cipher: _testCipher,
         hmacKey: _testKey,
         workerHmacSecret: 'test-secret',
+        createTimer: (d, cb) => Timer(const Duration(days: 1), () {}),
+        now: () => now,
       );
+      addTearDown(service.dispose);
 
       await service.submit(
         type: 'bug',
@@ -1046,6 +1136,7 @@ void main() {
       expect(box.length, 1);
 
       online = true;
+      now = now.add(const Duration(seconds: kFeedbackRetryBaseSeconds));
       await service.flushQueue();
 
       expect(ids, hasLength(2));
@@ -1391,6 +1482,189 @@ void main() {
 
       expect(posts, 1);
       expect(box.length, 2);
+    });
+
+    PendingFeedback storedItem(Box box, String key) =>
+        PendingFeedback.fromMap(Map<String, dynamic>.from(box.get(key) as Map));
+
+    ({FeedbackService service, List<Duration> scheduled, int Function() posts}) retryService(
+      http.Response Function() respond, {
+      required DateTime Function() now,
+      RateLimitService? rateLimitService,
+    }) {
+      var posts = 0;
+      final scheduled = <Duration>[];
+      final service = FeedbackService(
+        workerUrl: 'https://example.com/',
+        httpClient: MockClient((_) async {
+          posts++;
+          return respond();
+        }),
+        rateLimitService: rateLimitService,
+        cipher: _testCipher,
+        hmacKey: _testKey,
+        createTimer: (d, cb) {
+          scheduled.add(d);
+          return Timer(const Duration(days: 1), () {});
+        },
+        now: now,
+      );
+      addTearDown(service.dispose);
+      return (service: service, scheduled: scheduled, posts: () => posts);
+    }
+
+    test('a retryable worker response backs the item off, schedules a flush and stops the drain (#327)', () async {
+      final box = await Hive.openBox('feedback_worker_queue', encryptionCipher: _testCipher);
+      await queueItems(box, 2);
+      final now = DateTime(2026, 9, 25, 12);
+      final r = retryService(() => http.Response('', 503), now: () => now);
+
+      await r.service.flushQueue();
+
+      expect(r.posts(), 1);
+      expect(box.length, 2);
+      final item = storedItem(box, 'q-0');
+      expect(item.attempts, 1);
+      expect(item.nextRetryAt, now.add(const Duration(seconds: kFeedbackRetryBaseSeconds)));
+      expect(storedItem(box, 'q-1').attempts, 0);
+      expect(r.scheduled, [const Duration(seconds: kFeedbackRetryBaseSeconds)]);
+    });
+
+    test('the backoff doubles with each attempt', () async {
+      final box = await Hive.openBox('feedback_worker_queue', encryptionCipher: _testCipher);
+      final item = PendingFeedback(
+        id: 'q-0',
+        type: 'bug',
+        message: 'failing',
+        screenshotB64: '',
+        appVersion: '1.0.0+1',
+        os: 'android',
+        device: 'test',
+        createdAt: DateTime(2025, 1, 1),
+        attempts: 2,
+      );
+      await box.put(item.id, item.toMap(_testKey));
+      final now = DateTime(2026, 9, 25, 12);
+      final r = retryService(() => http.Response('', 503), now: () => now);
+
+      await r.service.flushQueue();
+
+      expect(storedItem(box, 'q-0').attempts, 3);
+      expect(r.scheduled, [const Duration(seconds: kFeedbackRetryBaseSeconds * 4)]);
+    });
+
+    for (final (header, expected) in [
+      ('3600', const Duration(seconds: 3600)),
+      ('999999', const Duration(seconds: kFeedbackRetryMaxSeconds)),
+      (HttpDate.format(DateTime.utc(2026, 9, 25, 14)), const Duration(hours: 2)),
+      ('10', const Duration(seconds: kFeedbackRetryBaseSeconds)),
+      ('soon', const Duration(seconds: kFeedbackRetryBaseSeconds)),
+    ]) {
+      test('Retry-After "$header" sets a ${expected.inSeconds}s backoff', () async {
+        final box = await Hive.openBox('feedback_worker_queue', encryptionCipher: _testCipher);
+        await queueItems(box, 1);
+        final now = DateTime.utc(2026, 9, 25, 12);
+        final r = retryService(
+          () => http.Response('', 429, headers: {'retry-after': header}),
+          now: () => now,
+        );
+
+        await r.service.flushQueue();
+
+        expect(storedItem(box, 'q-0').nextRetryAt, now.add(expected));
+        expect(r.scheduled, [expected]);
+      });
+    }
+
+    test('an item still backing off is skipped without charging the limiter, then posted once due', () async {
+      final box = await Hive.openBox('feedback_worker_queue', encryptionCipher: _testCipher);
+      var now = DateTime(2026, 9, 25, 12);
+      final item = PendingFeedback(
+        id: 'q-0',
+        type: 'bug',
+        message: 'backing off',
+        screenshotB64: '',
+        appVersion: '1.0.0+1',
+        os: 'android',
+        device: 'test',
+        createdAt: DateTime(2025, 1, 1),
+        attempts: 1,
+        nextRetryAt: now.add(const Duration(minutes: 5)),
+      );
+      await box.put(item.id, item.toMap(_testKey));
+      final storage = <String, String>{};
+      final r = retryService(
+        () => http.Response('{"url":"x"}', 201),
+        now: () => now,
+        rateLimitService: RateLimitService(testStorage: storage, now: () => now),
+      );
+
+      await r.service.flushQueue();
+      expect(r.posts(), 0);
+      expect(storage, isEmpty);
+      expect(box.length, 1);
+
+      now = now.add(const Duration(minutes: 5, seconds: 1));
+      await r.service.flushQueue();
+      expect(r.posts(), 1);
+      expect(box.length, 0);
+    });
+
+    test('an item still backing off does not hold up a due item behind it', () async {
+      final box = await Hive.openBox('feedback_worker_queue', encryptionCipher: _testCipher);
+      await queueItems(box, 2);
+      final now = DateTime(2026, 9, 25, 12);
+      final waiting = storedItem(box, 'q-0')
+          .afterFailedAttempt(now.add(const Duration(minutes: 5)));
+      await box.put('q-0', waiting.toMap(_testKey));
+      final before = Map<String, dynamic>.from(box.get('q-0') as Map);
+      final r = retryService(() => http.Response('{"url":"x"}', 201), now: () => now);
+
+      await r.service.flushQueue();
+
+      expect(r.posts(), 1);
+      expect(box.keys, ['q-0']);
+      expect(Map<String, dynamic>.from(box.get('q-0') as Map), before);
+    });
+
+    test('an item is dropped after kFeedbackMaxAttempts retryable responses', () async {
+      final box = await Hive.openBox('feedback_worker_queue', encryptionCipher: _testCipher);
+      final item = PendingFeedback(
+        id: 'q-0',
+        type: 'bug',
+        message: 'never accepted',
+        screenshotB64: '',
+        appVersion: '1.0.0+1',
+        os: 'android',
+        device: 'test',
+        createdAt: DateTime(2025, 1, 1),
+        attempts: kFeedbackMaxAttempts - 1,
+      );
+      await box.put(item.id, item.toMap(_testKey));
+      final r = retryService(() => http.Response('', 503), now: () => DateTime(2026, 9, 25, 12));
+
+      await r.service.flushQueue();
+
+      expect(r.posts(), 1);
+      expect(box.length, 0);
+      expect(r.scheduled, isEmpty);
+    });
+
+    test('a network error leaves the item unchanged and stops the drain without a timer', () async {
+      final box = await Hive.openBox('feedback_worker_queue', encryptionCipher: _testCipher);
+      await queueItems(box, 2);
+      final before = Map<String, dynamic>.from(box.get('q-0') as Map);
+      final r = retryService(
+        () => throw const SocketException('offline'),
+        now: () => DateTime(2026, 9, 25, 12),
+      );
+
+      await r.service.flushQueue();
+
+      expect(r.posts(), 1);
+      expect(box.length, 2);
+      expect(Map<String, dynamic>.from(box.get('q-0') as Map), before);
+      expect(r.scheduled, isEmpty);
     });
   });
 

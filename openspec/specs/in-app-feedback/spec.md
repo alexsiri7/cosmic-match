@@ -75,13 +75,17 @@ A created response SHALL count as success even if its body cannot be read; a bad
 
 ### Requirement: Unsent feedback waits offline, briefly
 
-A report that fails retryably SHALL be kept in an encrypted, signed local queue of at most 20 reports, dropping the oldest when full. When connectivity returns, the system SHALL send the queued reports, one flush at a time, deleting each one that is sent and discarding any corrupt entry without stopping the rest. At every launch, queued reports older than 7 days SHALL be deleted. The home screen SHALL offer to clear the queue, after confirmation, reporting whether it worked.
+A report that fails retryably SHALL be kept in an encrypted, signed local queue of at most 20 reports, dropping the oldest when full. When connectivity returns, the system SHALL attempt to send the queued reports, one flush at a time, discarding any corrupt entry without stopping the rest, deleting each one that is sent, and stopping that flush at the first report that cannot be sent, to be retried later.
 
 #### Scenario: Back online
 - GIVEN three queued reports, one of them corrupt
 - WHEN connectivity returns
 - THEN the two valid reports are sent and removed
 - AND the corrupt one is discarded
+
+### Requirement: Stale queued reports expire
+
+At every launch, queued reports older than 7 days SHALL be deleted. The home screen SHALL offer to clear the queue, after confirmation, reporting whether it worked.
 
 #### Scenario: Stale report
 - GIVEN a report queued 8 days ago
