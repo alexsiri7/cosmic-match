@@ -14,8 +14,8 @@ import 'package:hive_ce/hive_ce.dart';
 /// Both keys are generated via [Hive.generateSecureKey] and persisted in
 /// platform-specific secure storage via [FlutterSecureStorage] (Android
 /// Keystore for V1; iOS Keychain / macOS Keychain on those platforms).
-/// If secure storage is unavailable, both methods return `null` and callers
-/// fall back to graceful degradation (unencrypted box / no HMAC).
+/// If secure storage is unavailable, either method may return `null`; callers
+/// pair the results with [StorageKeys.of] and skip persistence entirely.
 class KeyService {
   static const _keyName = 'hive_aes_key';
   static const _hmacKeyName = 'hive_hmac_key';
@@ -81,4 +81,19 @@ class KeyService {
   /// Throws [FormatException] if [encoded] is not valid base64url.
   @visibleForTesting
   static Uint8List decodeKey(String encoded) => base64Url.decode(encoded);
+}
+
+/// The cipher and signing key a Hive-backed service needs before it may touch
+/// its box. They are only usable together: opening an AES box without its
+/// cipher makes Hive's crash recovery truncate it, and writing without the
+/// cipher stores records in plaintext (#317).
+class StorageKeys {
+  final HiveAesCipher cipher;
+  final List<int> hmacKey;
+
+  const StorageKeys._(this.cipher, this.hmacKey);
+
+  /// Both keys, or `null` when either is unavailable.
+  static StorageKeys? of(HiveAesCipher? cipher, List<int>? hmacKey) =>
+      cipher == null || hmacKey == null ? null : StorageKeys._(cipher, hmacKey);
 }

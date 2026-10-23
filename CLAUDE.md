@@ -94,8 +94,9 @@ lower-priority passes, preventing double-counting.
 Any Hive-backed model must include an `hmac` field in its `toMap(hmacKey)` output, computed
 over all other fields using a key-sorted canonical representation (`canonicalizeMap()`) and
 signed with HMAC-SHA256 using the device-local key from `KeyService`. The corresponding
-service's `_isValid()` must reject any map with a missing or mismatched signature. When no
-HMAC key is available, saves are skipped and loads treat all data as invalid (fail-safe).
+service's `_isValid()` must reject any map with a missing or mismatched signature. When the
+HMAC key or the cipher is unavailable, the box is never opened: saves are skipped and loads
+return initial values (fail-safe).
 
 - `LevelProgress.toMap()` / `ProgressService._isValid()` — resets to `LevelProgress.initial()` on tamper
 - `PendingFeedback.toMap()` / `FeedbackService._isValid()` — drops the invalid worker-queue entry on tamper
@@ -109,8 +110,10 @@ Do not reintroduce plain CRC32: it was replaced in #201 because it is forgeable 
 
 **Cipher invariant**: `ProgressService` and `FeedbackService` both accept an optional
 `HiveAesCipher` (SEC-004). A box opened with a cipher cannot later be opened without one
-(and vice-versa). For V1 there are no existing users, so this is safe. In future migrations,
-ensure the cipher parameter is consistent across all instantiation sites.
+(and vice-versa): Hive's crash recovery truncates it. Both services therefore pair the cipher
+and HMAC key via `StorageKeys.of()` (`lib/services/key_service.dart`) and never open their box
+unless both are available (#317). For V1 there are no existing users, so this is safe. In
+future migrations, ensure the cipher parameter is consistent across all instantiation sites.
 
 ### SEC-008 Integrity Controls
 
