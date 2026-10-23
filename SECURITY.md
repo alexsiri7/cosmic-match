@@ -433,9 +433,46 @@ exposure via process lists or logs.
 | `KEYSTORE_KEY_ALIAS` | `cosmic-match` |
 | `KEYSTORE_KEY_PASSWORD` | Key password |
 
+`PLAY_SERVICE_ACCOUNT_JSON` is an **environment** secret, not a repository secret — see §8.7.
+
 ### 8.6 Key Properties Example File
 
 A committed example file at `android/key.properties.example` documents the expected properties schema. Copy it to `android/key.properties` and fill in real values. The real `key.properties` is gitignored.
+
+### 8.7 Play Publishing Environments (SEC-07)
+
+Play uploads run only in jobs bound to a GitHub Environment, so the Play service account is readable
+only there and production releases wait for a reviewer (#310). The `release` job builds and signs on
+every PR, `main` push and tag, takes no environment, and hands the signed AAB, APK and R8 mapping to
+the publish jobs as same-run artifacts.
+
+| Environment | Job(s) | Protection | Secrets |
+|-------------|--------|------------|---------|
+| `production` | `ci.yml` → `publish-production` (`v*` tags) | Required reviewer; deployment tags `v*` only | `PLAY_SERVICE_ACCOUNT_JSON` |
+| `play-internal` | `ci.yml` → `publish-internal` (`main` pushes); `setup-store-listing.yml` → `upload-listing` | Deployment branch `main` only; no reviewers | `PLAY_SERVICE_ACCOUNT_JSON` |
+
+`.github/workflow-tests/test_ci_release_gate.py` fails if a job reading the Play secret has no
+environment, or if `release` gains one.
+
+GitHub creates a referenced environment unprotected and falls back to the repository secret, so the
+gate is only active once a maintainer completes this one-time setup, in order:
+
+1. Settings → Environments → `production`: add the maintainer as a required reviewer; set deployment
+   branches and tags to "Selected" with the tag rule `v*`. Enable "Prevent self-review" if there is a
+   second maintainer.
+2. Settings → Environments → `play-internal`: set deployment branches to "Selected" with branch `main`.
+   No reviewers.
+3. Add the environment secret `PLAY_SERVICE_ACCOUNT_JSON` to both environments. Prefer a separate
+   service account for `play-internal` holding only the Play Console testing-track and store-listing
+   permissions, keeping production-release permission on the `production` account.
+4. Push to `main` and confirm `Publish (internal track)` runs unattended.
+5. Delete the repository-level `PLAY_SERVICE_ACCOUNT_JSON` secret.
+6. Settings → Rules → add a tag ruleset targeting `v*` that restricts creation, update and deletion to
+   the maintainer and blocks force-push.
+7. On the next `v*` tag, confirm `Publish (production)` waits for review before uploading, cutting the
+   GitHub Release and notifying.
+
+Production releases ship at 100% (`status: completed`) after approval; staged rollout is not used.
 
 ---
 
