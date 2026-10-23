@@ -53,3 +53,6 @@ coverage/
 
 # Miscellaneous
 *.log
+
+# Node (CI tooling under .github/openspec)
+node_modules/
