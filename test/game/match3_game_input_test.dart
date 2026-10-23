@@ -146,6 +146,28 @@ void main() {
 
       await tester.pump(const Duration(seconds: 2));
     });
+
+    testWidgets('tap is dropped while a swap is in flight', (tester) async {
+      final game = await _loadGame(tester);
+      final a = game.world.tiles[0][0]!;
+      final b = game.world.tiles[1][0]!;
+      game.onTileTap(a);
+      game.onTileTap(b);
+      expect(game.phase, GamePhase.swapping);
+
+      final t = game.world.tiles[4][4]!;
+      game.onTileTap(t);
+
+      expect(t.selectionBorderVisible, isFalse);
+      expect(game.phase, GamePhase.swapping);
+
+      await tester.pump(settledPump());
+
+      expect(game.phase, GamePhase.idle);
+      expect(t.selectionBorderVisible, isFalse);
+
+      await tester.pump(const Duration(seconds: 2));
+    });
   });
 
   group('Match3Game.onTileSwipe', () {
