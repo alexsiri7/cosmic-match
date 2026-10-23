@@ -11,6 +11,7 @@ import '../core/crc_integrity.dart';
 import '../core/logger.dart';
 import '../models/feedback_result.dart';
 import '../models/pending_feedback.dart';
+import 'key_service.dart';
 import 'rate_limit_service.dart';
 
 /// The issue number in [url] when it names an issue in [kFeedbackIssuesRepo],
@@ -32,8 +33,7 @@ class FeedbackService {
   final String workerUrl;
   final http.Client _httpClient;
   final RateLimitService? _rateLimitService;
-  final HiveAesCipher? _cipher;
-  final List<int>? _hmacKey;
+  final StorageKeys? _keys;
   final String _workerHmacSecret;
   final Timer Function(Duration, void Function()) _createTimer;
   StreamSubscription<List<ConnectivityResult>>? _connectivitySub;
@@ -50,21 +50,25 @@ class FeedbackService {
     @visibleForTesting Timer Function(Duration, void Function())? createTimer,
   })  : _httpClient = httpClient ?? http.Client(),
         _rateLimitService = rateLimitService,
-        _cipher = cipher,
-        _hmacKey = hmacKey,
+        _keys = StorageKeys.of(cipher, hmacKey),
         _workerHmacSecret = workerHmacSecret,
         _createTimer = createTimer ?? Timer.new;
 
-  Future<Box> _openBox() => Hive.openBox(_boxName, encryptionCipher: _cipher);
-
+  /// Runs [action] on the encrypted queue box; returns null without opening
+  /// the box when the storage keys are unavailable or on failure.
   Future<T?> _withBox<T>(
     String opLabel,
-    Future<T> Function(Box box) action, {
+    Future<T> Function(Box box, List<int> hmacKey) action, {
     bool logGenericAsError = false,
   }) async {
+    final keys = _keys;
+    if (keys == null) {
+      gameLogger.w('FeedbackService.$opLabel: storage keys unavailable — skipping');
+      return null;
+    }
     try {
-      final box = await _openBox();
-      return await action(box);
+      final box = await Hive.openBox(_boxName, encryptionCipher: keys.cipher);
+      return await action(box, keys.hmacKey);
     } on HiveError catch (e, stack) {
       gameLogger.e('FeedbackService.$opLabel: HiveError', error: e, stackTrace: stack);
     } catch (e, stack) {
@@ -208,7 +212,7 @@ class FeedbackService {
     _flushing = true;
     gameLogger.d('FeedbackService.flushQueue');
     try {
-      await _withBox('flushQueue', (box) async {
+      await _withBox('flushQueue', (box, hmacKey) async {
         final keys = box.keys.toList();
         for (final key in keys) {
           // Per-item try/catch: a single bad row must not strand the rest of the queue.
@@ -219,7 +223,7 @@ class FeedbackService {
               continue;
             }
             final map = Map<String, dynamic>.from(raw);
-            if (!_isValid(map)) {
+            if (!_isValid(map, hmacKey)) {
               gameLogger.w('FeedbackService.flushQueue: dropping invalid item key=$key');
               await box.delete(key);
               continue;
@@ -253,15 +257,8 @@ class FeedbackService {
     _retryFlushTimer = _createTimer(Duration(seconds: cooldownSeconds), flushQueue);
   }
 
-  // See CLAUDE.md "CRC32 Persistence Contract".
-  bool _isValid(Map raw) {
-    final key = _hmacKey;
-    if (key == null) {
-      gameLogger.w('FeedbackService._isValid: hmacKey unavailable — cannot validate integrity');
-      return false;
-    }
-    return isValidHmac(raw, canonicalize: canonicalizeMap, key: key);
-  }
+  bool _isValid(Map raw, List<int> hmacKey) =>
+      isValidHmac(raw, canonicalize: canonicalizeMap, key: hmacKey);
 
   /// `done` is false when the item should be retried later; `accepted` is
   /// true only when the worker filed it (201).
@@ -338,7 +335,7 @@ class FeedbackService {
   /// Clear all queued feedback items.
   Future<bool> clearQueue() async {
     gameLogger.d('FeedbackService.clearQueue');
-    final result = await _withBox<bool>('clearQueue', (box) async {
+    final result = await _withBox<bool>('clearQueue', (box, _) async {
       await box.clear();
       gameLogger.i('FeedbackService.clearQueue: queue cleared');
       return true;
@@ -349,7 +346,7 @@ class FeedbackService {
   /// Remove items older than [ttlDays] or with invalid integrity.
   Future<void> expireOldItems(int ttlDays) async {
     gameLogger.d('FeedbackService.expireOldItems: ttlDays=$ttlDays');
-    await _withBox('expireOldItems', (box) async {
+    await _withBox('expireOldItems', (box, hmacKey) async {
       final cutoff = DateTime.now().subtract(Duration(days: ttlDays));
       final keysToDelete = <dynamic>[];
       for (final key in box.keys) {
@@ -359,7 +356,7 @@ class FeedbackService {
           continue;
         }
         final map = Map<String, dynamic>.from(raw);
-        if (!_isValid(map)) {
+        if (!_isValid(map, hmacKey)) {
           keysToDelete.add(key);
           continue;
         }
@@ -379,12 +376,7 @@ class FeedbackService {
 
   /// Returns whether [item] was persisted.
   Future<bool> _enqueue(PendingFeedback item) async {
-    final hmacKey = _hmacKey;
-    if (hmacKey == null) {
-      gameLogger.w('FeedbackService._enqueue: hmacKey unavailable — skipping persist for id=${item.id}');
-      return false;
-    }
-    final stored = await _withBox<bool>('_enqueue', (box) async {
+    final stored = await _withBox<bool>('_enqueue', (box, hmacKey) async {
       // Enforce max queue size — drop oldest if full
       while (box.length >= _maxQueueSize) {
         await box.deleteAt(0);
