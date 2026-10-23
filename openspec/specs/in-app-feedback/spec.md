@@ -22,7 +22,7 @@ Send feedback SHALL be reachable from the home screen and the game screen. It SH
 
 ### Requirement: Submission requires a real description and consent
 
-Submit SHALL be enabled only when the trimmed description is 10 to 500 characters, the player has ticked a consent box that states exactly what is sent (type, description, annotated screenshot, app version, OS and device model), no submission is in flight and no cooldown is active. The service SHALL independently reject descriptions outside those bounds.
+Submit SHALL be enabled only when the trimmed description is 10 to 500 characters, the player has ticked a consent box that states exactly what is sent (type, description, annotated screenshot, app version, OS and device model) and where it goes (a public GitHub issue) and for how long, no submission is in flight and no cooldown is active. The service SHALL independently reject descriptions outside those bounds.
 
 #### Scenario: Too short
 - GIVEN a description of "bad"

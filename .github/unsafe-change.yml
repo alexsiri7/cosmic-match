@@ -44,6 +44,10 @@ deny_paths:
   - "AGENTS.md"
   - ".claude/*"
   - ".archon/*"
+  - "hook/*"           # Dart build/link hooks run on the CI runner during `flutter build` and `flutter test`
+  - "hooks/*"
+  - "buildSrc/*"       # Gradle build-logic source compiled at configuration time
+  - "*init.gradle*"    # Gradle init scripts run at configuration time, before the build's own scripts
 
 # Per-repo additions to deny_paths.
 extra_deny_paths:
@@ -126,6 +130,16 @@ code_patterns:
     - '\b(String|bool|int)\.fromEnvironment\b'
     - '\b(Raw)?(Secure)?(Server)?Socket\.(connect|bind|startConnect)\b'
     - '\bRawDatagramSocket\b'
+    - '\bdart:ffi\b'
+    - '\bDynamicLibrary\b'
+    - '\bIsolate\.spawnUri\b'
+    - '\bHttpClient\b'                                   # dart:io HTTP client
+    - 'package:http/'                                    # http is already a dependency, so "new dependency" never fires
+    - '\bhttp\.(get|post|put|patch|delete|read|readBytes|Client)\s*\('
+    - '\b(File|Directory|RandomAccessFile|Link)\s*\('    # dart:io filesystem; legitimate test uses are held for owner review
+    - '/proc/self'
+    - 'key\.properties'
+    - '\.jks\b'
   go:
     - '"os/exec"'
     - '"syscall"'

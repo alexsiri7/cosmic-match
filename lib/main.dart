@@ -72,6 +72,9 @@ Future<void> main() async {
             '${packageInfo.packageName}@${packageInfo.version}+${packageInfo.buildNumber}';
         // V1 privacy defaults: no performance tracing, no PII, no screenshots.
         // Revisit tracesSampleRate when the app has a backend (post-V1).
+        // enableAutoSessionTracking is intentionally left at its default (true): session
+        // start/stop events and the SDK's random per-install id are disclosed in
+        // docs/privacy.html and SECURITY.md (#312). Update both if this changes.
         options.tracesSampleRate = 0.0;
         options.sendDefaultPii = false;
         options.attachScreenshot = false;

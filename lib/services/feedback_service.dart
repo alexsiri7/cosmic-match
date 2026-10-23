@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:connectivity_plus/connectivity_plus.dart';
+import 'package:flutter/foundation.dart';
 import 'package:hive/hive.dart';
 import 'package:http/http.dart' as http;
 
@@ -21,7 +22,9 @@ class FeedbackService {
   final HiveAesCipher? _cipher;
   final List<int>? _hmacKey;
   final String _workerHmacSecret;
+  final Timer Function(Duration, void Function()) _createTimer;
   StreamSubscription<List<ConnectivityResult>>? _connectivitySub;
+  Timer? _retryFlushTimer;
   bool _flushing = false;
 
   FeedbackService({
@@ -31,13 +34,35 @@ class FeedbackService {
     HiveAesCipher? cipher,
     List<int>? hmacKey,
     String workerHmacSecret = '',
+    @visibleForTesting Timer Function(Duration, void Function())? createTimer,
   })  : _httpClient = httpClient ?? http.Client(),
         _rateLimitService = rateLimitService,
         _cipher = cipher,
         _hmacKey = hmacKey,
-        _workerHmacSecret = workerHmacSecret;
+        _workerHmacSecret = workerHmacSecret,
+        _createTimer = createTimer ?? Timer.new;
 
   Future<Box> _openBox() => Hive.openBox(_boxName, encryptionCipher: _cipher);
+
+  Future<T?> _withBox<T>(
+    String opLabel,
+    Future<T> Function(Box box) action, {
+    bool logGenericAsError = false,
+  }) async {
+    try {
+      final box = await _openBox();
+      return await action(box);
+    } on HiveError catch (e, stack) {
+      gameLogger.e('FeedbackService.$opLabel: HiveError', error: e, stackTrace: stack);
+    } catch (e, stack) {
+      if (logGenericAsError) {
+        gameLogger.e('FeedbackService.$opLabel failed', error: e, stackTrace: stack);
+      } else {
+        gameLogger.w('FeedbackService.$opLabel failed', error: e, stackTrace: stack);
+      }
+    }
+    return null;
+  }
 
   /// Start listening for connectivity changes to flush queued feedback.
   void listenConnectivity() {
@@ -53,11 +78,14 @@ class FeedbackService {
     );
   }
 
-  /// Cancel connectivity listener.
-  void dispose() => _connectivitySub?.cancel();
+  /// Cancel connectivity listener and any scheduled retry flush.
+  void dispose() {
+    _connectivitySub?.cancel();
+    _retryFlushTimer?.cancel();
+  }
 
   /// Submit feedback — attempts an immediate POST; queues locally on failure
-  /// (network error or non-400 HTTP error) for retry on next connectivity event.
+  /// (network error or non-400 HTTP error) for retry by [flushQueue].
   Future<void> submit({
     required String type,
     required String message,
@@ -68,17 +96,7 @@ class FeedbackService {
   }) async {
     // Log attempt (not content) for rate-limit analysis (SEC-RPT-008).
     gameLogger.d('FeedbackService.submit: attempt type=$type');
-    final rl = _rateLimitService;
-    if (rl != null) {
-      final status = await rl.checkStatus();
-      if (!status.allowed) {
-        gameLogger.w(
-          'FeedbackService.submit: rate-limited — '
-          'cooldown=${status.cooldownSeconds}s hourlyRemaining=${status.hourlyRemaining}',
-        );
-        return;
-      }
-    }
+    if (await _rateLimitRefusal('submit') != null) return;
 
     if (workerUrl.isEmpty) {
       gameLogger.w('FeedbackService.submit: workerUrl is empty — skipping');
@@ -122,58 +140,86 @@ class FeedbackService {
       createdAt: DateTime.now(),
     );
 
+    // Every POST is charged, even one that fails and is queued; otherwise
+    // toggling connectivity bypasses the limiter (#306).
+    await _rateLimitService?.recordSubmission();
     final sent = await _postToWorker(item);
-    if (sent) {
-      await _rateLimitService?.recordSubmission();
-    } else {
+    if (!sent) {
       await _enqueue(item);
     }
+  }
+
+  /// Returns the limiter's refusal, or null when the POST may proceed.
+  Future<({bool allowed, int cooldownSeconds, int hourlyRemaining})?>
+      _rateLimitRefusal(String opLabel) async {
+    final rl = _rateLimitService;
+    if (rl == null) return null;
+    final status = await rl.checkStatus();
+    if (status.allowed) return null;
+    gameLogger.w(
+      'FeedbackService.$opLabel: rate-limited — '
+      'cooldown=${status.cooldownSeconds}s hourlyRemaining=${status.hourlyRemaining}',
+    );
+    return status;
   }
 
   /// Returns the remaining cooldown in seconds (0 = no cooldown active).
   Future<int> remainingCooldownSeconds() async =>
       await _rateLimitService?.remainingCooldownSeconds() ?? 0;
 
-  /// Flush all queued items — called on connectivity change.
+  /// Flush queued items — called on connectivity change. Each POST is
+  /// rate-limited like a direct submission; once the limiter refuses, the
+  /// remaining items stay queued. A cooldown refusal schedules another flush
+  /// for when it expires, so the queue keeps draining without a further
+  /// connectivity event; an hourly-cap refusal waits for the next one.
   Future<void> flushQueue() async {
     if (_flushing) return;
     _flushing = true;
     gameLogger.d('FeedbackService.flushQueue');
     try {
-      final box = await _openBox();
-      final keys = box.keys.toList();
-      for (final key in keys) {
-        // Per-item try/catch: a single bad row must not strand the rest of the queue.
-        try {
-          final raw = box.get(key);
-          if (raw == null || raw is! Map) {
-            await box.delete(key);
-            continue;
+      await _withBox('flushQueue', (box) async {
+        final keys = box.keys.toList();
+        for (final key in keys) {
+          // Per-item try/catch: a single bad row must not strand the rest of the queue.
+          try {
+            final raw = box.get(key);
+            if (raw == null || raw is! Map) {
+              await box.delete(key);
+              continue;
+            }
+            final map = Map<String, dynamic>.from(raw);
+            if (!_isValid(map)) {
+              gameLogger.w('FeedbackService.flushQueue: dropping invalid item key=$key');
+              await box.delete(key);
+              continue;
+            }
+            final item = PendingFeedback.fromMap(map);
+            final refusal = await _rateLimitRefusal('flushQueue');
+            if (refusal != null) {
+              _scheduleRetryFlush(refusal.cooldownSeconds);
+              break;
+            }
+            await _rateLimitService?.recordSubmission();
+            final sent = await _postToWorker(item);
+            if (sent) {
+              await box.delete(key);
+            }
+          } catch (e, stack) {
+            gameLogger.w('FeedbackService.flushQueue: per-item error key=$key',
+                error: e, stackTrace: stack);
+            // Do not abort the loop — continue with the next key.
           }
-          final map = Map<String, dynamic>.from(raw);
-          if (!_isValid(map)) {
-            gameLogger.w('FeedbackService.flushQueue: dropping invalid item key=$key');
-            await box.delete(key);
-            continue;
-          }
-          final item = PendingFeedback.fromMap(map);
-          final sent = await _postToWorker(item);
-          if (sent) {
-            await box.delete(key);
-          }
-        } catch (e, stack) {
-          gameLogger.w('FeedbackService.flushQueue: per-item error key=$key',
-              error: e, stackTrace: stack);
-          // Do not abort the loop — continue with the next key.
         }
-      }
-    } on HiveError catch (e, stack) {
-      gameLogger.e('FeedbackService.flushQueue: HiveError', error: e, stackTrace: stack);
-    } catch (e, stack) {
-      gameLogger.e('FeedbackService.flushQueue failed', error: e, stackTrace: stack);
+      }, logGenericAsError: true);
     } finally {
       _flushing = false;
     }
+  }
+
+  void _scheduleRetryFlush(int cooldownSeconds) {
+    if (cooldownSeconds <= 0) return;
+    _retryFlushTimer?.cancel();
+    _retryFlushTimer = _createTimer(Duration(seconds: cooldownSeconds), flushQueue);
   }
 
   // See CLAUDE.md "CRC32 Persistence Contract".
@@ -188,8 +234,11 @@ class FeedbackService {
 
   Future<bool> _postToWorker(PendingFeedback item) async {
     try {
+      // `id` is stable across retries of the same queued item, so the signed
+      // body identifies one submission and the worker can de-duplicate replays.
       final body = jsonEncode({
-        'repo': 'alexsiri7/cosmic-match',
+        'id': item.id,
+        'repo': kFeedbackIssuesRepo,
         'type': item.type,
         'message': item.message,
         'screenshot': item.screenshotB64,
@@ -256,25 +305,18 @@ class FeedbackService {
   /// Clear all queued feedback items.
   Future<bool> clearQueue() async {
     gameLogger.d('FeedbackService.clearQueue');
-    try {
-      final box = await _openBox();
+    final result = await _withBox<bool>('clearQueue', (box) async {
       await box.clear();
       gameLogger.i('FeedbackService.clearQueue: queue cleared');
       return true;
-    } on HiveError catch (e, stack) {
-      gameLogger.e('FeedbackService.clearQueue: HiveError', error: e, stackTrace: stack);
-      return false;
-    } catch (e, stack) {
-      gameLogger.w('FeedbackService.clearQueue failed', error: e, stackTrace: stack);
-      return false;
-    }
+    });
+    return result ?? false;
   }
 
   /// Remove items older than [ttlDays] or with invalid integrity.
   Future<void> expireOldItems(int ttlDays) async {
     gameLogger.d('FeedbackService.expireOldItems: ttlDays=$ttlDays');
-    try {
-      final box = await _openBox();
+    await _withBox('expireOldItems', (box) async {
       final cutoff = DateTime.now().subtract(Duration(days: ttlDays));
       final keysToDelete = <dynamic>[];
       for (final key in box.keys) {
@@ -299,32 +341,23 @@ class FeedbackService {
       if (keysToDelete.isNotEmpty) {
         gameLogger.i('FeedbackService.expireOldItems: deleted ${keysToDelete.length} item(s)');
       }
-    } on HiveError catch (e, stack) {
-      gameLogger.e('FeedbackService.expireOldItems: HiveError', error: e, stackTrace: stack);
-    } catch (e, stack) {
-      gameLogger.w('FeedbackService.expireOldItems failed', error: e, stackTrace: stack);
-    }
+    });
   }
 
   Future<void> _enqueue(PendingFeedback item) async {
-    if (_hmacKey == null) {
+    final hmacKey = _hmacKey;
+    if (hmacKey == null) {
       gameLogger.w('FeedbackService._enqueue: hmacKey unavailable — skipping persist for id=${item.id}');
       return;
     }
-    try {
-      final box = await _openBox();
-
+    await _withBox('_enqueue', (box) async {
       // Enforce max queue size — drop oldest if full
       while (box.length >= _maxQueueSize) {
         await box.deleteAt(0);
       }
 
-      await box.put(item.id, item.toMap(_hmacKey));
+      await box.put(item.id, item.toMap(hmacKey));
       gameLogger.d('FeedbackService: queued item ${item.id}');
-    } on HiveError catch (e, stack) {
-      gameLogger.e('FeedbackService._enqueue: HiveError', error: e, stackTrace: stack);
-    } catch (e, stack) {
-      gameLogger.e('FeedbackService._enqueue failed', error: e, stackTrace: stack);
-    }
+    }, logGenericAsError: true);
   }
 }

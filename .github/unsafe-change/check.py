@@ -343,7 +343,7 @@ def evaluate(files: list[dict], policy: dict, fetch=None) -> list[str]:
         for pat in pats:
             line = next((l for l in added if re.search(pat, l)), None)
             if line is not None:
-                problems.append("%s: adds process/env/socket code (%s): %.80s" % (path, pat, line.strip()))
+                problems.append("%s: adds process/env/socket/filesystem/network code (%s): %.80s" % (path, pat, line.strip()))
                 break
         if is_mig:
             problems += sql_problems(path, added, mig)

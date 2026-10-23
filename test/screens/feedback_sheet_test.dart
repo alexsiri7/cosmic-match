@@ -244,6 +244,8 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.textContaining('will be sent to our server'), findsOneWidget);
+      expect(find.textContaining('public GitHub repository'), findsOneWidget);
+      expect(find.textContaining(kFeedbackIssuesRepo), findsOneWidget);
     },
   );
 

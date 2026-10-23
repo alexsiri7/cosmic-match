@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
@@ -346,9 +347,11 @@ void main() {
         posted = true;
         return http.Response('', 201);
       });
+      final storage = <String, String>{};
       final service = FeedbackService(
         workerUrl: 'https://example.com/feedback',
         httpClient: client,
+        rateLimitService: RateLimitService(testStorage: storage),
       );
 
       await service.submit(
@@ -361,6 +364,7 @@ void main() {
       );
 
       expect(posted, isFalse);
+      expect(storage, isEmpty, reason: 'a rejected message must not use a rate-limit slot');
       final box = await Hive.openBox('feedback_worker_queue');
       expect(box.length, 0);
     });
@@ -517,7 +521,7 @@ void main() {
       );
     });
 
-    test('does not call recordSubmission when POST fails (503)', () async {
+    test('calls recordSubmission when POST fails (503) and the item is queued', () async {
       final client = MockClient((_) async => http.Response('', 503));
 
       // Cooldown already expired.
@@ -546,11 +550,10 @@ void main() {
         device: 'Pixel',
       );
 
-      // Timestamp must NOT have been updated (no recordSubmission call).
       expect(
         storage['feedback_last_submit_ms'],
-        originalMs.toString(),
-        reason: 'failed POST must not update the rate-limit timestamp',
+        fixedNow.millisecondsSinceEpoch.toString(),
+        reason: 'a failed POST must still be charged, or going offline bypasses the limiter (#306)',
       );
       // Item must be queued for retry.
       final box = await Hive.openBox('feedback_worker_queue', encryptionCipher: _testCipher);
@@ -780,6 +783,7 @@ void main() {
       );
 
       expect(capturedBody, isNotNull);
+      expect(capturedBody!['id'], isA<String>());
       expect(capturedBody!['repo'], 'alexsiri7/cosmic-match');
       expect(capturedBody!['type'], 'bug');
       expect(capturedBody!['message'], 'detailed bug report here');
@@ -922,6 +926,45 @@ void main() {
         captured!.headers['x-feedback-signature'],
         'sha256=${computeHmac('$ts.${captured!.body}', utf8.encode('test-secret'))}',
       );
+      expect((jsonDecode(captured!.body) as Map)['id'], 'flush-signed',
+          reason: 'the signed body must identify the queued item (#307)');
+      expect(box.length, 0);
+    });
+
+    test('a failed submit and its flushed retry send the same body id (#307)', () async {
+      final ids = <Object?>[];
+      var online = false;
+      final client = MockClient((req) async {
+        ids.add((jsonDecode(req.body) as Map)['id']);
+        return online
+            ? http.Response('{"url": "https://github.com/issue/1"}', 201)
+            : http.Response('', 503);
+      });
+      final service = FeedbackService(
+        workerUrl: 'https://example.com/',
+        httpClient: client,
+        cipher: _testCipher,
+        hmacKey: _testKey,
+        workerHmacSecret: 'test-secret',
+      );
+
+      await service.submit(
+        type: 'bug',
+        message: 'retry me later',
+        screenshotB64: '',
+        appVersion: '1.0.0+1',
+        os: 'android',
+        device: 'test',
+      );
+      final box = await Hive.openBox('feedback_worker_queue', encryptionCipher: _testCipher);
+      expect(box.length, 1);
+
+      online = true;
+      await service.flushQueue();
+
+      expect(ids, hasLength(2));
+      expect(ids.first, isA<String>());
+      expect(ids.last, ids.first);
       expect(box.length, 0);
     });
 
@@ -1063,6 +1106,177 @@ void main() {
       // Both rows should be removed: the bad one as invalid, the good one as sent.
       expect(box.length, 0,
           reason: 'a bad row must not abort the loop and strand later valid items');
+    });
+
+    test('stops posting once the rate limiter refuses and leaves the rest queued', () async {
+      final box = await Hive.openBox('feedback_worker_queue', encryptionCipher: _testCipher);
+      for (var i = 0; i < 3; i++) {
+        final item = PendingFeedback(
+          id: 'rl-$i',
+          type: 'bug',
+          message: 'queued $i',
+          screenshotB64: '',
+          appVersion: '1.0.0+1',
+          os: 'android',
+          device: 'test',
+          createdAt: DateTime(2025, 1, 1),
+        );
+        await box.put(item.id, item.toMap(_testKey));
+      }
+
+      var posts = 0;
+      final client = MockClient((_) async {
+        posts++;
+        return http.Response('{"url":"x"}', 201);
+      });
+      final fixedNow = DateTime(2026, 9, 25, 12);
+      final storage = <String, String>{};
+      final service = FeedbackService(
+        workerUrl: 'https://example.com/',
+        httpClient: client,
+        rateLimitService:
+            RateLimitService(testStorage: storage, now: () => fixedNow),
+        cipher: _testCipher,
+        hmacKey: _testKey,
+        createTimer: (d, cb) => Timer(const Duration(days: 1), () {}),
+      );
+      addTearDown(service.dispose);
+
+      await service.flushQueue();
+
+      expect(posts, 1, reason: 'the cooldown after the first POST must stop the drain');
+      expect(box.length, 2, reason: 'items the limiter refused stay queued');
+      expect(storage['feedback_last_submit_ms'], fixedNow.millisecondsSinceEpoch.toString());
+    });
+
+    test('posts nothing when the rate limiter already refuses', () async {
+      final box = await Hive.openBox('feedback_worker_queue', encryptionCipher: _testCipher);
+      final item = PendingFeedback(
+        id: 'rl-blocked',
+        type: 'bug',
+        message: 'queued',
+        screenshotB64: '',
+        appVersion: '1.0.0+1',
+        os: 'android',
+        device: 'test',
+        createdAt: DateTime(2025, 1, 1),
+      );
+      await box.put(item.id, item.toMap(_testKey));
+
+      var posted = false;
+      final client = MockClient((_) async {
+        posted = true;
+        return http.Response('{"url":"x"}', 201);
+      });
+      final fixedNow = DateTime(2026, 9, 25, 12);
+      final service = FeedbackService(
+        workerUrl: 'https://example.com/',
+        httpClient: client,
+        rateLimitService: RateLimitService(
+          testStorage: {
+            'feedback_hour_window': jsonEncode({
+              'count': kFeedbackMaxPerHour,
+              'windowStart': fixedNow.toIso8601String(),
+            }),
+          },
+          now: () => fixedNow,
+        ),
+        cipher: _testCipher,
+        hmacKey: _testKey,
+      );
+
+      await service.flushQueue();
+
+      expect(posted, isFalse);
+      expect(box.length, 1);
+      // The hourly cap gives no expiry time; the next connectivity event retries.
+    });
+
+    Future<void> queueItems(Box box, int n) async {
+      for (var i = 0; i < n; i++) {
+        final item = PendingFeedback(
+          id: 'q-$i',
+          type: 'bug',
+          message: 'queued $i',
+          screenshotB64: '',
+          appVersion: '1.0.0+1',
+          os: 'android',
+          device: 'test',
+          createdAt: DateTime(2025, 1, 1),
+        );
+        await box.put(item.id, item.toMap(_testKey));
+      }
+    }
+
+    test('a cooldown refusal schedules a flush that resumes the drain when it expires', () async {
+      final box = await Hive.openBox('feedback_worker_queue', encryptionCipher: _testCipher);
+      await queueItems(box, 2);
+
+      var posts = 0;
+      final client = MockClient((_) async {
+        posts++;
+        return http.Response('{"url":"x"}', 201);
+      });
+      var now = DateTime(2026, 9, 25, 12);
+      final storage = <String, String>{
+        // A failed submit 10 s ago left 20 s of cooldown.
+        'feedback_last_submit_ms':
+            now.subtract(const Duration(seconds: 10)).millisecondsSinceEpoch.toString(),
+      };
+      final scheduled = <(Duration, void Function())>[];
+      final service = FeedbackService(
+        workerUrl: 'https://example.com/',
+        httpClient: client,
+        rateLimitService: RateLimitService(testStorage: storage, now: () => now),
+        cipher: _testCipher,
+        hmacKey: _testKey,
+        createTimer: (d, cb) {
+          scheduled.add((d, cb));
+          return Timer(const Duration(days: 1), () {});
+        },
+      );
+      addTearDown(service.dispose);
+
+      await service.flushQueue();
+      expect(posts, 0);
+      expect(scheduled.map((t) => t.$1), [const Duration(seconds: 20)]);
+
+      now = now.add(const Duration(seconds: 20));
+      scheduled.last.$2();
+      for (var i = 0; i < 200 && scheduled.length < 2; i++) {
+        await Future<void>.delayed(const Duration(milliseconds: 10));
+      }
+
+      expect(posts, 1);
+      expect(box.length, 1);
+      expect(scheduled.map((t) => t.$1).last, const Duration(seconds: kFeedbackCooldownSeconds),
+          reason: 'the next item is retried after the cooldown its own POST started');
+    });
+
+    test('charges a failed flush POST so it blocks the next item in the same drain', () async {
+      final box = await Hive.openBox('feedback_worker_queue', encryptionCipher: _testCipher);
+      await queueItems(box, 2);
+
+      var posts = 0;
+      final client = MockClient((_) async {
+        posts++;
+        return http.Response('unavailable', 503);
+      });
+      final fixedNow = DateTime(2026, 9, 25, 12);
+      final service = FeedbackService(
+        workerUrl: 'https://example.com/',
+        httpClient: client,
+        rateLimitService: RateLimitService(testStorage: {}, now: () => fixedNow),
+        cipher: _testCipher,
+        hmacKey: _testKey,
+        createTimer: (d, cb) => Timer(const Duration(days: 1), () {}),
+      );
+      addTearDown(service.dispose);
+
+      await service.flushQueue();
+
+      expect(posts, 1);
+      expect(box.length, 2);
     });
   });
 

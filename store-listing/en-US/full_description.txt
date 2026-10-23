@@ -14,7 +14,7 @@ FEATURES
 ⭐ Smooth animations and physics-based cascades
 💾 Auto-save — pick up exactly where you left off
 🔒 No account required — just download and play
-📵 Full offline support — no internet needed
+📵 Playable offline
 🎮 Simple controls, satisfying depth
 
 BUILT WITH LOVE
