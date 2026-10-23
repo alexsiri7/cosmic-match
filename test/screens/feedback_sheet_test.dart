@@ -23,7 +23,7 @@ void main() {
       await tester.pumpWidget(ProviderScope(
         child: CosmicMatchApp(
           progressService: ProgressService(),
-          feedbackService: FeedbackService(workerUrl: 'http://test'),
+          feedbackService: FeedbackService(workerUrl: 'https://test'),
           gameOverride: Match3Game(progressService: null),
         ),
       ));
@@ -46,7 +46,7 @@ void main() {
       await tester.pumpWidget(ProviderScope(
         child: CosmicMatchApp(
           progressService: ProgressService(),
-          feedbackService: FeedbackService(workerUrl: 'http://test'),
+          feedbackService: FeedbackService(workerUrl: 'https://test'),
           gameOverride: Match3Game(progressService: null),
         ),
       ));
@@ -64,7 +64,7 @@ void main() {
       await tester.pumpWidget(ProviderScope(
         child: CosmicMatchApp(
           progressService: ProgressService(),
-          feedbackService: FeedbackService(workerUrl: 'http://test'),
+          feedbackService: FeedbackService(workerUrl: 'https://test'),
           gameOverride: Match3Game(progressService: null),
         ),
       ));
@@ -87,7 +87,7 @@ void main() {
       await tester.pumpWidget(ProviderScope(
         child: CosmicMatchApp(
           progressService: ProgressService(),
-          feedbackService: FeedbackService(workerUrl: 'http://test'),
+          feedbackService: FeedbackService(workerUrl: 'https://test'),
           gameOverride: Match3Game(progressService: null),
         ),
       ));
@@ -139,7 +139,7 @@ void main() {
       await tester.pumpWidget(ProviderScope(
         child: CosmicMatchApp(
           progressService: ProgressService(),
-          feedbackService: FeedbackService(workerUrl: 'http://test'),
+          feedbackService: FeedbackService(workerUrl: 'https://test'),
           gameOverride: Match3Game(progressService: null),
         ),
       ));

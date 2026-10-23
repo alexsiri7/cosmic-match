@@ -382,6 +382,40 @@ void main() {
       expect(box.length, 0);
     });
 
+    for (final (label, url) in [
+      ('http scheme', 'http://worker.test'),
+      ('no scheme', 'worker.test/feedback'),
+      ('no host', 'https:///feedback'),
+    ]) {
+      test('sends nothing when workerUrl is not https ($label)', () async {
+        var requests = 0;
+        final client = MockClient((_) async {
+          requests++;
+          return http.Response('{}', 201);
+        });
+        final service = FeedbackService(
+          workerUrl: url,
+          httpClient: client,
+          hmacKey: _testKey,
+          cipher: _testCipher,
+        );
+
+        final result = await service.submit(
+          type: 'bug',
+          message: 'test message',
+          screenshotB64: '',
+          appVersion: '1.0.0+1',
+          os: 'android',
+          device: 'Pixel',
+        );
+
+        expect(result.outcome, FeedbackOutcome.notSent);
+        expect(requests, 0);
+        final box = await Hive.openBox('feedback_worker_queue', encryptionCipher: _testCipher);
+        expect(box.length, 0);
+      });
+    }
+
     test('enforces 20-item cap — drops oldest when full', () async {
       final client = MockClient((_) async => http.Response('', 503));
       final service = FeedbackService(
@@ -652,7 +686,7 @@ void main() {
         return http.Response('{"url":"http://x"}', 201);
       });
       final service = FeedbackService(
-        workerUrl: 'http://worker.test',
+        workerUrl: 'https://worker.test',
         httpClient: client,
         hmacKey: _testKey,
         cipher: _testCipher,
@@ -679,7 +713,7 @@ void main() {
         return http.Response('{"url": "https://github.com/issue/1"}', 201);
       });
       final service = FeedbackService(
-        workerUrl: 'http://worker.test',
+        workerUrl: 'https://worker.test',
         httpClient: client,
         hmacKey: _testKey,
         cipher: _testCipher,
@@ -705,7 +739,7 @@ void main() {
         return http.Response('{"url":"http://x"}', 201);
       });
       final service = FeedbackService(
-        workerUrl: 'http://worker.test',
+        workerUrl: 'https://worker.test',
         httpClient: client,
         hmacKey: _testKey,
         cipher: _testCipher,
@@ -734,7 +768,7 @@ void main() {
         return http.Response('{"url":"http://x"}', 201);
       });
       final service = FeedbackService(
-        workerUrl: 'http://worker.test',
+        workerUrl: 'https://worker.test',
         httpClient: client,
         hmacKey: _testKey,
         cipher: _testCipher,
@@ -919,6 +953,37 @@ void main() {
       if (tempDir.existsSync()) {
         tempDir.deleteSync(recursive: true);
       }
+    });
+
+    test('leaves queued items unsent when workerUrl is not https', () async {
+      final box = await Hive.openBox('feedback_worker_queue', encryptionCipher: _testCipher);
+      final item = PendingFeedback(
+        id: 'flush-http',
+        type: 'bug',
+        message: 'queued',
+        screenshotB64: '',
+        appVersion: '1.0.0+1',
+        os: 'android',
+        device: 'test',
+        createdAt: DateTime(2025, 6, 1),
+      );
+      await box.put(item.id, item.toMap(_testKey));
+
+      var requests = 0;
+      final client = MockClient((_) async {
+        requests++;
+        return http.Response('{}', 201);
+      });
+      final service = FeedbackService(
+        workerUrl: 'http://worker.test',
+        httpClient: client,
+        hmacKey: _testKey,
+        cipher: _testCipher,
+      );
+      await service.flushQueue();
+
+      expect(requests, 0);
+      expect(box.length, 1);
     });
 
     test('removes successfully sent items from queue', () async {
