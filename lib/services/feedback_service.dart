@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io' show HttpDate, HttpException;
 
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/foundation.dart';
@@ -36,6 +37,7 @@ class FeedbackService {
   final List<int>? _hmacKey;
   final String _workerHmacSecret;
   final Timer Function(Duration, void Function()) _createTimer;
+  final DateTime Function() _now;
   StreamSubscription<List<ConnectivityResult>>? _connectivitySub;
   Timer? _retryFlushTimer;
   bool _flushing = false;
@@ -48,12 +50,14 @@ class FeedbackService {
     List<int>? hmacKey,
     String workerHmacSecret = '',
     @visibleForTesting Timer Function(Duration, void Function())? createTimer,
+    @visibleForTesting DateTime Function()? now,
   })  : _httpClient = httpClient ?? http.Client(),
         _rateLimitService = rateLimitService,
         _cipher = cipher,
         _hmacKey = hmacKey,
         _workerHmacSecret = workerHmacSecret,
-        _createTimer = createTimer ?? Timer.new;
+        _createTimer = createTimer ?? Timer.new,
+        _now = now ?? DateTime.now;
 
   Future<Box> _openBox() => Hive.openBox(_boxName, encryptionCipher: _cipher);
 
@@ -99,7 +103,8 @@ class FeedbackService {
 
   /// Submit feedback — attempts an immediate POST; queues locally on a
   /// retryable failure (network error, or an HTTP error other than
-  /// 400/401/403) for [flushQueue].
+  /// 400/401/403) for [flushQueue]. An item the worker refused retryably is
+  /// queued already backed off, with a flush scheduled for when it is due.
   ///
   /// The outcome is [FeedbackOutcome.sent] on 201, carrying the filed issue's
   /// number when the worker reports one in [kFeedbackIssuesRepo];
@@ -171,14 +176,20 @@ class FeedbackService {
     if (result.accepted) {
       return (outcome: FeedbackOutcome.sent, issueNumber: result.issueNumber);
     }
-    if (!result.done && await _enqueue(item)) {
-      return (outcome: FeedbackOutcome.queued, issueNumber: null);
+    if (result.done) return _notSent;
+    if (!result.responded) {
+      return await _enqueue(item) ? _queued : _notSent;
     }
-    return _notSent;
+    final backoff = _backedOff(item, result.retryAfter);
+    if (!await _enqueue(backoff.item)) return _notSent;
+    _scheduleRetryFlush(backoff.delay.inSeconds);
+    return _queued;
   }
 
   static const FeedbackResult _notSent =
       (outcome: FeedbackOutcome.notSent, issueNumber: null);
+  static const FeedbackResult _queued =
+      (outcome: FeedbackOutcome.queued, issueNumber: null);
 
   /// Returns the limiter's refusal, or null when the POST may proceed.
   Future<RateLimitStatus?> _rateLimitRefusal(String opLabel) async {
@@ -198,11 +209,18 @@ class FeedbackService {
   Future<int> remainingCooldownSeconds() async =>
       await _rateLimitService?.remainingCooldownSeconds() ?? 0;
 
-  /// Flush queued items — called on connectivity change. Each POST is
-  /// rate-limited like a direct submission; once the limiter refuses, the
-  /// remaining items stay queued. A cooldown refusal schedules another flush
-  /// for when it expires, so the queue keeps draining without a further
-  /// connectivity event; an hourly-cap refusal waits for the next one.
+  /// Flush queued items — called on connectivity change. Items still backing
+  /// off are skipped. Each POST is rate-limited like a direct submission;
+  /// once the limiter refuses, the remaining items stay queued. A cooldown
+  /// refusal schedules another flush for when it expires, so the queue keeps
+  /// draining without a further connectivity event; an hourly-cap refusal
+  /// waits for the next one.
+  ///
+  /// The flush stops at the first retryable failure. A network error or
+  /// timeout leaves the item as it was, to be retried on the next
+  /// connectivity event. A retryable worker response backs the item off
+  /// (honouring `Retry-After`) and schedules a flush for when it is due; after
+  /// [kFeedbackMaxAttempts] such responses the item is dropped (#327).
   Future<void> flushQueue() async {
     if (_flushing) return;
     _flushing = true;
@@ -225,6 +243,8 @@ class FeedbackService {
               continue;
             }
             final item = PendingFeedback.fromMap(map);
+            final due = item.nextRetryAt;
+            if (due != null && due.isAfter(_now())) continue;
             final refusal = await _rateLimitRefusal('flushQueue');
             if (refusal != null) {
               _scheduleRetryFlush(refusal.cooldownSeconds);
@@ -234,7 +254,21 @@ class FeedbackService {
             final result = await _postToWorker(item);
             if (result.done) {
               await box.delete(key);
+              continue;
             }
+            if (!result.responded) break;
+            final backoff = _backedOff(item, result.retryAfter);
+            if (backoff.item.attempts >= kFeedbackMaxAttempts) {
+              gameLogger.w(
+                'FeedbackService.flushQueue: dropping item key=$key '
+                'after ${backoff.item.attempts} attempts',
+              );
+              await box.delete(key);
+            } else {
+              await box.put(key, backoff.item.toMap(_hmacKey));
+              _scheduleRetryFlush(backoff.delay.inSeconds);
+            }
+            break;
           } catch (e, stack) {
             gameLogger.w('FeedbackService.flushQueue: per-item error key=$key',
                 error: e, stackTrace: stack);
@@ -253,6 +287,36 @@ class FeedbackService {
     _retryFlushTimer = _createTimer(Duration(seconds: cooldownSeconds), flushQueue);
   }
 
+  /// [item] after one more retryable worker response, due again after
+  /// exponential backoff from [kFeedbackRetryBaseSeconds]. [retryAfter] can
+  /// only lengthen the delay; [kFeedbackRetryMaxSeconds] bounds it.
+  ({PendingFeedback item, Duration delay}) _backedOff(
+    PendingFeedback item,
+    Duration? retryAfter,
+  ) {
+    final attempts = item.attempts + 1;
+    var seconds = kFeedbackRetryBaseSeconds << (attempts.clamp(1, 20) - 1);
+    if (retryAfter != null && retryAfter.inSeconds > seconds) {
+      seconds = retryAfter.inSeconds;
+    }
+    final delay = Duration(seconds: seconds.clamp(0, kFeedbackRetryMaxSeconds));
+    return (item: item.afterFailedAttempt(_now().add(delay)), delay: delay);
+  }
+
+  /// A `Retry-After` value as delta-seconds or an HTTP-date; null when absent
+  /// or unparseable.
+  Duration? _parseRetryAfter(String? value) {
+    if (value == null) return null;
+    final seconds = int.tryParse(value.trim());
+    if (seconds != null) return seconds >= 0 ? Duration(seconds: seconds) : null;
+    try {
+      final wait = HttpDate.parse(value).difference(_now());
+      return wait.isNegative ? Duration.zero : wait;
+    } on HttpException {
+      return null;
+    }
+  }
+
   // See CLAUDE.md "CRC32 Persistence Contract".
   bool _isValid(Map raw) {
     final key = _hmacKey;
@@ -264,8 +328,11 @@ class FeedbackService {
   }
 
   /// `done` is false when the item should be retried later; `accepted` is
-  /// true only when the worker filed it (201).
-  Future<({bool done, bool accepted, int? issueNumber})> _postToWorker(PendingFeedback item) async {
+  /// true only when the worker filed it (201). `responded` is false when the
+  /// request itself failed (network error or timeout), so the worker saw no
+  /// load; `retryAfter` is the worker's `Retry-After` on a retryable response.
+  Future<({bool done, bool accepted, int? issueNumber, bool responded, Duration? retryAfter})>
+      _postToWorker(PendingFeedback item) async {
     try {
       // `id` is stable across retries of the same queued item, so the signed
       // body identifies one submission and the worker can de-duplicate replays.
@@ -312,26 +379,32 @@ class FeedbackService {
           gameLogger.d('FeedbackService: 201 body parse failed — treating as success', error: e);
         }
         gameLogger.i('FeedbackService: posted successfully. Issue: ${issueUrl ?? '(url unavailable)'}');
-        return (done: true, accepted: true, issueNumber: feedbackIssueNumber(issueUrl));
+        return (done: true, accepted: true, issueNumber: feedbackIssueNumber(issueUrl), responded: true, retryAfter: null);
       }
 
       // 400 = bad body — permanent failure, do not retry
       if (response.statusCode == 400) {
         gameLogger.w('FeedbackService: worker returned 400 — dropping item');
-        return (done: true, accepted: false, issueNumber: null); // not retried
+        return (done: true, accepted: false, issueNumber: null, responded: true, retryAfter: null); // not retried
       }
 
       // 401/403 = auth failure — permanent, wrong HMAC key will never self-heal on retry
       if (response.statusCode == 401 || response.statusCode == 403) {
         gameLogger.e('FeedbackService: worker returned ${response.statusCode} — auth failure, dropping item (check FEEDBACK_HMAC_SECRET)');
-        return (done: true, accepted: false, issueNumber: null); // permanent — wrong key will never succeed on retry
+        return (done: true, accepted: false, issueNumber: null, responded: true, retryAfter: null); // permanent — wrong key will never succeed on retry
       }
 
       gameLogger.w('FeedbackService: worker returned ${response.statusCode} — will retry');
-      return (done: false, accepted: false, issueNumber: null);
+      return (
+        done: false,
+        accepted: false,
+        issueNumber: null,
+        responded: true,
+        retryAfter: _parseRetryAfter(response.headers['retry-after']),
+      );
     } catch (e, stack) {
       gameLogger.w('FeedbackService: POST failed — queuing', error: e, stackTrace: stack);
-      return (done: false, accepted: false, issueNumber: null);
+      return (done: false, accepted: false, issueNumber: null, responded: false, retryAfter: null);
     }
   }
 

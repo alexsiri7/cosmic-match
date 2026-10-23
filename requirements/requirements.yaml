@@ -324,6 +324,9 @@ requirements:
       - "A connectivity-restored event triggers flushQueue exactly once at a time (re-entrancy guard)"
       - "A single malformed/tampered row is deleted and the rest of the queue still flushes"
       - "A flush the rate limiter stops during its cooldown schedules another flush for when the cooldown expires, so the queue drains one item per cooldown without further connectivity events; a flush stopped by the hourly cap waits for the next connectivity event"
+      - "A retryable worker response (any status other than 201/400/401/403) increments the item's signed `attempts`, sets `nextRetryAt` by exponential backoff from 5 min (at least the `Retry-After` value when present, at most 24 h), schedules a flush for then, and stops the flush; flushes skip items not yet due (#327)"
+      - "An item is dropped after 10 retryable worker responses; a network error or timeout neither counts as an attempt nor delays the item, and stops the flush until the next connectivity event (#327)"
+      - "Queued items stored without `attempts`/`nextRetryAt` still validate and are treated as due with 0 attempts (#327)"
 
   - id: CM-026
     title: Feedback queue retention (7-day TTL)
