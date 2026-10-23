@@ -5,6 +5,7 @@ import json, os, io
 from pathlib import Path
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
+from googleapiclient.errors import HttpError
 from googleapiclient.http import MediaIoBaseUpload
 
 PKG  = 'net.interstellarai.cosmicmatch'
@@ -51,8 +52,10 @@ def main():
                 packageName=PKG, editId=eid, language=LANG, imageType=img_type
             ).execute()
             print(f"Cleared {img_type}")
-        except Exception as e:
-            print(f"No existing {img_type} ({e})")
+        except HttpError as e:
+            if e.resp.status != 404:
+                raise
+            print(f"No existing {img_type} (HTTP 404)")
 
     for n in range(1, 4):
         upload_image(svc, eid, 'phoneScreenshots',     shots / f'phone_{n}.png')
