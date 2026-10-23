@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
@@ -346,9 +347,11 @@ void main() {
         posted = true;
         return http.Response('', 201);
       });
+      final storage = <String, String>{};
       final service = FeedbackService(
         workerUrl: 'https://example.com/feedback',
         httpClient: client,
+        rateLimitService: RateLimitService(testStorage: storage),
       );
 
       await service.submit(
@@ -361,6 +364,7 @@ void main() {
       );
 
       expect(posted, isFalse);
+      expect(storage, isEmpty, reason: 'a rejected message must not use a rate-limit slot');
       final box = await Hive.openBox('feedback_worker_queue');
       expect(box.length, 0);
     });
@@ -1094,7 +1098,9 @@ void main() {
             RateLimitService(testStorage: storage, now: () => fixedNow),
         cipher: _testCipher,
         hmacKey: _testKey,
+        createTimer: (d, cb) => Timer(const Duration(days: 1), () {}),
       );
+      addTearDown(service.dispose);
 
       await service.flushQueue();
 
@@ -1143,6 +1149,94 @@ void main() {
 
       expect(posted, isFalse);
       expect(box.length, 1);
+      // The hourly cap gives no expiry time; the next connectivity event retries.
+    });
+
+    Future<void> queueItems(Box box, int n) async {
+      for (var i = 0; i < n; i++) {
+        final item = PendingFeedback(
+          id: 'q-$i',
+          type: 'bug',
+          message: 'queued $i',
+          screenshotB64: '',
+          appVersion: '1.0.0+1',
+          os: 'android',
+          device: 'test',
+          createdAt: DateTime(2025, 1, 1),
+        );
+        await box.put(item.id, item.toMap(_testKey));
+      }
+    }
+
+    test('a cooldown refusal schedules a flush that resumes the drain when it expires', () async {
+      final box = await Hive.openBox('feedback_worker_queue', encryptionCipher: _testCipher);
+      await queueItems(box, 2);
+
+      var posts = 0;
+      final client = MockClient((_) async {
+        posts++;
+        return http.Response('{"url":"x"}', 201);
+      });
+      var now = DateTime(2026, 9, 25, 12);
+      final storage = <String, String>{
+        // A failed submit 10 s ago left 20 s of cooldown.
+        'feedback_last_submit_ms':
+            now.subtract(const Duration(seconds: 10)).millisecondsSinceEpoch.toString(),
+      };
+      final scheduled = <(Duration, void Function())>[];
+      final service = FeedbackService(
+        workerUrl: 'https://example.com/',
+        httpClient: client,
+        rateLimitService: RateLimitService(testStorage: storage, now: () => now),
+        cipher: _testCipher,
+        hmacKey: _testKey,
+        createTimer: (d, cb) {
+          scheduled.add((d, cb));
+          return Timer(const Duration(days: 1), () {});
+        },
+      );
+      addTearDown(service.dispose);
+
+      await service.flushQueue();
+      expect(posts, 0);
+      expect(scheduled.map((t) => t.$1), [const Duration(seconds: 20)]);
+
+      now = now.add(const Duration(seconds: 20));
+      scheduled.last.$2();
+      for (var i = 0; i < 200 && scheduled.length < 2; i++) {
+        await Future<void>.delayed(const Duration(milliseconds: 10));
+      }
+
+      expect(posts, 1);
+      expect(box.length, 1);
+      expect(scheduled.map((t) => t.$1).last, const Duration(seconds: kFeedbackCooldownSeconds),
+          reason: 'the next item is retried after the cooldown its own POST started');
+    });
+
+    test('charges a failed flush POST so it blocks the next item in the same drain', () async {
+      final box = await Hive.openBox('feedback_worker_queue', encryptionCipher: _testCipher);
+      await queueItems(box, 2);
+
+      var posts = 0;
+      final client = MockClient((_) async {
+        posts++;
+        return http.Response('unavailable', 503);
+      });
+      final fixedNow = DateTime(2026, 9, 25, 12);
+      final service = FeedbackService(
+        workerUrl: 'https://example.com/',
+        httpClient: client,
+        rateLimitService: RateLimitService(testStorage: {}, now: () => fixedNow),
+        cipher: _testCipher,
+        hmacKey: _testKey,
+        createTimer: (d, cb) => Timer(const Duration(days: 1), () {}),
+      );
+      addTearDown(service.dispose);
+
+      await service.flushQueue();
+
+      expect(posts, 1);
+      expect(box.length, 2);
     });
   });
 

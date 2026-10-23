@@ -121,4 +121,4 @@ Five mitigations protect against trivial client-side manipulation (see SECURITY.
 | Score Clamp | `Score.add()` | Clamps to 999,999,999; ignores negative inputs |
 | Cascade Depth Limit | `CascadeController.increment()` | Caps at 20; no-op beyond max |
 | HMAC-SHA256 Save Integrity | `LevelProgress.toMap()` / `ProgressService._isValid()` | Resets tampered save data; fail-safe (skip save / treat as invalid) when key unavailable |
-| Feedback Rate Limit | `RateLimitService` / `FeedbackService.submit()` | Blocks submissions within 30 s cooldown or after 5/hour cap (SEC-RPT-008); fails open on storage error |
+| Feedback Rate Limit | `RateLimitService` / `FeedbackService.submit()` & `flushQueue()` | Blocks submissions within 30 s cooldown or after 5/hour cap (SEC-RPT-008); fails open on storage error |

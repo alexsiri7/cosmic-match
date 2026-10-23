@@ -322,6 +322,7 @@ requirements:
       - "A failed submit lands in box 'feedback_worker_queue'; the 21st enqueue evicts the oldest entry"
       - "A connectivity-restored event triggers flushQueue exactly once at a time (re-entrancy guard)"
       - "A single malformed/tampered row is deleted and the rest of the queue still flushes"
+      - "A flush the rate limiter stops during its cooldown schedules another flush for when the cooldown expires, so the queue drains one item per cooldown without further connectivity events; a flush stopped by the hourly cap waits for the next connectivity event"
 
   - id: CM-026
     title: Feedback queue retention (7-day TTL)

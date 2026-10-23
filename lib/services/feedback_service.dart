@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:connectivity_plus/connectivity_plus.dart';
+import 'package:flutter/foundation.dart';
 import 'package:hive/hive.dart';
 import 'package:http/http.dart' as http;
 
@@ -21,7 +22,9 @@ class FeedbackService {
   final HiveAesCipher? _cipher;
   final List<int>? _hmacKey;
   final String _workerHmacSecret;
+  final Timer Function(Duration, void Function()) _createTimer;
   StreamSubscription<List<ConnectivityResult>>? _connectivitySub;
+  Timer? _retryFlushTimer;
   bool _flushing = false;
 
   FeedbackService({
@@ -31,11 +34,13 @@ class FeedbackService {
     HiveAesCipher? cipher,
     List<int>? hmacKey,
     String workerHmacSecret = '',
+    @visibleForTesting Timer Function(Duration, void Function())? createTimer,
   })  : _httpClient = httpClient ?? http.Client(),
         _rateLimitService = rateLimitService,
         _cipher = cipher,
         _hmacKey = hmacKey,
-        _workerHmacSecret = workerHmacSecret;
+        _workerHmacSecret = workerHmacSecret,
+        _createTimer = createTimer ?? Timer.new;
 
   Future<Box> _openBox() => Hive.openBox(_boxName, encryptionCipher: _cipher);
 
@@ -73,11 +78,14 @@ class FeedbackService {
     );
   }
 
-  /// Cancel connectivity listener.
-  void dispose() => _connectivitySub?.cancel();
+  /// Cancel connectivity listener and any scheduled retry flush.
+  void dispose() {
+    _connectivitySub?.cancel();
+    _retryFlushTimer?.cancel();
+  }
 
   /// Submit feedback — attempts an immediate POST; queues locally on failure
-  /// (network error or non-400 HTTP error) for retry on next connectivity event.
+  /// (network error or non-400 HTTP error) for retry by [flushQueue].
   Future<void> submit({
     required String type,
     required String message,
@@ -88,7 +96,7 @@ class FeedbackService {
   }) async {
     // Log attempt (not content) for rate-limit analysis (SEC-RPT-008).
     gameLogger.d('FeedbackService.submit: attempt type=$type');
-    if (await _isRateLimited('submit')) return;
+    if (await _rateLimitRefusal('submit') != null) return;
 
     if (workerUrl.isEmpty) {
       gameLogger.w('FeedbackService.submit: workerUrl is empty — skipping');
@@ -141,16 +149,18 @@ class FeedbackService {
     }
   }
 
-  Future<bool> _isRateLimited(String opLabel) async {
+  /// Returns the limiter's refusal, or null when the POST may proceed.
+  Future<({bool allowed, int cooldownSeconds, int hourlyRemaining})?>
+      _rateLimitRefusal(String opLabel) async {
     final rl = _rateLimitService;
-    if (rl == null) return false;
+    if (rl == null) return null;
     final status = await rl.checkStatus();
-    if (status.allowed) return false;
+    if (status.allowed) return null;
     gameLogger.w(
       'FeedbackService.$opLabel: rate-limited — '
       'cooldown=${status.cooldownSeconds}s hourlyRemaining=${status.hourlyRemaining}',
     );
-    return true;
+    return status;
   }
 
   /// Returns the remaining cooldown in seconds (0 = no cooldown active).
@@ -159,7 +169,9 @@ class FeedbackService {
 
   /// Flush queued items — called on connectivity change. Each POST is
   /// rate-limited like a direct submission; once the limiter refuses, the
-  /// remaining items stay queued for a later flush.
+  /// remaining items stay queued. A cooldown refusal schedules another flush
+  /// for when it expires, so the queue keeps draining without a further
+  /// connectivity event; an hourly-cap refusal waits for the next one.
   Future<void> flushQueue() async {
     if (_flushing) return;
     _flushing = true;
@@ -182,7 +194,11 @@ class FeedbackService {
               continue;
             }
             final item = PendingFeedback.fromMap(map);
-            if (await _isRateLimited('flushQueue')) break;
+            final refusal = await _rateLimitRefusal('flushQueue');
+            if (refusal != null) {
+              _scheduleRetryFlush(refusal.cooldownSeconds);
+              break;
+            }
             await _rateLimitService?.recordSubmission();
             final sent = await _postToWorker(item);
             if (sent) {
@@ -198,6 +214,12 @@ class FeedbackService {
     } finally {
       _flushing = false;
     }
+  }
+
+  void _scheduleRetryFlush(int cooldownSeconds) {
+    if (cooldownSeconds <= 0) return;
+    _retryFlushTimer?.cancel();
+    _retryFlushTimer = _createTimer(Duration(seconds: cooldownSeconds), flushQueue);
   }
 
   // See CLAUDE.md "CRC32 Persistence Contract".
