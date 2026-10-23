@@ -24,3 +24,9 @@ updates:
       interval: "weekly"
     labels:
       - "dependencies"
+  - package-ecosystem: "npm"
+    directory: "/.github/openspec"
+    schedule:
+      interval: "weekly"
+    labels:
+      - "dependencies"
