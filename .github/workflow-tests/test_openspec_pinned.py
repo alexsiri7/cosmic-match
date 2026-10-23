@@ -36,11 +36,22 @@ class OpenSpecPinned(unittest.TestCase):
             self.assertNotIn("npx", run)
             self.assertNotIn("@latest", run)
 
-    def test_installs_from_lockfile(self):
+    def test_installs_from_lockfile_without_install_scripts(self):
         self.assertTrue(
             any(
-                step.get("run", "").startswith("npm ci")
+                step.get("run", "").split()[:2] == ["npm", "ci"]
+                and "--ignore-scripts" in step["run"].split()
                 and step.get("working-directory") == ".github/openspec"
+                for step in validate_steps()
+            )
+        )
+
+    def test_runs_installed_cli_in_strict_mode(self):
+        self.assertTrue(
+            any(
+                step.get("run", "").split()[:2]
+                == [".github/openspec/node_modules/.bin/openspec", "validate"]
+                and {"--specs", "--strict"} <= set(step["run"].split())
                 for step in validate_steps()
             )
         )
