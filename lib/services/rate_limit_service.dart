@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:math';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
@@ -133,9 +134,19 @@ class RateLimitService {
     }
   }
 
-  /// Returns the remaining cooldown in seconds (0 = no cooldown active).
+  /// Seconds until a submission is allowed again (cooldown or hourly cap;
+  /// 0 = allowed).
   Future<int> remainingCooldownSeconds() async {
     final status = await checkStatus();
-    return status.cooldownSeconds;
+    if (status.allowed) return 0;
+    if (status.cooldownSeconds > 0) return status.cooldownSeconds;
+    try {
+      final window = await _readHourlyWindow();
+      return max(1, 3600 - _now().difference(window.windowStart).inSeconds);
+    } catch (e, stack) {
+      gameLogger.w('RateLimitService.remainingCooldownSeconds: storage error',
+          error: e, stackTrace: stack);
+      return 0;
+    }
   }
 }

@@ -9,16 +9,19 @@ import 'package:google_fonts/google_fonts.dart';
 import '../core/constants.dart';
 import '../core/logger.dart';
 import '../game/theme/app_theme.dart';
+import '../models/feedback_result.dart';
 
 /// Shows the feedback bottom sheet. When the user taps Submit, [onSubmit] is
 /// called with the selected type, description, and annotated screenshot.
-/// On success the sheet is dismissed and, when [onSubmit] returns the filed
-/// issue's number, a SnackBar shows it with an action to copy the issue link;
-/// on failure a SnackBar is shown.
+/// When the report was sent or queued for later, the sheet is dismissed and a
+/// SnackBar says which (with an action to copy the issue link when the filed
+/// issue's number is known). When it was rate-limited or not sent, the sheet
+/// stays open with the description kept, a SnackBar says why, and the
+/// cooldown is refreshed.
 Future<void> showFeedbackSheet(
   BuildContext context, {
   required Uint8List screenshotBytes,
-  required Future<int?> Function({
+  required Future<FeedbackResult> Function({
     required String type,
     required String message,
     required String screenshotB64,
@@ -39,7 +42,7 @@ Future<void> showFeedbackSheet(
 
 class _FeedbackSheet extends StatefulWidget {
   final Uint8List screenshotBytes;
-  final Future<int?> Function({
+  final Future<FeedbackResult> Function({
     required String type,
     required String message,
     required String screenshotB64,
@@ -126,31 +129,66 @@ class _FeedbackSheetState extends State<_FeedbackSheet> {
     try {
       final annotatedB64 = await _renderAnnotatedScreenshot();
       if (!mounted) return;
-      final issueNumber = await widget.onSubmit(
+      final result = await widget.onSubmit(
         type: _selectedType,
         message: _descController.text.trim(),
         screenshotB64: annotatedB64,
       );
-      if (mounted) Navigator.pop(context);
-      if (issueNumber != null) _showIssueReference(messenger, issueNumber);
+      String withScreenshotNote(String text) => annotatedB64.isEmpty
+          ? "$text The screenshot couldn't be attached."
+          : text;
+      switch (result.outcome) {
+        case FeedbackOutcome.sent:
+          if (mounted) Navigator.pop(context);
+          final issueNumber = result.issueNumber;
+          if (issueNumber != null) {
+            _showIssueReference(
+              messenger,
+              issueNumber,
+              withScreenshotNote('Feedback sent as issue #$issueNumber.'),
+            );
+          } else {
+            _showMessage(messenger, withScreenshotNote('Feedback sent.'));
+          }
+        case FeedbackOutcome.queued:
+          if (mounted) Navigator.pop(context);
+          _showMessage(
+            messenger,
+            withScreenshotNote(
+              "Couldn't reach the server — your feedback will be sent "
+              'automatically later.',
+            ),
+          );
+        case FeedbackOutcome.rateLimited:
+          _showMessage(
+            messenger,
+            'Too many reports — please wait before sending again.',
+          );
+          await _initCooldown();
+        case FeedbackOutcome.notSent:
+          _showMessage(messenger, "Feedback couldn't be sent.");
+          await _initCooldown();
+      }
     } catch (e, stack) {
       gameLogger.e('FeedbackSheet: submit failed', error: e, stackTrace: stack);
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Failed to send feedback — will retry when online.'),
-          ),
-        );
-      }
+      if (mounted) _showMessage(messenger, 'Failed to send feedback.');
     } finally {
       if (mounted) setState(() => _submitting = false);
     }
   }
 
-  void _showIssueReference(ScaffoldMessengerState messenger, int issueNumber) {
+  void _showMessage(ScaffoldMessengerState messenger, String text) {
+    messenger.showSnackBar(SnackBar(content: Text(text)));
+  }
+
+  void _showIssueReference(
+    ScaffoldMessengerState messenger,
+    int issueNumber,
+    String text,
+  ) {
     messenger.showSnackBar(
       SnackBar(
-        content: Text('Feedback sent as issue #$issueNumber'),
+        content: Text(text),
         duration: const Duration(seconds: 10),
         action: SnackBarAction(
           label: 'COPY LINK',
