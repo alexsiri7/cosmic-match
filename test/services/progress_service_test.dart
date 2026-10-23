@@ -44,6 +44,17 @@ void main() {
       expect(restored.bestScore, 999999999);
     });
 
+    // GridWorld saves every score with starsEarned: 0.
+    for (final bestScore in [0, 500]) {
+      test('fromMap accepts starsEarned=0 with bestScore=$bestScore', () {
+        final restored = LevelProgress.fromMap(
+            LevelProgress(level: 1, starsEarned: 0, bestScore: bestScore)
+                .toMap(_testKey));
+        expect(restored.starsEarned, 0);
+        expect(restored.bestScore, bestScore);
+      });
+    }
+
     for (final (field, value) in [
       ('starsEarned', -1),
       ('starsEarned', 4),
