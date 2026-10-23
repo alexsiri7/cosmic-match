@@ -3,7 +3,7 @@ import 'package:cosmic_match/core/logger.dart';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import 'package:hive/hive.dart';
+import 'package:hive_ce/hive_ce.dart';
 
 /// Manages cryptographic keys for Hive persistence.
 ///

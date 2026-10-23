@@ -70,7 +70,7 @@ android {
     }
 }
 
-// sentry_flutter (8.14.2) bundles its own sentry-android SDK; autoInstallation
+// sentry_flutter (10.2.0) bundles its own sentry-android SDK; autoInstallation
 // would re-add a conflicting copy. autoUploadProguardMapping uploads the R8
 // mapping.txt to Sentry on release builds when SENTRY_AUTH_TOKEN is present
 // (set in .github/workflows/ci.yml; omitted for Dependabot/fork builds).

@@ -3,7 +3,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:hive/hive.dart';
+import 'package:hive_ce/hive_ce.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:cosmic_match/core/constants.dart';
@@ -1167,14 +1167,50 @@ void main() {
       await Hive.close();
 
       // Re-opening the AES-encrypted box without the cipher must not expose data.
-      // Hive returns an empty view when it cannot decrypt the frames, proving the
-      // data is not accessible in plaintext (SEC-RPT-005 encryption-at-rest).
-      final unencryptedView = await Hive.openBox('feedback_worker_queue');
-      expect(
-        unencryptedView.length,
-        0,
+      // hive_ce refuses to open it (HiveError) rather than returning plaintext,
+      // proving the data is not accessible without the key (SEC-RPT-005).
+      await expectLater(
+        Hive.openBox('feedback_worker_queue'),
+        throwsA(isA<HiveError>()),
         reason: 'Encrypted box must not expose data without the cipher (SEC-RPT-005)',
       );
+    });
+
+    test('queue operations without the cipher fail safe and leave queued items intact',
+        () async {
+      await FeedbackService(
+        workerUrl: 'https://example.com/feedback',
+        httpClient: MockClient((_) async => http.Response('', 503)),
+        cipher: _testCipher,
+        hmacKey: _testKey,
+      ).submit(
+        type: 'bug',
+        message: 'queued before the cipher went missing',
+        screenshotB64: '',
+        appVersion: '1.0.0+1',
+        os: 'android',
+        device: 'Pixel',
+      );
+      await Hive.close();
+
+      var posts = 0;
+      final mismatched = FeedbackService(
+        workerUrl: 'https://example.com/feedback',
+        httpClient: MockClient((_) async {
+          posts++;
+          return http.Response('{"url":"x"}', 201);
+        }),
+        hmacKey: _testKey,
+      );
+      await mismatched.flushQueue();
+      await mismatched.expireOldItems(0);
+      expect(await mismatched.clearQueue(), isFalse);
+      expect(posts, 0);
+      await Hive.close();
+
+      final box = await Hive.openBox('feedback_worker_queue', encryptionCipher: _testCipher);
+      expect(box.length, 1,
+          reason: 'a cipher-mismatched open must not destroy queued feedback');
     });
 
     test('a malformed row does not strand later valid items', () async {

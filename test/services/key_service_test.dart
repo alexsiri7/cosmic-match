@@ -3,7 +3,7 @@ import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:cosmic_match/services/key_service.dart';
-import 'package:hive/hive.dart';
+import 'package:hive_ce/hive_ce.dart';
 
 import 'throwing_storage.dart';
 

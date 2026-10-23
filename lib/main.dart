@@ -1,7 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:hive_flutter/hive_flutter.dart';
+import 'package:hive_ce_flutter/hive_ce_flutter.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:sentry_flutter/sentry_flutter.dart';
 import 'core/constants.dart';
@@ -78,6 +78,9 @@ Future<void> main() async {
         options.tracesSampleRate = 0.0;
         options.sendDefaultPii = false;
         options.attachScreenshot = false;
+        // sentry_flutter 9+ turned ANR reporting on by default; keep it off so the
+        // dependency bump (#329) does not change what crash reporting sends.
+        options.anrEnabled = false;
         options.beforeSend = dropUnactionableEvents;
       },
       appRunner: launch,

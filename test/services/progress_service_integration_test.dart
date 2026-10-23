@@ -1,7 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:hive_flutter/hive_flutter.dart';
+import 'package:hive_ce_flutter/hive_ce_flutter.dart';
 import 'package:cosmic_match/services/progress_service.dart';
 import 'package:cosmic_match/models/level_progress.dart';
 
@@ -122,6 +122,27 @@ void main() {
       expect(loaded.starsEarned, equals(0));
       expect(loaded.bestScore, equals(0));
       expect(loaded.level, equals(1));
+    });
+  });
+
+  group('ProgressService cipher mismatch', () {
+    test('load without the cipher returns initial and leaves encrypted data intact',
+        () async {
+      final cipher = HiveAesCipher(List<int>.generate(32, (i) => i + 100));
+      await ProgressService(cipher: cipher, hmacKey: _testKey)
+          .save(LevelProgress(level: 1, starsEarned: 2, bestScore: 500));
+      await Hive.close();
+
+      final mismatched = await ProgressService(hmacKey: _testKey).load(1);
+      expect(mismatched.starsEarned, equals(0));
+      expect(mismatched.bestScore, equals(0));
+      await Hive.close();
+
+      final restored =
+          await ProgressService(cipher: cipher, hmacKey: _testKey).load(1);
+      expect(restored.starsEarned, equals(2),
+          reason: 'a cipher-mismatched open must not destroy the encrypted box');
+      expect(restored.bestScore, equals(500));
     });
   });
 }
