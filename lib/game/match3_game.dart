@@ -74,6 +74,8 @@ class Match3Game extends FlameGame<GridWorld> with RiverpodGameMixin {
   }
 
   void onTileTap(GridTile tile) {
+    if (phase != GamePhase.idle) return;
+
     if (_selectedTile == null) {
       _selectedTile = tile;
       tile.select();

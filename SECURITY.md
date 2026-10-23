@@ -50,7 +50,7 @@ will become more meaningful when leaderboards are added (see §2).
 
 | Control | Implementation | Limit |
 |---------|---------------|-------|
-| FSM Input Gate | `GridTile.onTapDown` and `GridTile.onDragStart` drop all taps and swipes when `game.phase != idle` | Prevents input injection during animations |
+| FSM Input Gate | `GridTile.onTapDown` and `GridTile.onDragStart` drop all taps and swipes when `game.phase != idle`; `Match3Game.onTileTap` and `Match3Game.onTileSwipe` re-check the phase themselves | Prevents input injection during animations |
 | Score Clamp | `Score.add()` ignores non-positive inputs and clamps to 999,999,999 | Prevents integer overflow exploits |
 | Cascade Depth Limit | `CascadeController.maxDepth = 20`; `increment()` is a no-op once cap is reached | Prevents infinite cascade loops from bugs in gravity/refill logic |
 | HMAC-SHA256 Save Integrity | `LevelProgress.toMap()` and `PendingFeedback.toMap()` store an HMAC-SHA256 over canonicalized (key-sorted) fields, keyed with a device-local key from `KeyService` (`lib/core/crc_integrity.dart`); `ProgressService._isValid()` resets tampered progress to `LevelProgress.initial()` and `FeedbackService._isValid()` drops tampered queue entries. Without a key, saves are skipped and loads treat data as invalid | Prevents forging save data off-device; the key lives in the Android Keystore, so it does not stop an attacker with root on the device. Replaced a forgeable CRC32 in #201 |
