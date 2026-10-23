@@ -1,13 +1,15 @@
+import 'dart:collection';
 import 'dart:convert';
 import 'package:crypto/crypto.dart';
 
 /// Canonical string representation of a map for integrity computation.
 ///
 /// Keys are sorted alphabetically so the result is stable regardless of
-/// map insertion order.
+/// map insertion order. JSON encoding escapes delimiters inside values, so
+/// distinct maps never share a canonical form. The `v1:` prefix versions the
+/// format; changing it invalidates every persisted signature.
 String canonicalizeMap(Map<String, dynamic> data) {
-  final keys = data.keys.toList()..sort();
-  return keys.map((k) => '$k:${data[k]}').join(',');
+  return 'v1:${jsonEncode(SplayTreeMap<String, dynamic>.of(data))}';
 }
 
 /// Computes an HMAC-SHA256 over [canonical] using [key].
@@ -29,5 +31,16 @@ bool isValidHmac(Map raw, {
   final storedHmac = raw['hmac'] as String?;
   if (storedHmac == null) return false;
   final data = Map<String, dynamic>.from(raw)..remove('hmac');
-  return computeHmac(canonicalize(data), key) == storedHmac;
+  return _constantTimeEquals(computeHmac(canonicalize(data), key), storedHmac);
+}
+
+/// Compares in time that depends only on the lengths, not on where the
+/// strings first differ, so a mismatch leaks no prefix of the digest.
+bool _constantTimeEquals(String a, String b) {
+  if (a.length != b.length) return false;
+  var diff = 0;
+  for (var i = 0; i < a.length; i++) {
+    diff |= a.codeUnitAt(i) ^ b.codeUnitAt(i);
+  }
+  return diff == 0;
 }
