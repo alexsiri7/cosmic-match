@@ -26,7 +26,7 @@ jobs:
           cache: true
 
       - name: Install dependencies
-        run: flutter pub get
+        run: flutter pub get --enforce-lockfile
 
       - name: Record screenshot goldens
         run: flutter test --update-goldens test/screenshot/
