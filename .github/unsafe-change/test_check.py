@@ -3,6 +3,7 @@
 import contextlib
 import io
 import unittest
+from unittest import mock
 
 import check
 
@@ -291,6 +292,21 @@ class Report(unittest.TestCase):
         self.assertEqual(len(lines), 2 + 1 + len(problems), lines)
         self.assertFalse([l for l in lines[1:-1] if l.lstrip().startswith("::")], lines)
         self.assertIn("\\n::error::forged\\r::add-mask::", out.getvalue())
+
+    def test_ci_entrypoint_prints_through_the_guard(self):
+        problems = ["x\n::error::forged"]
+        env = {"GITHUB_REPOSITORY": "o/r", "GITHUB_TOKEN": "t", "PR_NUMBER": "1"}
+        out = io.StringIO()
+        with mock.patch.dict(check.os.environ, env), \
+                mock.patch.object(check, "GitHub"), \
+                mock.patch.object(check, "load_policy", return_value=POLICY), \
+                mock.patch.object(check, "check_pr", return_value=(1, problems, "FAILED")), \
+                contextlib.redirect_stdout(out):
+            self.assertEqual(check.main([]), 1)
+        lines = out.getvalue().splitlines()
+        self.assertTrue(lines[0].startswith("::stop-commands::"), lines)
+        self.assertEqual(lines[-1], "::%s::" % lines[0].removeprefix("::stop-commands::"))
+        self.assertFalse([l for l in lines[1:-1] if l.lstrip().startswith("::")], lines)
 
 
 if __name__ == "__main__":
