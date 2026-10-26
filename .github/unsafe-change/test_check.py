@@ -136,6 +136,8 @@ class Fails(unittest.TestCase):
             ("requirements-dev.txt", "pytest\n", "pytest\n--extra-index-url https://evil\n", "options"),
             ("requirements.txt", "certifi==1 \\\n    --hash=sha256:aa\n",
              "certifi==1 \\\n    --hash=sha256:aa\nevil==1 \\\n    --hash=sha256:ee\n", "evil"),
+            ("requirements.txt", "certifi==1 \\\n    --hash=sha256:aa\n",
+             "certifi==1 \\\n    --hash=sha256:aa\n# via requests \\\nevil==1 --hash=sha256:ee\n", "evil"),
             ("pyproject.toml", '[project]\ndependencies = ["fastapi>=0.1"]\n', '[project]\ndependencies = ["fastapi>=0.2", "httpx"]\n', "httpx"),
             ("go.mod", "module m\n\nrequire (\n\tgolang.org/x/net v0.1.0\n)\n", "module m\n\nrequire (\n\tgolang.org/x/net v0.2.0\n\tevil.com/x v1.0.0\n)\n", "evil.com/x"),
             ("pubspec.yaml", "dependencies:\n  flame: ^1.0.0\n", "dependencies:\n  flame: ^1.1.0\n  http: ^1.0.0\n", "http"),

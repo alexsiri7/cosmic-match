@@ -141,11 +141,25 @@ def _pep508(req: str) -> tuple[str, str]:
 _HASH_OPTION = re.compile(r"\s--hash[=\s]\S+")
 
 
+def _logical_lines(text: str):
+    """Join backslash continuations as pip's join_lines does: a full-line
+    comment never continues, so it cannot swallow the requirement after it."""
+    pending = ""
+    for raw in text.splitlines():
+        if raw.endswith("\\") and not raw.lstrip().startswith("#"):
+            pending += raw[:-1] + " "
+            continue
+        yield pending + raw
+        pending = ""
+    if pending:
+        yield pending
+
+
 def _requirements(text: str) -> tuple[set[tuple[str, str]], dict]:
     """pip requirements, including pip-compile --generate-hashes locks: a hash
     pins the artifact of a requirement, so changing it is not a new source."""
     deps, special = set(), []
-    for raw in text.replace("\\\n", " ").splitlines():
+    for raw in _logical_lines(text):
         line = _HASH_OPTION.sub("", " " + raw.split(" #", 1)[0]).strip()
         if not line or line.startswith("#"):
             continue
