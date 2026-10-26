@@ -56,3 +56,6 @@ coverage/
 
 # Node (CI tooling under .github/openspec)
 node_modules/
+
+# Python bytecode (workflow tests, unsafe-change checker)
+__pycache__/
