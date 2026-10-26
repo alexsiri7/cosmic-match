@@ -53,10 +53,15 @@ deny_paths:
 extra_deny_paths:
   - "key.properties*"      # release signing config (android/key.properties, its .example)
   - "lib/main.dart"        # wires SENTRY_DSN / FEEDBACK_HMAC_SECRET / worker URL from --dart-define
-  - "lib/services/key_service.dart"  # Hive AES cipher + HMAC keys in secure storage
-  - "lib/services/feedback_service.dart"  # HMAC-signs requests to the feedback worker with the build secret
+  - "lib/services/*"       # keys, HMAC save/request verification, feedback rate limit and sending
   - "lib/core/crc_integrity.dart"  # HMAC save-data integrity (anti-cheat)
+  - "lib/core/constants.dart"  # feedback rate-limit thresholds and payload caps (SEC-RPT-003/008)
+  - "lib/models/level_progress.dart"   # fields covered by the save-data HMAC
+  - "lib/models/pending_feedback.dart" # fields covered by the queued-feedback HMAC
+  - "lib/screens/feedback_sheet.dart"  # what the feedback sheet collects and submits
   - "android/app/src/*/AndroidManifest.xml"  # app permissions, network config, exported components
+  - "android/app/src/*/res/xml/*"  # network security config (cleartext, trust anchors)
+  - "android/app/proguard-rules.pro"  # R8 keep rules, picked up by the Flutter Gradle plugin when present
   - "android/gradle/*"     # Gradle wrapper distribution (build toolchain)
   - "store-listing/upload_listing.py"  # Play service-account credential; publishes the store listing
 

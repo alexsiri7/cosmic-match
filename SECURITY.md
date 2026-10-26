@@ -44,7 +44,7 @@ configured send nothing to Sentry.
 
 ### 1.1 Client-Side Integrity Controls (SEC-008)
 
-Five mitigations make trivial client-side manipulation harder.
+Six mitigations make trivial client-side manipulation harder.
 They do not stop a determined attacker on a rooted device, but raise the effort bar and
 will become more meaningful when leaderboards are added (see §2).
 
@@ -54,6 +54,7 @@ will become more meaningful when leaderboards are added (see §2).
 | Score Clamp | `Score.add()` ignores non-positive inputs and clamps to 999,999,999 | Prevents integer overflow exploits |
 | Cascade Depth Limit | `CascadeController.maxDepth = 20`; `increment()` is a no-op once cap is reached | Prevents infinite cascade loops from bugs in gravity/refill logic |
 | HMAC-SHA256 Save Integrity | `LevelProgress.toMap()` and `PendingFeedback.toMap()` store an HMAC-SHA256 over canonicalized (key-sorted) fields, keyed with a device-local key from `KeyService` (`lib/core/crc_integrity.dart`); `ProgressService._isValid()` resets tampered progress to `LevelProgress.initial()` and `FeedbackService._isValid()` drops tampered queue entries. Without a key, saves are skipped and loads treat data as invalid | Prevents forging save data off-device; the key lives in the Android Keystore, so it does not stop an attacker with root on the device. Replaced a forgeable CRC32 in #201 |
+| Save Semantic Validation | `LevelProgress.fromMap()` rejects `starsEarned` outside 0–3 and `bestScore` outside 0–999,999,999; `ProgressService.load()` rejects a record whose `level` differs from the level it was stored under. Either resets that level to `LevelProgress.initial()` | Stops an attacker holding the HMAC key from signing impossible values or replaying one level's record under another; values inside the valid ranges are still accepted |
 | Feedback Rate Limit | `RateLimitService`, checked by `FeedbackService.submit()` and `flushQueue()` | 30 s cooldown and 5 submissions per hour per device (SEC-RPT-008); fails open on a storage error |
 
 **Note**: If leaderboards are added (post-V1), SEC-008 risk level rises to MEDIUM. Server-side score validation will be required at that point — see §2.
@@ -444,9 +445,47 @@ keystore, so PR-controlled build code never sees release secrets (SEC-01).
 | `KEYSTORE_KEY_ALIAS` | `cosmic-match` |
 | `KEYSTORE_KEY_PASSWORD` | Key password |
 
+`PLAY_SERVICE_ACCOUNT_JSON` belongs in the Play **environments**, not the repository secrets — see §8.7 (until that setup is done, the repository-level copy is still used).
+
 ### 8.6 Key Properties Example File
 
 A committed example file at `android/key.properties.example` documents the expected properties schema. Copy it to `android/key.properties` and fill in real values. The real `key.properties` is gitignored.
+
+### 8.7 Play Publishing Environments (SEC-07)
+
+Play uploads run only in jobs bound to a GitHub Environment, so the Play service account is readable
+only there and production releases wait for a reviewer (#310). The `release` job builds and signs on
+every PR, `main` push and tag, takes no environment, and hands the signed AAB, APK and R8 mapping to
+the publish jobs as same-run artifacts.
+
+| Environment | Job(s) | Protection | Secrets |
+|-------------|--------|------------|---------|
+| `production` | `ci.yml` → `publish-production` (`v*` tags) | Required reviewer; deployment tags `v*` only | `PLAY_SERVICE_ACCOUNT_JSON` |
+| `play-internal` | `ci.yml` → `publish-internal` (`main` pushes); `setup-store-listing.yml` → `upload-listing` | Deployment branch `main` only; no reviewers | `PLAY_SERVICE_ACCOUNT_JSON` |
+
+`.github/workflow-tests/test_ci_release_gate.py` fails if a job in any workflow reading the Play
+secret has no environment, if `release` gains one, or if `contents: write` moves out of
+`publish-production`.
+
+GitHub creates a referenced environment unprotected and falls back to the repository secret, so the
+gate is only active once a maintainer completes this one-time setup, in order:
+
+1. Settings → Environments → `production`: add the maintainer as a required reviewer; set deployment
+   branches and tags to "Selected" with the tag rule `v*`. Enable "Prevent self-review" if there is a
+   second maintainer.
+2. Settings → Environments → `play-internal`: set deployment branches to "Selected" with branch `main`.
+   No reviewers.
+3. Add the environment secret `PLAY_SERVICE_ACCOUNT_JSON` to both environments. Prefer a separate
+   service account for `play-internal` holding only the Play Console testing-track and store-listing
+   permissions, keeping production-release permission on the `production` account.
+4. Push to `main` and confirm `Publish (internal track)` runs unattended.
+5. Delete the repository-level `PLAY_SERVICE_ACCOUNT_JSON` secret.
+6. Settings → Rules → add a tag ruleset targeting `v*` that restricts creation, update and deletion to
+   the maintainer and blocks force-push.
+7. On the next `v*` tag, confirm `Publish (production)` waits for review before uploading, cutting the
+   GitHub Release and notifying.
+
+Production releases ship at 100% (`status: completed`) after approval; staged rollout is not used.
 
 ---
 
@@ -515,6 +554,7 @@ All direct dependencies use caret (`^`) constraints in `pubspec.yaml`, allowing 
 | Control | Implementation | Purpose |
 |---------|---------------|---------|
 | Lockfile commit | `pubspec.lock` tracked in git | Deterministic builds across machines and CI |
+| Lockfile enforcement | `flutter pub get --enforce-lockfile` as the first flutter command in every CI job (guarded by `.github/workflow-tests/test_lockfile_enforced.py`) | A stale or hand-edited `pubspec.lock` fails CI instead of resolving different transitive versions (#319) |
 | Hash-pinned Python lock | `store-listing/requirements.txt` compiled from `requirements.in` by `pip-compile --generate-hashes`; `setup-store-listing.yml` installs with `--require-hashes` | Every direct and transitive package in the job holding `PLAY_SERVICE_ACCOUNT_JSON` must match a recorded hash (SEC-18, #321) |
 | Caret constraints | `^` prefix on all direct deps | Allow security patches; block breaking changes |
 | Gradle wrapper checksum | `distributionSha256Sum` in `android/gradle/wrapper/gradle-wrapper.properties` | Wrapper refuses a distribution ZIP whose SHA-256 differs from the official hash for the pinned `distributionUrl`; update both together on a Gradle bump |
@@ -525,7 +565,7 @@ All direct dependencies use caret (`^`) constraints in `pubspec.yaml`, allowing 
 ### 11.2 Constraints
 
 - **Limited network surface**: V1 has no backend of its own; its network code is limited to the endpoints in §1 (Sentry, the feedback worker, Google Fonts, Google Play). A compromised dependency could reach the network through the `INTERNET` permission, but there are no user accounts or credentials on the device to exfiltrate. Risk level: LOW.
-- **CI**: `.github/workflows/ci.yml` runs `flutter analyze`, `flutter test` and the release build on every pull request and on pushes to `main` and release tags, and `.github/workflows/unsafe-change.yml` gates factory-screened PRs against the denylist in `.github/unsafe-change.yml`. CI resolves dependencies with plain `flutter pub get`; it does not yet run with `--enforce-lockfile`, so a stale lockfile is not rejected in CI (SEC-003).
+- **CI**: `.github/workflows/ci.yml` runs `flutter analyze`, `flutter test` and the release build on every pull request and on pushes to `main` and release tags, and `.github/workflows/unsafe-change.yml` gates factory-screened PRs against the denylist in `.github/unsafe-change.yml`. Every job runs `flutter pub get --enforce-lockfile` before any other flutter command, so a stale or hand-edited lockfile fails CI instead of resolving different transitive versions.
 
 ### 11.3 Quarterly Transitive Dependency Review
 
