@@ -20,6 +20,11 @@ The system SHALL store level progress and the feedback queue in encrypted local 
 - WHEN the app starts
 - THEN the app launches and the game is playable
 
+#### Scenario: Only one key is available
+- GIVEN the encryption key is unavailable but the signing key is readable, or the reverse
+- WHEN the app starts and a level is played
+- THEN the game is playable, and stored progress and the feedback queue are neither read nor written
+
 ### Requirement: Stored records are signed and tampering is detected
 
 Every stored record SHALL carry an HMAC-SHA256 signature over all its other fields in a key-sorted canonical form, using a device-local key. A record with a missing or wrong signature SHALL be treated as tampered: level progress SHALL reset to its initial values and a feedback-queue entry SHALL be discarded. When no signing key is available, saves SHALL be skipped and every loaded record SHALL be treated as invalid. A plain checksum SHALL NOT be used, because it can be forged.

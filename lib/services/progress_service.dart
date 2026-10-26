@@ -2,35 +2,33 @@ import 'package:hive_ce/hive_ce.dart';
 import '../core/crc_integrity.dart';
 import '../core/logger.dart';
 import '../models/level_progress.dart';
+import 'key_service.dart';
 
 class ProgressService {
   static const _boxName = 'progress';
 
-  final HiveAesCipher? _cipher;
-  final List<int>? _hmacKey;
+  final StorageKeys? _keys;
 
   /// Creates a [ProgressService].
   ///
-  /// When [cipher] is provided the Hive box is opened with AES-256 encryption.
-  /// Pass `null` to open the box unencrypted (graceful degradation).
-  ///
-  /// When [hmacKey] is provided, save data is signed with HMAC-SHA256.
-  /// Pass `null` if secure storage is unavailable (saves will lack HMAC and
-  /// be treated as tampered on load — intentional fail-safe).
-  ///
-  /// Note: opening the box with a cipher that differs from the one it was
-  /// written with (including cipher vs. none) throws a [HiveError]; [load] and
-  /// [save] catch it, and the on-disk data is left intact.
+  /// The box is AES-256 encrypted with [cipher] and every record is signed
+  /// with HMAC-SHA256 using [hmacKey]. When either is `null` (secure storage
+  /// unavailable) the box is never opened: saves are skipped and loads
+  /// return initial progress (intentional fail-safe).
   ProgressService({HiveAesCipher? cipher, List<int>? hmacKey})
-      : _cipher = cipher,
-        _hmacKey = hmacKey;
+      : _keys = StorageKeys.of(cipher, hmacKey);
 
   Future<LevelProgress> load(int level) async {
     gameLogger.d('ProgressService.load: level=$level');
+    final keys = _keys;
+    if (keys == null) {
+      gameLogger.w('ProgressService.load: storage keys unavailable — returning initial for level=$level');
+      return LevelProgress.initial(level);
+    }
     try {
-      final box = await Hive.openBox(_boxName, encryptionCipher: _cipher);
+      final box = await Hive.openBox(_boxName, encryptionCipher: keys.cipher);
       final raw = box.get('level_$level');
-      if (raw == null || raw is! Map || !_isValid(raw)) {
+      if (raw == null || raw is! Map || !_isValid(raw, keys.hmacKey)) {
         return LevelProgress.initial(level);
       }
       final progress = LevelProgress.fromMap(raw);
@@ -50,13 +48,14 @@ class ProgressService {
 
   Future<void> save(LevelProgress progress) async {
     gameLogger.d('ProgressService.save: level=${progress.level}');
-    if (_hmacKey == null) {
-      gameLogger.w('ProgressService.save: hmacKey unavailable — skipping persist for level=${progress.level}');
+    final keys = _keys;
+    if (keys == null) {
+      gameLogger.w('ProgressService.save: storage keys unavailable — skipping persist for level=${progress.level}');
       return;
     }
     try {
-      final box = await Hive.openBox(_boxName, encryptionCipher: _cipher);
-      await box.put('level_${progress.level}', progress.toMap(_hmacKey));
+      final box = await Hive.openBox(_boxName, encryptionCipher: keys.cipher);
+      await box.put('level_${progress.level}', progress.toMap(keys.hmacKey));
     } on HiveError catch (e, stack) {
       gameLogger.e('ProgressService.save(level=${progress.level}): HiveError — possible cipher mismatch.', error: e, stackTrace: stack);
       // Progress loss is unfortunate but not catastrophic; do not rethrow
@@ -66,12 +65,6 @@ class ProgressService {
     }
   }
 
-  bool _isValid(Map raw) {
-    final key = _hmacKey;
-    if (key == null) {
-      gameLogger.w('ProgressService._isValid: hmacKey unavailable — cannot validate integrity');
-      return false;
-    }
-    return isValidHmac(raw, canonicalize: canonicalizeMap, key: key);
-  }
+  bool _isValid(Map raw, List<int> hmacKey) =>
+      isValidHmac(raw, canonicalize: canonicalizeMap, key: hmacKey);
 }

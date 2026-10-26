@@ -41,9 +41,13 @@ void main() {
   setUp(() async {
     tempDir = await Directory.systemTemp.createTemp('hive_integration_');
     Hive.init(tempDir.path);
-    // Use a fixed 32-byte test key (all-zero is fine here — ephemeral temp Hive dir,
-    // no real user data involved; see #202 for context)
-    progressService = ProgressService(hmacKey: List<int>.filled(32, 0));
+    // Use fixed 32-byte test keys (all-zero is fine here — ephemeral temp Hive dir,
+    // no real user data involved; see #202 for context). Both cipher and hmacKey
+    // must be present or ProgressService treats storage as unavailable (#317).
+    progressService = ProgressService(
+      cipher: HiveAesCipher(List<int>.filled(32, 0)),
+      hmacKey: List<int>.filled(32, 0),
+    );
     game = Match3Game(
       progressService: progressService,
       testGrid: _buildTestGrid(),
