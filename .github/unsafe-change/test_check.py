@@ -95,7 +95,9 @@ class Fails(unittest.TestCase):
                      "lib/services/feedback_service.dart", "lib/services/feedback_launcher.dart",
                      "lib/models/level_progress.dart", "lib/models/pending_feedback.dart",
                      "lib/screens/feedback_sheet.dart", "android/app/proguard-rules.pro",
-                     "android/app/src/main/res/xml/network_security_config.xml"]:
+                     "android/app/src/main/res/xml/network_security_config.xml",
+                     "android/app/src/debug/res/xml/network_security_config.xml",
+                     "lib/core/constants.dart"]:
             self.assertFlags([f(path, "modified", added("x"))], needle=path)
 
     def test_removing_or_renaming_away_from_a_denied_path_fails(self):

@@ -55,6 +55,7 @@ extra_deny_paths:
   - "lib/main.dart"        # wires SENTRY_DSN / FEEDBACK_HMAC_SECRET / worker URL from --dart-define
   - "lib/services/*"       # keys, HMAC save/request verification, feedback rate limit and sending
   - "lib/core/crc_integrity.dart"  # HMAC save-data integrity (anti-cheat)
+  - "lib/core/constants.dart"  # feedback rate-limit thresholds and payload caps (SEC-RPT-003/008)
   - "lib/models/level_progress.dart"   # fields covered by the save-data HMAC
   - "lib/models/pending_feedback.dart" # fields covered by the queued-feedback HMAC
   - "lib/screens/feedback_sheet.dart"  # what the feedback sheet collects and submits
