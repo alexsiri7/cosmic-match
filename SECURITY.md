@@ -558,11 +558,12 @@ All direct dependencies use caret (`^`) constraints in `pubspec.yaml`, allowing 
 |---------|---------------|---------|
 | Lockfile commit | `pubspec.lock` tracked in git | Deterministic builds across machines and CI |
 | Lockfile enforcement | `flutter pub get --enforce-lockfile` as the first flutter command in every CI job (guarded by `.github/workflow-tests/test_lockfile_enforced.py`) | A stale or hand-edited `pubspec.lock` fails CI instead of resolving different transitive versions (#319) |
+| Hash-pinned Python lock | `store-listing/requirements.txt` compiled from `requirements.in` by `pip-compile --generate-hashes`; `setup-store-listing.yml` installs with `--require-hashes` | Every direct and transitive package in the job holding `PLAY_SERVICE_ACCOUNT_JSON` must match a recorded hash (SEC-18, #321) |
 | Caret constraints | `^` prefix on all direct deps | Allow security patches; block breaking changes |
 | Gradle wrapper checksum | `distributionSha256Sum` in `android/gradle/wrapper/gradle-wrapper.properties` | Wrapper refuses a distribution ZIP whose SHA-256 differs from the official hash for the pinned `distributionUrl`; update both together on a Gradle bump |
 | Automated CVE monitoring | `.github/dependabot.yml` (weekly; `pub`, `github-actions`, `pip` for `store-listing/`, `gradle` for `android/`) | Dependabot opens PRs when vulnerabilities found |
 
-**Note**: `pubspec.lock` must be updated and recommitted whenever a dependency is added, removed, or upgraded. Never run `flutter pub upgrade` without reviewing the resulting lock diff.
+**Note**: `pubspec.lock` must be updated and recommitted whenever a dependency is added, removed, or upgraded. Never run `flutter pub upgrade` without reviewing the resulting lock diff. Likewise, change `store-listing/requirements.in`, never `requirements.txt` by hand, then regenerate the lock from `store-listing/` with `pip-compile --generate-hashes --strip-extras --output-file=requirements.txt requirements.in` under Python 3.12 (the runner's interpreter).
 
 ### 11.2 Constraints
 

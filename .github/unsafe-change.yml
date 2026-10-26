@@ -89,7 +89,10 @@ sensitive_path_exempt:
 #    head commits: a dependency name (or a git/path/URL source) that is not
 #    in the base fails; version bumps of existing ones and lockfile-only
 #    changes pass. So do edits to package.json "scripts" and Cargo.toml
-#    [patch]/[replace]/build, which fail. Built into the checker.
+#    [patch]/[replace]/build, which fail. A requirements*.txt is what pip
+#    installs, so a pip-compile --generate-hashes lock is judged like any
+#    other: changed hashes pass, a new transitive package fails. Built into
+#    the checker.
 
 # 4. Processes, environment variables and raw sockets: regexes matched
 #    against ADDED lines of files with these extensions.

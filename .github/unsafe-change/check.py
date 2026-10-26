@@ -138,10 +138,30 @@ def _pep508(req: str) -> tuple[str, str]:
     return (re.sub(r"[-_.]+", "-", m.group(1)).lower(), src)
 
 
-def _requirements(text: str) -> tuple[set[tuple[str, str]], dict]:
-    deps, special = set(), []
+_HASH_OPTION = re.compile(r"\s--hash[=\s]\S+")
+
+
+def _logical_lines(text: str):
+    """Join backslash continuations as pip's join_lines does: a full-line
+    comment never continues, so it cannot swallow the requirement after it."""
+    pending = ""
     for raw in text.splitlines():
-        line = raw.split(" #", 1)[0].strip()
+        comment = raw.lstrip().startswith("#")
+        if raw.endswith("\\") and not comment:
+            pending += raw.strip("\\")
+            continue
+        yield pending + (" " + raw if comment else raw)
+        pending = ""
+    if pending:
+        yield pending
+
+
+def _requirements(text: str) -> tuple[set[tuple[str, str]], dict]:
+    """pip requirements, including pip-compile --generate-hashes locks: a hash
+    pins the artifact of a requirement, so changing it is not a new source."""
+    deps, special = set(), []
+    for raw in _logical_lines(text):
+        line = _HASH_OPTION.sub("", " " + raw.split(" #", 1)[0]).strip()
         if not line or line.startswith("#"):
             continue
         if line.startswith("-") or "://" in line or line.startswith((".", "/")):
