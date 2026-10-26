@@ -11,7 +11,9 @@ something on the denylist in .github/unsafe-change.yml:
   2. touches a path naming secrets/credential/auth handling (sensitive_path_words,
      except sensitive_path_exempt: fixtures, snapshots, docs);
   3. adds a NEW dependency (name or git/path/URL source) to a manifest, or
-     edits package.json "scripts" / Cargo.toml [patch]/[replace]/build;
+     edits package.json "scripts" / Cargo.toml [patch]/[replace]/build
+     (a requirements*.txt whose requirements*.in exists at the base is a
+     pip-compile lock: the .in is the manifest);
   4. adds lines that run processes, read environment variables or open raw
      sockets (code_patterns, per file extension);
   5. adds migration SQL beyond ordinary changes in the app's own schema
@@ -55,7 +57,7 @@ POLICY_PATH = os.path.join(HERE, "..", "unsafe-change.yml")
 CLOSING_RE = re.compile(r"\b(?:close[sd]?|fix(?:e[sd])?|resolve[sd]?)\s+#(\d+)\b", re.I)
 
 MANIFESTS = ("Cargo.toml", "package.json", "pyproject.toml", "go.mod", "pubspec.yaml")
-REQUIREMENTS_RE = re.compile(r"requirements[^/]*\.txt$")
+REQUIREMENTS_RE = re.compile(r"requirements[^/]*\.(txt|in)$")
 
 
 def load_policy(path: str = POLICY_PATH) -> dict:
@@ -83,6 +85,11 @@ def _patch_added(patch: str | None) -> list[str]:
 def is_manifest(path: str) -> bool:
     base = path.rsplit("/", 1)[-1]
     return base in MANIFESTS or bool(REQUIREMENTS_RE.fullmatch(base))
+
+
+def pip_compile_source(path: str) -> str | None:
+    """The requirements*.in a requirements*.txt would be compiled from."""
+    return path[: -len(".txt")] + ".in" if path.endswith(".txt") and is_manifest(path) else None
 
 
 def _src(spec) -> str:
@@ -316,6 +323,9 @@ def evaluate(files: list[dict], policy: dict, fetch=None) -> list[str]:
             continue
         if any(is_manifest(p) for p in paths):
             try:
+                source = pip_compile_source(path)
+                if source and get(source, "base") is not None:
+                    continue  # lockfile-only: the source manifest is judged on its own
                 base_text = get(f.get("previous_filename") or path, "base") if status != "added" else None
                 head_text = get(path, "head") if status != "removed" else None
             except Exception as e:  # noqa: BLE001
