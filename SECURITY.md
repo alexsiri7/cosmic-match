@@ -18,7 +18,7 @@ blocked by `network_security_config.xml` (§4.2), and `FeedbackService` sends no
 |---|---|
 | Network access | HTTPS only, to the endpoints in the table below |
 | INTERNET permission | Declared in the main `AndroidManifest.xml` (all build types) for those endpoints; the debug and profile manifests also declare it for Flutter tooling |
-| Data storage | Local-only via Hive; progress and the offline feedback queue are AES-256 encrypted, and nothing is stored when a Keystore key is unavailable (§1.2) and HMAC-SHA256 signed (§1.1) |
+| Data storage | Local-only via Hive; progress and the offline feedback queue are AES-256 encrypted (§1.2) and HMAC-SHA256 signed (§1.1); nothing is stored when a Keystore key is unavailable |
 | Authentication | None |
 | Permissions requested | None beyond default |
 
