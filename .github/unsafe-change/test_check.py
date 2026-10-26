@@ -1,6 +1,9 @@
 """Unit tests for the unsafe-change check (run: python3 -m unittest discover -s .github/unsafe-change)."""
 
+import contextlib
+import io
 import unittest
+from unittest import mock
 
 import check
 
@@ -266,6 +269,44 @@ class Screened(unittest.TestCase):
         self.assertTrue(check.glob_match("a/b/Dockerfile.dev", "Dockerfile*"))
         self.assertTrue(check.glob_match(".github/workflows/x.yml", ".github/*"))
         self.assertFalse(check.glob_match("docs/ops/x.md", "ops/*"))
+
+
+class Report(unittest.TestCase):
+    def test_pr_controlled_text_cannot_emit_workflow_commands(self):
+        files = [
+            f(".github/x\n::error::forged\r::add-mask::y.yml", "modified", added("x")),
+            f("Cargo.toml", "modified"),
+        ]
+        contents = {("Cargo.toml", "base"): "[dependencies]\n",
+                    ("Cargo.toml", "head"): '[dependencies]\n"a\\n::warning::b" = "1"\n'}
+        problems = ev(files, contents)
+        self.assertTrue(any("\n::" in p for p in problems), problems)
+
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            check.report("unsafe-change: FAILED (closes #1):", problems)
+        lines = out.getvalue().splitlines()
+        token = lines[0].removeprefix("::stop-commands::")
+        self.assertTrue(len(token) >= 32 and token not in "".join(problems), lines)
+        self.assertEqual(lines[-1], "::%s::" % token)
+        self.assertEqual(len(lines), 2 + 1 + len(problems), lines)
+        self.assertFalse([l for l in lines[1:-1] if l.lstrip().startswith("::")], lines)
+        self.assertIn("\\n::error::forged\\r::add-mask::", out.getvalue())
+
+    def test_ci_entrypoint_prints_through_the_guard(self):
+        problems = ["x\n::error::forged"]
+        env = {"GITHUB_REPOSITORY": "o/r", "GITHUB_TOKEN": "t", "PR_NUMBER": "1"}
+        out = io.StringIO()
+        with mock.patch.dict(check.os.environ, env), \
+                mock.patch.object(check, "GitHub"), \
+                mock.patch.object(check, "load_policy", return_value=POLICY), \
+                mock.patch.object(check, "check_pr", return_value=(1, problems, "FAILED")), \
+                contextlib.redirect_stdout(out):
+            self.assertEqual(check.main([]), 1)
+        lines = out.getvalue().splitlines()
+        self.assertTrue(lines[0].startswith("::stop-commands::"), lines)
+        self.assertEqual(lines[-1], "::%s::" % lines[0].removeprefix("::stop-commands::"))
+        self.assertFalse([l for l in lines[1:-1] if l.lstrip().startswith("::")], lines)
 
 
 if __name__ == "__main__":

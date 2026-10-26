@@ -39,6 +39,7 @@ import fnmatch
 import json
 import os
 import re
+import secrets
 import subprocess
 import sys
 import tomllib
@@ -422,6 +423,24 @@ def check_pr(gh: GitHub, pr: int, policy: dict, force: bool = False) -> tuple[in
     return 0, [], "unsafe-change: ok — %d file(s), nothing on the denylist (closes %s)" % (len(files), closes)
 
 
+def _clean(text: str) -> str:
+    """Escape non-printable characters (newlines, CR, ESC, ...) so PR-controlled
+    text stays on its own log line."""
+    return "".join(c if c.isprintable() else repr(c)[1:-1] for c in text)
+
+
+def report(summary: str, problems: list[str]) -> None:
+    """Print the verdict with workflow commands off, so no PR-controlled path,
+    dependency name or error text can emit `::error::`, `::add-mask::`, ...
+    into the Actions log."""
+    token = secrets.token_hex(16)
+    print("::stop-commands::" + token)
+    print(_clean(summary))
+    for p in problems:
+        print("  - " + _clean(p))
+    print("::%s::" % token)
+
+
 def main(argv: list[str]) -> int:
     if argv[:1] == ["--dry-run"]:
         args = argv[1:]
@@ -440,14 +459,12 @@ def main(argv: list[str]) -> int:
             held += code
             print("#%s %s" % (n, "HOLD" if code else "pass"))
             for p in problems:
-                print("    - " + p)
+                print("    - " + _clean(p))
         print("%d of %d would be held" % (held, len(args)))
         return 0
     gh = GitHub(os.environ["GITHUB_REPOSITORY"], os.environ["GITHUB_TOKEN"])
     code, problems, summary = check_pr(gh, int(os.environ["PR_NUMBER"]), load_policy())
-    print(summary)
-    for p in problems:
-        print("  - " + p)
+    report(summary, problems)
     return code
 
 
