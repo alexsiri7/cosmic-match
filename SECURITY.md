@@ -444,7 +444,7 @@ keystore, so PR-controlled build code never sees release secrets (SEC-01).
 | `KEYSTORE_KEY_ALIAS` | `cosmic-match` |
 | `KEYSTORE_KEY_PASSWORD` | Key password |
 
-`PLAY_SERVICE_ACCOUNT_JSON` is an **environment** secret, not a repository secret — see §8.7.
+`PLAY_SERVICE_ACCOUNT_JSON` belongs in the Play **environments**, not the repository secrets — see §8.7 (until that setup is done, the repository-level copy is still used).
 
 ### 8.6 Key Properties Example File
 
@@ -462,8 +462,9 @@ the publish jobs as same-run artifacts.
 | `production` | `ci.yml` → `publish-production` (`v*` tags) | Required reviewer; deployment tags `v*` only | `PLAY_SERVICE_ACCOUNT_JSON` |
 | `play-internal` | `ci.yml` → `publish-internal` (`main` pushes); `setup-store-listing.yml` → `upload-listing` | Deployment branch `main` only; no reviewers | `PLAY_SERVICE_ACCOUNT_JSON` |
 
-`.github/workflow-tests/test_ci_release_gate.py` fails if a job reading the Play secret has no
-environment, or if `release` gains one.
+`.github/workflow-tests/test_ci_release_gate.py` fails if a job in any workflow reading the Play
+secret has no environment, if `release` gains one, or if `contents: write` moves out of
+`publish-production`.
 
 GitHub creates a referenced environment unprotected and falls back to the repository secret, so the
 gate is only active once a maintainer completes this one-time setup, in order:

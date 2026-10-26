@@ -16,7 +16,7 @@ import yaml
 
 WORKFLOWS = pathlib.Path(__file__).resolve().parents[1] / "workflows"
 CI = WORKFLOWS / "ci.yml"
-PLAY_SECRET_WORKFLOWS = [CI, WORKFLOWS / "setup-store-listing.yml"]
+PLAY_SECRET_WORKFLOWS = sorted(WORKFLOWS.glob("*.yml"))
 PUSH_ONLY = "github.event_name == 'push'"
 
 
@@ -91,6 +91,14 @@ class ReleaseGate(unittest.TestCase):
 
     def test_release_job_has_no_environment(self):
         self.assertNotIn("environment", ci_jobs()["release"])
+
+    def test_job_permissions_are_least_privilege(self):
+        # contents: write (cutting a GitHub Release) lives only behind the
+        # reviewer-gated production environment.
+        jobs = ci_jobs()
+        self.assertEqual(jobs["release"]["permissions"], {"contents": "read"})
+        self.assertNotIn("permissions", jobs["publish-internal"])
+        self.assertEqual(jobs["publish-production"]["permissions"], {"contents": "write"})
 
     def test_conjunct_split_respects_parentheses(self):
         self.assertEqual(
