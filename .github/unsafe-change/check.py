@@ -146,10 +146,11 @@ def _logical_lines(text: str):
     comment never continues, so it cannot swallow the requirement after it."""
     pending = ""
     for raw in text.splitlines():
-        if raw.endswith("\\") and not raw.lstrip().startswith("#"):
-            pending += raw[:-1] + " "
+        comment = raw.lstrip().startswith("#")
+        if raw.endswith("\\") and not comment:
+            pending += raw.strip("\\")
             continue
-        yield pending + raw
+        yield pending + (" " + raw if comment else raw)
         pending = ""
     if pending:
         yield pending
