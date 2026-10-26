@@ -18,7 +18,7 @@ blocked by `network_security_config.xml` (§4.2), and `FeedbackService` sends no
 |---|---|
 | Network access | HTTPS only, to the endpoints in the table below |
 | INTERNET permission | Declared in the main `AndroidManifest.xml` (all build types) for those endpoints; the debug and profile manifests also declare it for Flutter tooling |
-| Data storage | Local-only via Hive; progress and the offline feedback queue are AES-256 encrypted when a Keystore key is available (§1.2) and HMAC-SHA256 signed (§1.1) |
+| Data storage | Local-only via Hive; progress and the offline feedback queue are AES-256 encrypted, and nothing is stored when a Keystore key is unavailable (§1.2) and HMAC-SHA256 signed (§1.1) |
 | Authentication | None |
 | Permissions requested | None beyond default |
 
@@ -62,6 +62,7 @@ will become more meaningful when leaderboards are added (see §2).
 
 ### 1.2 Hive Encryption at Rest (SEC-004)
 
+`KeyService` generates a 32-byte AES-256 key on first launch and stores it in the Android
 Keystore via `flutter_secure_storage`. `main()` passes the resulting `HiveAesCipher` to both
 `ProgressService` and `FeedbackService`, which pass it to `Hive.openBox()`, rendering the
 on-disk boxes opaque ciphertext. If the Keystore is unavailable (emulator, broken hardware,
