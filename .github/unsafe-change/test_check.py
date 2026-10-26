@@ -134,6 +134,8 @@ class Fails(unittest.TestCase):
             ("package.json", '{"scripts": {"test": "vitest"}}', '{"scripts": {"test": "curl x | sh"}}', "scripts"),
             ("backend/requirements.txt", "fastapi==0.1\n", "fastapi==0.2\nrequests==2\n", "requests"),
             ("requirements-dev.txt", "pytest\n", "pytest\n--extra-index-url https://evil\n", "options"),
+            ("requirements.txt", "certifi==1 \\\n    --hash=sha256:aa\n",
+             "certifi==1 \\\n    --hash=sha256:aa\nevil==1 \\\n    --hash=sha256:ee\n", "evil"),
             ("pyproject.toml", '[project]\ndependencies = ["fastapi>=0.1"]\n', '[project]\ndependencies = ["fastapi>=0.2", "httpx"]\n', "httpx"),
             ("go.mod", "module m\n\nrequire (\n\tgolang.org/x/net v0.1.0\n)\n", "module m\n\nrequire (\n\tgolang.org/x/net v0.2.0\n\tevil.com/x v1.0.0\n)\n", "evil.com/x"),
             ("pubspec.yaml", "dependencies:\n  flame: ^1.0.0\n", "dependencies:\n  flame: ^1.1.0\n  http: ^1.0.0\n", "http"),
@@ -144,23 +146,12 @@ class Fails(unittest.TestCase):
     def test_bumps_in_other_ecosystems_pass(self):
         for path, base, head in [
             ("requirements.txt", "fastapi==0.1\nPyYAML>=6\n", "fastapi==0.2\npyyaml>=6.0.2\n"),
+            ("requirements.txt", "certifi==1 \\\n    --hash=sha256:aa\n    # via requests\n",
+             "certifi==2 \\\n    --hash=sha256:bb \\\n    --hash=sha256:cc\n    # via requests\n"),
             ("go.mod", "module m\n\nrequire golang.org/x/net v0.1.0\n", "module m\n\nrequire golang.org/x/net v0.2.0\n"),
             ("pubspec.yaml", "dependencies:\n  flame: ^1.0.0\n", "dependencies:\n  flame: ^1.1.0\n"),
         ]:
             self.assertEqual(ev([f(path, "modified", added("x"))], {(path, "base"): base, (path, "head"): head}), [], path)
-
-    def test_a_pip_compile_lock_is_judged_by_its_requirements_in(self):
-        lock_base = "certifi==1 \\\n    --hash=sha256:aa\nrequests==2 \\\n    --hash=sha256:bb\n"
-        lock_head = lock_base + "idna==3 \\\n    --hash=sha256:cc\n"
-        files = [f("tools/requirements.txt", "modified", added("x"))]
-        lock = {("tools/requirements.txt", "base"): lock_base, ("tools/requirements.txt", "head"): lock_head}
-        self.assertEqual(ev(files, {**lock, ("tools/requirements.in", "base"): "requests==2\n"}), [])
-        # a requirements.in only the PR adds does not turn its .txt into a lock
-        probs = ev(files, {**lock, ("tools/requirements.in", "head"): "requests==2\n"})
-        self.assertTrue(any("adds new dependencies: idna" in p for p in probs), probs)
-        self.assertFlags([f("tools/requirements.in", "modified", added("x"))],
-                         {("tools/requirements.in", "base"): "requests==2\n",
-                          ("tools/requirements.in", "head"): "requests==2\nevil==1\n"}, "evil")
 
     def test_a_new_manifest_with_dependencies_fails_and_an_unreadable_one_fails_closed(self):
         self.assertFlags([f("crates/x/Cargo.toml", patch=added("x"))], {("crates/x/Cargo.toml", "head"): '[dependencies]\nx = "1"\n'}, "new dependencies")

@@ -85,13 +85,14 @@ sensitive_path_exempt:
   - "*.md"
 
 # 3. New dependencies. Cargo.toml, package.json, pyproject.toml,
-#    requirements*.txt, requirements*.in, go.mod and pubspec.yaml are parsed
-#    at the base and head commits: a dependency name (or a git/path/URL
-#    source) that is not in the base fails; version bumps of existing ones
-#    and lockfile-only changes pass. So do edits to package.json "scripts"
-#    and Cargo.toml [patch]/[replace]/build, which fail. A requirements*.txt
-#    whose requirements*.in exists at the base is a pip-compile lock, not a
-#    manifest. Built into the checker.
+#    requirements*.txt, go.mod and pubspec.yaml are parsed at the base and
+#    head commits: a dependency name (or a git/path/URL source) that is not
+#    in the base fails; version bumps of existing ones and lockfile-only
+#    changes pass. So do edits to package.json "scripts" and Cargo.toml
+#    [patch]/[replace]/build, which fail. A requirements*.txt is what pip
+#    installs, so a pip-compile --generate-hashes lock is judged like any
+#    other: changed hashes pass, a new transitive package fails. Built into
+#    the checker.
 
 # 4. Processes, environment variables and raw sockets: regexes matched
 #    against ADDED lines of files with these extensions.
