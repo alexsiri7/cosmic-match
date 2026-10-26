@@ -554,6 +554,7 @@ All direct dependencies use caret (`^`) constraints in `pubspec.yaml`, allowing 
 | Control | Implementation | Purpose |
 |---------|---------------|---------|
 | Lockfile commit | `pubspec.lock` tracked in git | Deterministic builds across machines and CI |
+| Lockfile enforcement | `flutter pub get --enforce-lockfile` as the first flutter command in every CI job (guarded by `.github/workflow-tests/test_lockfile_enforced.py`) | A stale or hand-edited `pubspec.lock` fails CI instead of resolving different transitive versions (#319) |
 | Caret constraints | `^` prefix on all direct deps | Allow security patches; block breaking changes |
 | Gradle wrapper checksum | `distributionSha256Sum` in `android/gradle/wrapper/gradle-wrapper.properties` | Wrapper refuses a distribution ZIP whose SHA-256 differs from the official hash for the pinned `distributionUrl`; update both together on a Gradle bump |
 | Automated CVE monitoring | `.github/dependabot.yml` (weekly; `pub`, `github-actions`, `pip` for `store-listing/`, `gradle` for `android/`) | Dependabot opens PRs when vulnerabilities found |
@@ -563,7 +564,7 @@ All direct dependencies use caret (`^`) constraints in `pubspec.yaml`, allowing 
 ### 11.2 Constraints
 
 - **Limited network surface**: V1 has no backend of its own; its network code is limited to the endpoints in §1 (Sentry, the feedback worker, Google Fonts, Google Play). A compromised dependency could reach the network through the `INTERNET` permission, but there are no user accounts or credentials on the device to exfiltrate. Risk level: LOW.
-- **CI**: `.github/workflows/ci.yml` runs `flutter analyze`, `flutter test` and the release build on every pull request and on pushes to `main` and release tags, and `.github/workflows/unsafe-change.yml` gates factory-screened PRs against the denylist in `.github/unsafe-change.yml`. CI resolves dependencies with plain `flutter pub get`; it does not yet run with `--enforce-lockfile`, so a stale lockfile is not rejected in CI (SEC-003).
+- **CI**: `.github/workflows/ci.yml` runs `flutter analyze`, `flutter test` and the release build on every pull request and on pushes to `main` and release tags, and `.github/workflows/unsafe-change.yml` gates factory-screened PRs against the denylist in `.github/unsafe-change.yml`. Every job runs `flutter pub get --enforce-lockfile` before any other flutter command, so a stale or hand-edited lockfile fails CI instead of resolving different transitive versions.
 
 ### 11.3 Quarterly Transitive Dependency Review
 
