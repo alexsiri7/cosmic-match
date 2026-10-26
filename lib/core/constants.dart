@@ -49,3 +49,12 @@ const int kFeedbackCooldownSeconds = 30;
 
 /// Maximum feedback submissions allowed per hour per device (SEC-RPT-008).
 const int kFeedbackMaxPerHour = 5;
+
+/// First backoff delay after a retryable worker response to queued feedback (#327).
+const int kFeedbackRetryBaseSeconds = 300;
+
+/// Upper bound on any feedback retry backoff delay, including one from `Retry-After` (#327).
+const int kFeedbackRetryMaxSeconds = 86400;
+
+/// A queued feedback item is dropped after this many retryable worker responses (#327).
+const int kFeedbackMaxAttempts = 10;
