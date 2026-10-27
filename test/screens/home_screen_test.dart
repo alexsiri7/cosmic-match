@@ -40,6 +40,35 @@ void main() {
     },
   );
 
+  testWidgets(
+    'Cancel in the clear dialog does not fire onClearFeedbackQueue',
+    (tester) async {
+      var clearCalled = false;
+      await tester.pumpWidget(MaterialApp(
+        home: HomeScreen(
+          onPlay: () {},
+          onMap: () {},
+          onFeedback: () {},
+          onClearFeedbackQueue: () {
+            clearCalled = true;
+          },
+        ),
+      ));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Clear feedback queue'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Clear feedback queue?'), findsOneWidget);
+
+      await tester.tap(find.text('Cancel'));
+      await tester.pumpAndSettle();
+
+      expect(clearCalled, isFalse);
+      expect(find.text('Clear feedback queue?'), findsNothing);
+    },
+  );
+
   testWidgets('Play button fires onPlay', (tester) async {
     var playCalled = false;
     var mapCalled = false;
