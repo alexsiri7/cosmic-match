@@ -25,7 +25,11 @@ base branch: a PR cannot weaken the check that judges it. It never checks
 out or runs PR code; it reads the PR's file list, patches and manifest
 contents from the API as data.
 
-PRs that close no screened-only issue pass at once ("not applicable").
+PRs that close no screened-only issue pass at once ("not applicable"). That
+includes factory output (a same-repo head branch under factory_branch_prefix):
+the owner ruled on #308 that a factory PR linking no screened issue keeps this
+behaviour, so its verdict still rests on the PR's closing references, which
+its author can edit. The verdict line names such a PR as factory output.
 
 Usage (CI): GITHUB_TOKEN=... GITHUB_REPOSITORY=owner/repo PR_NUMBER=n check.py
 Dry run:    check.py --dry-run [--policy FILE] PR... (uses `gh auth token`,
@@ -379,6 +383,14 @@ def screened(issues: list[dict], policy: dict) -> list[int]:
             if screened_label in i["labels"] and approved_label not in i["labels"]]
 
 
+def is_factory_pr(pull: dict, repo: str, policy: dict) -> bool:
+    """Head branch in this repo under the factory's prefix. The factory harness
+    names the branch; a fork's branch of the same name does not count."""
+    prefix = policy.get("factory_branch_prefix")
+    head = pull["head"]
+    return bool(prefix) and (head.get("repo") or {}).get("full_name") == repo and head["ref"].startswith(prefix)
+
+
 # ── GitHub I/O ───────────────────────────────────────────────────────────────
 
 
@@ -430,7 +442,8 @@ def check_pr(gh: GitHub, pr: int, policy: dict, force: bool = False) -> tuple[in
     pull = gh.api("/pulls/%d" % pr)
     nums = screened(gh.closing_issues(pr, pull.get("body") or ""), policy)
     if not nums and not force:
-        return 0, [], "unsafe-change: not applicable (the PR closes no issue that only automated screening vetted)"
+        origin = "factory PR from %s" % pull["head"]["ref"] if is_factory_pr(pull, gh.repo, policy) else "the PR"
+        return 0, [], "unsafe-change: not applicable (%s closes no issue that only automated screening vetted)" % origin
     files = gh.pr_files(pr)
     shas = {"base": pull["base"]["sha"], "head": pull["head"]["sha"]}
     problems = []
