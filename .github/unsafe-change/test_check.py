@@ -284,14 +284,14 @@ class Screened(unittest.TestCase):
 class Applicability(unittest.TestCase):
     """check_pr() verdicts for factory and other PRs (owner's ruling on #308)."""
 
-    def run_check(self, ref, head_repo="o/r", closes=()):
+    def run_check(self, ref, head_repo="o/r", closes=(), policy=POLICY):
         gh = mock.Mock(repo="o/r")
         pull = {"body": "", "base": {"sha": "b"}, "changed_files": 1,
                 "head": {"sha": "h", "ref": ref, "repo": head_repo and {"full_name": head_repo}}}
         gh.api.return_value = pull
         gh.closing_issues.return_value = [{"number": n, "labels": ["archon:auto-approved"]} for n in closes]
         gh.pr_files.return_value = [f(".github/workflows/ci.yml", "modified", added("x"))]
-        return check.check_pr(gh, 1, POLICY)
+        return check.check_pr(gh, 1, policy)
 
     def test_screened_link_runs_the_denylist_for_factory_and_other_prs(self):
         for ref in ("archon/task-x", "feature/x"):
@@ -308,6 +308,11 @@ class Applicability(unittest.TestCase):
         self.assertEqual(self.run_check("feature/x"), unchanged)
         self.assertEqual(self.run_check("archon/task-x", head_repo="fork/r"), unchanged)
         self.assertEqual(self.run_check("archon/task-x", head_repo=None), unchanged)
+
+    def test_factory_prefix_comes_from_the_policy(self):
+        policy = dict(POLICY, factory_branch_prefix="bots/")
+        self.assertIn("factory PR from bots/task-x", self.run_check("bots/task-x", policy=policy)[2])
+        self.assertNotIn("factory PR", self.run_check("archon/task-x", policy=policy)[2])
 
 
 class Report(unittest.TestCase):
