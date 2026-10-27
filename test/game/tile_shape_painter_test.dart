@@ -1,3 +1,5 @@
+import 'dart:ui' as ui;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:cosmic_match/game/components/tile_shape_painter.dart';
@@ -26,6 +28,19 @@ void main() {
         final p = tilePainterFor(type, Colors.red);
         expect(p.shouldRepaint(tilePainterFor(type, Colors.red)), isFalse,
             reason: 'TileType.$type painter shouldRepaint should always return false');
+      }
+    });
+
+    test('paint completes for every TileType at normal and small sizes', () {
+      for (final type in TileType.values) {
+        for (final size in [const Size(48, 48), const Size(12, 12)]) {
+          final painter = tilePainterFor(type, Colors.red);
+          final recorder = ui.PictureRecorder();
+          final canvas = Canvas(recorder);
+          expect(() => painter.paint(canvas, size), returnsNormally,
+              reason: 'TileType.$type at $size');
+          recorder.endRecording();
+        }
       }
     });
   });

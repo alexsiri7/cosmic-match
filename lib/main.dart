@@ -62,31 +62,46 @@ Future<void> main() async {
     return;
   }
 
+  await launchWithSentry(
+    initSentry: (appRunner) async {
+      final packageInfo = await PackageInfo.fromPlatform();
+      await SentryFlutter.init(
+        (options) {
+          options.dsn = sentryDsn;
+          options.environment = kReleaseMode ? 'release' : 'debug';
+          options.release =
+              '${packageInfo.packageName}@${packageInfo.version}+${packageInfo.buildNumber}';
+          // V1 privacy defaults: no performance tracing, no PII, no screenshots.
+          // Revisit tracesSampleRate when the app has a backend (post-V1).
+          // enableAutoSessionTracking is intentionally left at its default (true): session
+          // start/stop events and the SDK's random per-install id are disclosed in
+          // docs/privacy.html and SECURITY.md (#312). Update both if this changes.
+          options.tracesSampleRate = 0.0;
+          options.sendDefaultPii = false;
+          options.attachScreenshot = false;
+          // sentry_flutter 9+ turned ANR reporting on by default; keep it off so the
+          // dependency bump (#329) does not change what crash reporting sends.
+          options.anrEnabled = false;
+          options.beforeSend = dropUnactionableEvents;
+        },
+        appRunner: appRunner,
+      );
+    },
+    launch: launch,
+  );
+}
+
+/// Runs [initSentry] with [launch] as its app runner, falling back to calling
+/// [launch] directly if Sentry initialisation throws — crash reporting must
+/// never prevent the app from launching.
+@visibleForTesting
+Future<void> launchWithSentry({
+  required Future<void> Function(void Function() appRunner) initSentry,
+  required void Function() launch,
+}) async {
   try {
-    final packageInfo = await PackageInfo.fromPlatform();
-    await SentryFlutter.init(
-      (options) {
-        options.dsn = sentryDsn;
-        options.environment = kReleaseMode ? 'release' : 'debug';
-        options.release =
-            '${packageInfo.packageName}@${packageInfo.version}+${packageInfo.buildNumber}';
-        // V1 privacy defaults: no performance tracing, no PII, no screenshots.
-        // Revisit tracesSampleRate when the app has a backend (post-V1).
-        // enableAutoSessionTracking is intentionally left at its default (true): session
-        // start/stop events and the SDK's random per-install id are disclosed in
-        // docs/privacy.html and SECURITY.md (#312). Update both if this changes.
-        options.tracesSampleRate = 0.0;
-        options.sendDefaultPii = false;
-        options.attachScreenshot = false;
-        // sentry_flutter 9+ turned ANR reporting on by default; keep it off so the
-        // dependency bump (#329) does not change what crash reporting sends.
-        options.anrEnabled = false;
-        options.beforeSend = dropUnactionableEvents;
-      },
-      appRunner: launch,
-    );
+    await initSentry(launch);
   } catch (e, stack) {
-    // Sentry init failure must not prevent the app from launching.
     gameLogger.w('Sentry init failed — crash reporting disabled', error: e, stackTrace: stack);
     launch();
   }
