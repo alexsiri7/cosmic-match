@@ -281,6 +281,35 @@ class Screened(unittest.TestCase):
         self.assertFalse(check.glob_match("docs/ops/x.md", "ops/*"))
 
 
+class Applicability(unittest.TestCase):
+    """check_pr() verdicts for factory and other PRs (owner's ruling on #308)."""
+
+    def run_check(self, ref, head_repo="o/r", closes=()):
+        gh = mock.Mock(repo="o/r")
+        pull = {"body": "", "base": {"sha": "b"}, "changed_files": 1,
+                "head": {"sha": "h", "ref": ref, "repo": head_repo and {"full_name": head_repo}}}
+        gh.api.return_value = pull
+        gh.closing_issues.return_value = [{"number": n, "labels": ["archon:auto-approved"]} for n in closes]
+        gh.pr_files.return_value = [f(".github/workflows/ci.yml", "modified", added("x"))]
+        return check.check_pr(gh, 1, POLICY)
+
+    def test_screened_link_runs_the_denylist_for_factory_and_other_prs(self):
+        for ref in ("archon/task-x", "feature/x"):
+            code, problems, summary = self.run_check(ref, closes=[7])
+            self.assertEqual(code, 1, (ref, summary))
+            self.assertIn("closes #7", summary)
+
+    def test_factory_pr_without_screened_link_is_not_applicable_and_named(self):
+        self.assertEqual(self.run_check("archon/task-x"), (0, [],
+            "unsafe-change: not applicable (factory PR from archon/task-x closes no issue that only automated screening vetted)"))
+
+    def test_other_prs_without_screened_link_are_not_applicable(self):
+        unchanged = (0, [], "unsafe-change: not applicable (the PR closes no issue that only automated screening vetted)")
+        self.assertEqual(self.run_check("feature/x"), unchanged)
+        self.assertEqual(self.run_check("archon/task-x", head_repo="fork/r"), unchanged)
+        self.assertEqual(self.run_check("archon/task-x", head_repo=None), unchanged)
+
+
 class Report(unittest.TestCase):
     def test_pr_controlled_text_cannot_emit_workflow_commands(self):
         files = [

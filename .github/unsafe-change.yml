@@ -13,6 +13,9 @@
 
 screened_label: archon:auto-approved
 approved_label: archon:approved
+# Head-branch prefix of factory PRs (same-repo branches only). Factory PRs
+# follow the same rules as any other PR; the verdict line names them.
+factory_branch_prefix: archon/
 
 # 1. CI, deploy, infra, build scripts and agent instructions. Any status
 #    (added, modified, removed, renamed from/to).
