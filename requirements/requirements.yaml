@@ -507,3 +507,17 @@ requirements:
       - "ProgressService.load returns LevelProgress.initial for a validly signed record with out-of-range starsEarned or bestScore"
       - "ProgressService.load returns LevelProgress.initial for a validly signed record whose level field differs from the requested level key"
     notes: "Complements CM-016: an attacker holding the device-local HMAC key can still sign a forged record, so semantic checks bound what a forged save can claim."
+
+  - id: CM-041
+    title: Swipe threshold and live drag preview
+    statement: "While the player drags a tile, the system shall ignore drags shorter than 30% of the tile width, preview the swap by offsetting the tile along its dominant axis (clamped to half a tile) with a 30% counter-offset on the neighbor, and shall restore both tiles to their canonical positions on drag end or cancel before initiating any swap; a cancelled drag shall never swap."
+    category: functional
+    priority: must
+    status: active
+    source: "Issue #371 (requirements-gap orphan)"
+    acceptance:
+      - "A drag shorter than 30% of the tile width leaves both tiles in place and releasing it starts no swap"
+      - "A qualifying drag offsets the tile along its dominant axis only, clamped to half a tile, and counter-offsets the neighbor by 30% of that offset in the opposite direction"
+      - "When the dominant axis changes mid-drag, the previously previewed neighbor returns to its canonical position"
+      - "On drag end both tiles are back at their canonical positions when the swap starts; on drag cancel both tiles are restored and no swap starts"
+    notes: "Refines the gesture side of CM-004 swipe-to-swap."
