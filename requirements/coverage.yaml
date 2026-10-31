@@ -1,0 +1,267 @@
+# REGENERATED on every audit run by the archon-requirements-audit workflow. Do not hand-edit.
+meta:
+  generated: 2026-10-31
+  workflow: archon-requirements-audit
+  totals:
+    covered: 16
+    partial: 21
+    uncovered: 0
+    stale: 2
+    orphans: 20
+coverage:
+  - id: CM-001
+    status: partial
+    code_paths: [lib/game/grid_logic.dart, lib/game/world/grid_world.dart]
+    test_paths: [test/game/grid_logic_test.dart]
+    notes: "Full population and no-initial-match are tested on a 7x8 logic grid; the 200-attempt retry bound is implemented but no test forces a seed through the cap."
+  - id: CM-002
+    status: covered
+    code_paths: [lib/game/match3_game.dart, lib/game/components/grid_tile.dart, lib/game/theme/tile_palette.dart]
+    test_paths: [test/game/match3_game_input_test.dart, test/game/grid_tile_select_test.dart, test/game/tile_palette_test.dart]
+    notes: "Select, deselect, non-adjacent and diagonal re-selection are asserted; overlay is asserted transparent and the glow palette asserted per type."
+  - id: CM-003
+    status: covered
+    code_paths: [lib/game/match3_game.dart]
+    test_paths: [test/game/match3_game_input_test.dart]
+    notes: "Adjacent tap clears both selections and enters swapping; diagonal and distance-2 taps switch selection instead of swapping."
+  - id: CM-004
+    status: covered
+    code_paths: [lib/game/match3_game.dart, lib/game/components/grid_tile.dart, lib/game/world/grid_world.dart]
+    test_paths: [test/game/match3_game_input_test.dart, test/game/tile_swipe_test.dart, test/game/grid_world_swap_test.dart]
+    notes: "Direction-to-(dx,dy) mapping, off-edge no-op, selection clearing and a valid swipe running a swap are asserted; only the right direction is run end to end."
+  - id: CM-005
+    status: covered
+    code_paths: [lib/game/world/grid_world.dart]
+    test_paths: [test/game/match3_game_input_test.dart]
+    notes: "Invalid adjacent swap test checks tile references, grid types, idle phase and zero score after settle."
+  - id: CM-006
+    status: partial
+    code_paths: [lib/game/world/grid_world.dart]
+    test_paths: [test/golden/post_match_clear_test.dart, test/game/match3_game_input_test.dart]
+    notes: "_clearMatches nulls cells and removes components, but no test asserts cleared cells are null or components removed; golden compares pixels and the input test only checks score > 0."
+  - id: CM-007
+    status: partial
+    code_paths: [lib/game/pattern_detector.dart]
+    test_paths: [test/game/pattern_detector_test.dart]
+    notes: "Priority order, Supernova over T-arm, Black Hole over Pulsar, 6+ run consumption and claimed-set disjointness asserted; Pulsar bonus at the midpoint of a 4-run is never asserted."
+  - id: CM-008
+    status: covered
+    code_paths: [lib/game/grid_logic.dart, lib/game/world/grid_world.dart]
+    test_paths: [test/game/grid_logic_test.dart, test/game/grid_world_render_test.dart, test/game/flame_gravity_sync_test.dart]
+    notes: "Fixpoint settling, column order preservation, snap to canonical position and cancellation of stale MoveEffects are asserted."
+  - id: CM-009
+    status: partial
+    code_paths: [lib/game/grid_logic.dart, lib/game/world/grid_world.dart]
+    test_paths: [test/game/flame_refill_placement_test.dart, test/game/grid_logic_test.dart]
+    notes: "Full packing after refillAll and the y = -1 spawn formula are tested; no test inspects a refilled GridTile to confirm it spawns at y = -1 with a MoveEffect."
+  - id: CM-010
+    status: partial
+    code_paths: [lib/game/cascade_controller.dart, lib/game/world/grid_world.dart]
+    test_paths: [test/game/cascade_controller_test.dart, test/game/grid_world_render_test.dart]
+    notes: "Controller cap and canContinue are tested; no test shows a second cascade level clearing without input or a board still matching at depth 20 returning to idle."
+  - id: CM-011
+    status: partial
+    code_paths: [lib/game/world/grid_world.dart]
+    test_paths: [test/widgets/hud_overlay_test.dart, test/game/match3_game_input_test.dart]
+    notes: "Formula matches round(10 * n * (1 + 0.5 * depth)) in code; no test asserts 30 or 60 points for a concrete match and notifier propagation is tested by setting the value manually."
+  - id: CM-012
+    status: covered
+    code_paths: [lib/models/score.dart]
+    test_paths: [test/models/score_test.dart]
+    notes: "Negative and zero inputs ignored; single and cumulative clamps at 999,999,999 asserted."
+  - id: CM-013
+    status: covered
+    code_paths: [lib/game/match3_game.dart]
+    test_paths: [test/game/game_fsm_test.dart, test/game/flame_cascade_fsm_test.dart]
+    notes: "Every legal edge and several illegal ones (including cascading to idle) are asserted; reset to idle precedes the assert so release behaviour is observable."
+  - id: CM-014
+    status: covered
+    code_paths: [lib/game/match3_game.dart, lib/game/components/grid_tile.dart]
+    test_paths: [test/game/match3_game_input_test.dart]
+    notes: "Taps and swipes during swapping are dropped at the Match3Game level; the GridTile gate uses the same predicate but is not driven directly by a test."
+  - id: CM-015
+    status: stale
+    code_paths: [lib/game/world/grid_world.dart, lib/widgets/hud_overlay.dart, lib/screens/game_screen.dart]
+    test_paths: [integration_test/scripted_match_test.dart, test/widgets/hud_overlay_test.dart]
+    notes: "Persisting best after a cascade works, but HudOverlay is never mounted (no overlayBuilderMap), GameScreen shows only SCORE and MOVES, and the loaded best is not pushed to scoreNotifier until the first clear; the display half of the statement does not ship."
+  - id: CM-016
+    status: covered
+    code_paths: [lib/core/crc_integrity.dart, lib/models/level_progress.dart, lib/models/pending_feedback.dart, lib/services/progress_service.dart, lib/services/feedback_service.dart]
+    test_paths: [test/core/crc_integrity_test.dart, test/services/progress_service_test.dart, test/services/progress_service_integration_test.dart, test/models/pending_feedback_test.dart, test/services/feedback_service_test.dart]
+    notes: "Canonical sorted keys, missing or wrong hmac resetting progress, flush and expiry dropping tampered rows, and null-key fail-safe are asserted; the CLAUDE.md CRC32 naming note is outdated (CLAUDE.md now says HMAC-SHA256)."
+  - id: CM-017
+    status: covered
+    code_paths: [lib/services/key_service.dart, lib/services/progress_service.dart, lib/services/feedback_service.dart]
+    test_paths: [test/services/key_service_test.dart, test/services/progress_service_integration_test.dart, test/services/feedback_service_test.dart]
+    notes: "32-byte key persisted and reused, null on storage throw, both boxes opened with the cipher, encrypted box unreadable without it, and cipher mismatch resetting without truncation are asserted."
+  - id: CM-018
+    status: partial
+    code_paths: [lib/main.dart, lib/screens/home_screen.dart, lib/screens/game_screen.dart]
+    test_paths: [test/main_test.dart, test/screens/home_screen_test.dart, test/screens/game_screen_test.dart]
+    notes: "Boot on HomeScreen, Play to GameScreen and back are asserted; single-instance reuse (score surviving navigation) is implemented via a late final field but untested."
+  - id: CM-019
+    status: stale
+    code_paths: [lib/game/theme/cosmic_theme.dart, lib/game/theme/app_theme.dart, lib/game/components/board_backdrop.dart, lib/game/components/tile_shape_painter.dart, lib/models/tile_type.dart, lib/screens/home_screen.dart, lib/main.dart]
+    test_paths: [test/game/tile_palette_test.dart, test/game/tile_shape_painter_test.dart, test/golden/fresh_board_test.dart, test/golden/post_match_clear_test.dart, test/golden/post_refill_test.dart, test/golden/score_bar_test.dart, test/game/components/board_backdrop_test.dart]
+    notes: "Tile shapes, colours and goldens hold, but Flutter screens use a divergent kLyra* palette (nebula and accent values differ from kCosmic*), main.dart hardcodes the ink colour, and kGridLine is never rendered, so the sole-source-of-colour criterion and grid-line clause are false; starfield determinism untested."
+  - id: CM-020
+    status: partial
+    code_paths: [lib/game/world/grid_world.dart]
+    test_paths: [test/game/flame_tile_positions_test.dart, test/game/flame_refill_placement_test.dart, test/screenshot/phone_screenshot_test.dart, test/screenshot/tablet7_screenshot_test.dart, test/screenshot/tablet10_screenshot_test.dart]
+    notes: "min() tile-size formula and centering asserted for width- and height-constrained canvases with phone/7-inch/10-inch goldens; onGameResize repositioning of live tiles is never exercised."
+  - id: CM-021
+    status: partial
+    code_paths: [lib/services/feedback_launcher.dart, lib/screens/feedback_sheet.dart, lib/core/constants.dart]
+    test_paths: [test/services/feedback_launcher_test.dart, test/screens/feedback_sheet_test.dart, test/screens/game_screen_test.dart, test/widgets/hud_overlay_test.dart]
+    notes: "Fallback PNG and reachability from home, game header and HudOverlay are tested; stroke compositing is implemented but no test draws a stroke and inspects output, and the HUD entry point is an orphan widget (see CM-015)."
+  - id: CM-022
+    status: covered
+    code_paths: [lib/screens/feedback_sheet.dart, lib/services/feedback_service.dart, lib/core/constants.dart]
+    test_paths: [test/screens/feedback_sheet_test.dart, test/services/feedback_service_test.dart]
+    notes: "Submit gating on trimmed length, consent, cooldown and in-flight state; maxLength; service rejection of short, whitespace-only and over-500 messages; and consent text naming the server and public repo are asserted."
+  - id: CM-023
+    status: partial
+    code_paths: [lib/services/feedback_service.dart, lib/services/feedback_launcher.dart]
+    test_paths: [test/services/feedback_service_test.dart]
+    notes: "201 with empty, non-JSON or url-less body as success, 400/401/403 dropped, 5xx and network errors queued, body structure and 15 s timeout covered; device-model fallback to OS name on device_info failure is untested."
+  - id: CM-024
+    status: covered
+    code_paths: [lib/services/feedback_service.dart, lib/main.dart, .github/workflows/ci.yml]
+    test_paths: [test/services/feedback_service_test.dart]
+    notes: "Signature over <ts>.<exact body>, both headers absent with an empty secret, 401 dropping the item, and identical body id on direct submit and flushed retry are asserted."
+  - id: CM-025
+    status: partial
+    code_paths: [lib/services/feedback_service.dart]
+    test_paths: [test/services/feedback_service_test.dart, test/models/pending_feedback_test.dart]
+    notes: "20-item eviction, tampered-row skipping, cooldown-scheduled flush, hourly-cap stop, backoff, Retry-After bounds, 10-attempt drop and legacy rows asserted; the connectivity-event trigger and _flushing re-entrancy guard are never exercised."
+  - id: CM-026
+    status: partial
+    code_paths: [lib/services/feedback_service.dart, lib/main.dart, lib/core/constants.dart]
+    test_paths: [test/services/feedback_service_test.dart]
+    notes: "Cutoff deletion keeping newer rows, dropping tampered and non-Map rows, and null-key fail-safe asserted; that expireOldItems(7) runs in main() before launch is not verified by any test."
+  - id: CM-027
+    status: covered
+    code_paths: [lib/services/rate_limit_service.dart, lib/services/feedback_service.dart, lib/screens/feedback_sheet.dart]
+    test_paths: [test/services/rate_limit_service_test.dart, test/services/feedback_service_test.dart, test/screens/feedback_sheet_test.dart]
+    notes: "Cooldown remaining seconds, cap at 5 with reset after 60 minutes, fail-open on storage throw, countdown text with disabled Submit, and charging of failed and flushed POSTs are asserted."
+  - id: CM-028
+    status: covered
+    code_paths: [lib/screens/home_screen.dart, lib/main.dart, lib/services/feedback_service.dart]
+    test_paths: [test/screens/home_screen_test.dart, test/main_test.dart, test/services/feedback_service_test.dart]
+    notes: "Cancel/Clear dialog, success and failure snackbars, and an emptied box are asserted."
+  - id: CM-029
+    status: partial
+    code_paths: [lib/services/in_app_update_service.dart, lib/main.dart]
+    test_paths: [test/services/in_app_update_service_test.dart]
+    notes: "Only the non-Android no-op is tested; post-frame trigger, 1-day snackbar with Restart calling completeFlexibleUpdate, and exception swallowing are implemented but untested."
+  - id: CM-030
+    status: partial
+    code_paths: [lib/main.dart]
+    test_paths: [test/main_test.dart]
+    notes: "launchWithSentry launching once when init throws is tested; blank-DSN skip and the packageName@version+buildNumber release string live inside main() and are untested."
+  - id: CM-031
+    status: partial
+    code_paths: [lib/main.dart]
+    test_paths: []
+    notes: "tracesSampleRate = 0.0, sendDefaultPii = false, attachScreenshot = false (and anrEnabled = false) are set inside the init closure; nothing inspects the options."
+  - id: CM-032
+    status: covered
+    code_paths: [lib/core/sentry_filters.dart, lib/main.dart]
+    test_paths: [test/core/sentry_filters_test.dart]
+    notes: "Each filter's exact shape, empty-frame and null-stack pass-through, mixed frames, multiple exceptions, and the composite are asserted."
+  - id: CM-033
+    status: partial
+    code_paths: [lib/main.dart, lib/core/logger.dart, lib/services/feedback_service.dart]
+    test_paths: [test/core/logger_test.dart]
+    notes: "Logger test only checks ProductionFilter; the debugPrint no-op under kReleaseMode and the content-free feedback log line are untested."
+  - id: CM-034
+    status: partial
+    code_paths: [android/app/build.gradle.kts, android/app/src/main/AndroidManifest.xml, pubspec.yaml]
+    test_paths: []
+    notes: "minSdk 26, INTERNET as the only permission and no backend are true in the sources but nothing asserts them; the missing portrait lock noted in the requirement is confirmed."
+  - id: CM-035
+    status: partial
+    code_paths: [lib/main.dart, .github/workflows/ci.yml]
+    test_paths: []
+    notes: "All three values come from String.fromEnvironment with the documented worker-URL default and blank values degrading; no test builds without defines or scans for hardcoded values; the service also refuses non-HTTPS worker URLs, which the requirement omits."
+  - id: CM-036
+    status: partial
+    code_paths: [.github/workflows/ci.yml, android/app/build.gradle.kts, .gitignore, android/.gitignore, android/key.properties.example]
+    test_paths: [.github/workflow-tests/test_ci_release_gate.py]
+    notes: "--obfuscate --split-debug-info, gitignored key.properties with example, and token-gated Sentry upload present; workflow tests cover only deploy gating and permissions, and the token assertion checks a single variable name rather than any GitHub token."
+  - id: CM-037
+    status: partial
+    code_paths: [.github/workflows/ci.yml, .github/workflows/integration.yml, test/golden/fresh_board_test.dart, test/golden/post_match_clear_test.dart, test/golden/post_refill_test.dart, test/golden/score_bar_test.dart]
+    test_paths: [.github/workflow-tests/test_lockfile_enforced.py]
+    notes: "Analyze, flutter test --exclude-tags screenshots and the per-file emulator matrix are present; the only workflow test touching these jobs checks lockfile ordering, not that analyze and test steps exist."
+  - id: CM-038
+    status: partial
+    code_paths: [.github/workflows/generate-screenshots.yml, test/screenshot/phone_screenshot_test.dart, test/screenshot/tablet7_screenshot_test.dart, test/screenshot/tablet10_screenshot_test.dart]
+    test_paths: []
+    notes: "Dispatch-only workflow records goldens with --update-goldens, copies all 9 images, and exits before opening a PR when the staged diff is empty; no test asserts any of this."
+  - id: CM-039
+    status: covered
+    code_paths: [pubspec.lock, .github/workflows/ci.yml, .github/workflows/integration.yml, .github/workflows/generate-screenshots.yml]
+    test_paths: [.github/workflow-tests/test_lockfile_enforced.py]
+    notes: "pubspec.lock is tracked and every Flutter job runs flutter pub get --enforce-lockfile first, which fails on yaml/lock drift; the workflow test pins that invariant across all workflows."
+orphans:
+  - behavior: "Validly signed progress records are rejected and reset when stars are outside 0-3, best score is outside 0-999,999,999, or the stored level differs from the requested one."
+    code_paths: [lib/models/level_progress.dart, lib/services/progress_service.dart]
+    suggested_requirement: "When loading a level-progress record whose signature is valid, the system shall reject it and reset that level to initial values if starsEarned is outside 0-3, bestScore is outside 0-999,999,999, or the record's level field differs from the level key it was stored under."
+  - behavior: "Drags under 30% of a tile width are ignored; longer drags preview the swap by offsetting the dragged tile (clamped to half a tile) and counter-offsetting the neighbor 30%, and both snap home on end or cancel before any swap."
+    code_paths: [lib/game/components/grid_tile.dart]
+    suggested_requirement: "While the player drags a tile, the system shall ignore drags shorter than 30% of the tile width, preview the swap by offsetting the tile along its dominant axis (clamped to half a tile) with a 30% counter-offset on the neighbor, and shall restore both tiles to their canonical positions on drag end or cancel before initiating any swap."
+  - behavior: "Unexpected exceptions inside the swap or cascade pipeline are logged, assert in debug, and reset the phase to idle in release so the board never locks up."
+    code_paths: [lib/game/world/grid_world.dart]
+    suggested_requirement: "When the swap or cascade pipeline throws an unexpected exception, the system shall log the error, fail the assertion in debug builds, and reset the game phase to idle in release builds so input is never permanently blocked."
+  - behavior: "An annotated screenshot whose base64 form exceeds 2 MB is dropped from the feedback payload by both the sheet and the service, and the confirmation tells the player it could not be attached."
+    code_paths: [lib/core/constants.dart, lib/screens/feedback_sheet.dart, lib/services/feedback_service.dart]
+    suggested_requirement: "When the base64-encoded annotated screenshot exceeds 2 MB, the system shall submit the feedback without a screenshot and inform the player that the screenshot could not be attached."
+  - behavior: "Sent or queued outcomes close the sheet with a snackbar (sent shows the issue number with a 10 s COPY LINK action when the URL matches the configured repo); rate-limited or not-sent keeps the sheet and description open with an inline reason and refreshes the cooldown."
+    code_paths: [lib/screens/feedback_sheet.dart, lib/services/feedback_service.dart, lib/models/feedback_result.dart]
+    suggested_requirement: "When a feedback submission completes, the system shall dismiss the sheet and confirm via snackbar for sent or queued outcomes (including the filed issue number with a copy-link action when the worker's URL names an issue in the configured repository), and shall keep the sheet and description open with an inline reason, refreshing the cooldown, for rate-limited or not-sent outcomes."
+  - behavior: "The screenshot preview toggles between draw and pan mode; pan drags the image inside the frame and the pan offset is subtracted when annotations are composited."
+    code_paths: [lib/screens/feedback_sheet.dart]
+    suggested_requirement: "While the feedback sheet is open, the system shall let the player toggle the screenshot preview between draw mode and pan mode, and shall account for the pan offset when compositing annotations onto the submitted image."
+  - behavior: "The feedback sheet shows the privacy policy URL with a copy button; the policy is published from the repo via GitHub Pages and SECURITY.md requires its endpoint table to match that page."
+    code_paths: [lib/screens/feedback_sheet.dart, lib/core/constants.dart, docs/privacy.html, SECURITY.md]
+    suggested_requirement: "The system shall publish a privacy policy page from the repository and display its URL with a copy-to-clipboard action in the feedback sheet; when any network endpoint or data sent changes, the policy page and the SECURITY.md endpoint table shall be updated to match."
+  - behavior: "The manifest forbids cleartext traffic, the network security config trusts only system CAs, and the feedback client refuses to send when the configured worker URL is not HTTPS."
+    code_paths: [android/app/src/main/AndroidManifest.xml, android/app/src/main/res/xml/network_security_config.xml, lib/services/feedback_service.dart]
+    suggested_requirement: "The system shall permit no cleartext network traffic and shall trust only system certificate authorities; when the configured feedback worker URL is not an HTTPS URL with a host, the system shall disable feedback sending rather than fall back to an insecure transport."
+  - behavior: "allowBackup is false, so encrypted Hive boxes and secure-storage state are never copied into Android cloud or device-to-device backups."
+    code_paths: [android/app/src/main/AndroidManifest.xml]
+    suggested_requirement: "The system shall opt out of Android application backup so that local progress, the feedback queue and rate-limit state are never exported off the device by the platform."
+  - behavior: "ANR reporting is explicitly disabled while auto session tracking stays on, sending app start/stop events with a random per-install identifier as disclosed in the privacy page."
+    code_paths: [lib/main.dart, SECURITY.md, docs/privacy.html]
+    suggested_requirement: "While crash reporting is enabled, the system shall not report ANR events, and shall send Sentry session start/stop events carrying a random per-install identifier only as disclosed in the privacy policy."
+  - behavior: "IBM Plex Mono is fetched from the Google Fonts CDN on first render, cached on device, and falls back to the platform font on failure; this is a network call every build makes."
+    code_paths: [lib/widgets/stat_card.dart, lib/screens/home_screen.dart, lib/screens/game_screen.dart, lib/screens/feedback_sheet.dart, lib/screens/modals.dart]
+    suggested_requirement: "When text styled in IBM Plex Mono is first rendered, the system shall fetch the font from the Google Fonts CDN and cache it on device; when the fetch fails, the system shall fall back to the platform default font without error."
+  - behavior: "Scores display with a thousands separator below one million and as a one-decimal M suffix at or above it."
+    code_paths: [lib/screens/game_screen.dart]
+    suggested_requirement: "When displaying a score, the system shall format values from 1,000 to 999,999 with a comma thousands separator and values of 1,000,000 or more as a one-decimal number with an M suffix."
+  - behavior: "Release build name comes from the v* tag or pubspec; build number is the CI run number plus 1000 so Play version codes stay monotonic."
+    code_paths: [.github/workflows/ci.yml]
+    suggested_requirement: "When CI builds a release, the system shall derive the build name from the pushed v* tag (else from pubspec.yaml) and the build number as the workflow run number plus 1000, so that Play Store version codes increase monotonically across all releases."
+  - behavior: "Pull-request runs get no release keystore, Sentry DSN, HMAC secret or auth token; a throwaway keystore keeps the release path exercised and signing files are deleted at job end."
+    code_paths: [.github/workflows/ci.yml]
+    suggested_requirement: "When CI runs for a pull request, the system shall withhold all release secrets, sign with a freshly generated throwaway keystore so the release build path is still exercised, label the artifacts as not publishable, and delete signing credentials when the job ends."
+  - behavior: "A main push publishes a draft to the Play internal track; a v* tag publishes to production after environment approval, creates a GitHub Release with AAB and APK, and attaches the R8 mapping; Play credentials live only in environment-scoped jobs and dispatched runs never deploy."
+    code_paths: [.github/workflows/ci.yml, .github/workflow-tests/test_ci_release_gate.py]
+    suggested_requirement: "When a signed release is built from a push to main, the system shall upload it as a draft to the Play internal track; when built from a v* tag, the system shall, after required-reviewer approval, publish it to the production track with its R8 mapping file and create a GitHub Release containing the AAB and APK; Play credentials shall be available only to those environment-scoped jobs, and no other trigger shall deploy."
+  - behavior: "A dispatched workflow uploads title, descriptions, nine screenshots, feature graphic and icon to Play Console through a service account, replacing existing images."
+    code_paths: [.github/workflows/setup-store-listing.yml, store-listing/upload_listing.py]
+    suggested_requirement: "When the store-listing workflow is dispatched, the system shall replace the en-US Play listing text, phone/7-inch/10-inch screenshots, feature graphic and icon from the store-listing directory in a single committed Play edit."
+  - behavior: "A PR that closes only an auto-screened issue fails a denylist check if it touches CI, infra or secrets paths, adds a dependency, adds process/env/socket code, or writes risky migration SQL; the check runs from the base branch and never executes PR code."
+    code_paths: [.github/workflows/unsafe-change.yml, .github/unsafe-change.yml, .github/unsafe-change/check.py]
+    suggested_requirement: "When a pull request closes an issue vetted only by automated screening, the system shall evaluate its changes against the base branch's denylist (protected paths, sensitive path names, new dependencies, process/environment/socket code, foreign-schema SQL) without executing PR code, and shall report failure so the PR is held for owner review."
+  - behavior: "Issues labelled needs-more-info are warned after 7 idle days and closed after 7 more; PRs and issues labelled security, human-needed or pinned are exempt."
+    code_paths: [.github/workflows/stale.yml]
+    suggested_requirement: "When an issue labelled needs-more-info has had no activity for 7 days, the system shall post a warning and label it stale, and shall close it after 7 further idle days; pull requests and issues labelled security, human-needed or pinned shall never be auto-staled."
+  - behavior: "Beyond pubspec.lock, actions are SHA-pinned, the Gradle wrapper is checksummed, pip installs require hashes, the OpenSpec CLI has an npm lockfile, Dependabot watches five ecosystems, and Python self-tests fail CI if any of these regress."
+    code_paths: [.github/workflows/ci.yml, .github/workflows/integration.yml, .github/workflows/generate-screenshots.yml, .github/workflows/openspec.yml, .github/workflows/setup-store-listing.yml, android/gradle/wrapper/gradle-wrapper.properties, store-listing/requirements.txt, .github/openspec/package-lock.json, .github/dependabot.yml, .github/workflow-tests]
+    suggested_requirement: "The system shall resolve every build-time dependency from a committed, integrity-checked lock (enforced pubspec.lock, SHA-pinned actions, checksummed Gradle wrapper, hash-pinned pip requirements, OpenSpec npm lockfile), keep them current via Dependabot, and fail CI when any workflow stops enforcing these pins."
+  - behavior: "Every push and PR validates the OpenSpec capability specs in strict mode."
+    code_paths: [.github/workflows/openspec.yml, openspec/specs]
+    suggested_requirement: "When a change is proposed, CI shall validate all OpenSpec specification files in strict mode and block the change if validation fails."
