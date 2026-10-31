@@ -140,7 +140,6 @@ class GridWorld extends World {
   void _layoutBackdrop() {
     const pad = BoardBackdrop.padding;
     _backdropRef
-      ..tileSize = tileSize
       ..position = _boardOffset - Vector2.all(pad)
       ..size = Vector2(tileSize * cols + 2 * pad, tileSize * rows + 2 * pad);
   }

@@ -37,7 +37,6 @@ class BoardBackdrop extends PositionComponent {
 
   final int cols;
   final int rows;
-  double tileSize = 0;
 
   BoardBackdrop({required this.cols, required this.rows});
 
@@ -50,6 +49,7 @@ class BoardBackdrop extends PositionComponent {
       ),
       Paint()..color = kBoardBackdrop,
     );
+    final tileSize = (size.x - 2 * padding) / cols;
     if (tileSize <= 0) return;
 
     // Tiles are tileSize - 2 wide and top-left anchored, so each divider sits
