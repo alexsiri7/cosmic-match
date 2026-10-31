@@ -110,4 +110,40 @@ void main() {
     expect(mapCalled, isTrue);
     expect(playCalled, isFalse);
   });
+
+  testWidgets('HomeScreen starfield is deterministic across fresh builds',
+      (tester) async {
+    tester.view.physicalSize = const Size(400, 800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    Future<List<(double?, double?, double?, Color?)>> pumpStars() async {
+      await tester.pumpWidget(MaterialApp(
+        home: HomeScreen(
+          onPlay: () {},
+          onMap: () {},
+          onFeedback: () {},
+          onClearFeedbackQueue: () {},
+        ),
+      ));
+      await tester.pumpAndSettle();
+      return [
+        for (final p in tester.widgetList<Positioned>(find.byType(Positioned)))
+          if (p.child case Container(
+            decoration: BoxDecoration(shape: BoxShape.circle, :final color),
+            :final constraints,
+          ))
+            (p.left, p.top, constraints?.maxWidth, color),
+      ];
+    }
+
+    final first = await pumpStars();
+    await tester.pumpWidget(const SizedBox());
+    final second = await pumpStars();
+
+    expect(first, hasLength(80));
+    expect(second, first);
+    expect(first.map((s) => (s.$1, s.$2)).toSet().length, greaterThan(1));
+  });
 }
