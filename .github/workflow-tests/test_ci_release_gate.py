@@ -18,6 +18,8 @@ WORKFLOWS = pathlib.Path(__file__).resolve().parents[1] / "workflows"
 CI = WORKFLOWS / "ci.yml"
 PLAY_SECRET_WORKFLOWS = sorted(WORKFLOWS.glob("*.yml"))
 PUSH_ONLY = "github.event_name == 'push'"
+MAIN_ONLY = "github.ref == 'refs/heads/main'"
+V_TAGS_ONLY = "startsWith(github.ref, 'refs/tags/v')"
 
 
 def top_level_conjuncts(expr):
@@ -61,6 +63,13 @@ class ReleaseGate(unittest.TestCase):
             with self.subTest(job=job_id, step=step):
                 self.assertIn(PUSH_ONLY, top_level_conjuncts(cond))
 
+    def test_publish_jobs_gate_on_their_ref(self):
+        expected = {"publish-internal": MAIN_ONLY, "publish-production": V_TAGS_ONLY}
+        for (job_id, step), cond in ref_gated_conditions().items():
+            if job_id in expected:
+                with self.subTest(job=job_id, step=step):
+                    self.assertIn(expected[job_id], top_level_conjuncts(cond))
+
     def test_known_deploy_steps_are_ref_gated(self):
         self.assertLessEqual({
             ("publish-internal", None),
@@ -79,8 +88,9 @@ class ReleaseGate(unittest.TestCase):
                     with self.subTest(workflow=path.name, job=job_id):
                         self.assertIn("environment", job)
 
-    def test_production_publish_is_environment_gated(self):
+    def test_publish_jobs_are_environment_gated(self):
         jobs = ci_jobs()
+        self.assertEqual(jobs["publish-internal"]["environment"], "play-internal")
         self.assertEqual(jobs["publish-production"]["environment"], "production")
         homes = [
             job_id for job_id, job in jobs.items()
@@ -96,8 +106,10 @@ class ReleaseGate(unittest.TestCase):
 
         internal = step("publish-internal", "Publish to Play Store internal track (non-tag)")
         self.assertEqual((internal["track"], internal["status"]), ("internal", "draft"))
+        self.assertEqual(internal["releaseFiles"], "dist/app-release.aab")
         production = step("publish-production", "Publish to Play Store production (tag release)")
         self.assertEqual(production["track"], "production")
+        self.assertEqual(production["releaseFiles"], "dist/app-release.aab")
         self.assertEqual(production["mappingFile"], "dist/mapping.txt")
         release = step("publish-production", "Create GitHub Release (tag pushes only)")
         self.assertEqual(
@@ -110,10 +122,16 @@ class ReleaseGate(unittest.TestCase):
     def test_job_permissions_are_least_privilege(self):
         # contents: write (cutting a GitHub Release) lives only behind the
         # reviewer-gated production environment.
+        self.assertEqual(yaml.safe_load(CI.read_text())["permissions"], {"contents": "read"})
         jobs = ci_jobs()
         self.assertEqual(jobs["release"]["permissions"], {"contents": "read"})
         self.assertNotIn("permissions", jobs["publish-internal"])
         self.assertEqual(jobs["publish-production"]["permissions"], {"contents": "write"})
+        writers = [
+            job_id for job_id, job in jobs.items()
+            if job.get("permissions", {}).get("contents") == "write"
+        ]
+        self.assertEqual(writers, ["publish-production"])
 
     def test_conjunct_split_respects_parentheses(self):
         self.assertEqual(
