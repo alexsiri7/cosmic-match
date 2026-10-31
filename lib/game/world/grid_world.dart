@@ -83,6 +83,7 @@ class GridWorld extends World {
     final progress =
         await _progressService?.load(1) ?? LevelProgress.initial(1);
     _bestScore = progress.bestScore;
+    _updateScoreNotifier();
 
     _bgRef = CosmicBackground()
       ..size = Vector2(_game.size.x, _game.size.y);

@@ -101,6 +101,17 @@ class _GameScreenState extends State<GameScreen> {
               ),
               const SizedBox(width: 8),
               Expanded(
+                child: ValueListenableBuilder<({int score, int best})>(
+                  valueListenable: widget.game.scoreNotifier,
+                  builder: (_, data, __) => StatCard(
+                    label: 'BEST',
+                    value: formatGameScore(data.best),
+                    accentColor: kLyraAccent,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
                 child: StatCard(label: 'MOVES', value: '∞', accentColor: kLyraAccent),
               ),
             ],
