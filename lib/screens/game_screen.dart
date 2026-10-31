@@ -2,7 +2,7 @@ import 'package:flame_riverpod/flame_riverpod.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../game/match3_game.dart';
-import '../game/theme/app_theme.dart';
+import '../game/theme/cosmic_theme.dart';
 import '../widgets/stat_card.dart';
 
 /// Formats a game score for display.
@@ -32,7 +32,7 @@ class _GameScreenState extends State<GameScreen> {
   @override
   Widget build(BuildContext context) {
     return Container(
-      color: kLyraInk,
+      color: kCosmicInk,
       child: SafeArea(
         child: Column(
           children: [
@@ -95,7 +95,7 @@ class _GameScreenState extends State<GameScreen> {
                   builder: (_, data, __) => StatCard(
                     label: 'SCORE',
                     value: formatGameScore(data.score),
-                    accentColor: kLyraAccent,
+                    accentColor: kCosmicAccent,
                   ),
                 ),
               ),
@@ -106,13 +106,13 @@ class _GameScreenState extends State<GameScreen> {
                   builder: (_, data, __) => StatCard(
                     label: 'BEST',
                     value: formatGameScore(data.best),
-                    accentColor: kLyraAccent,
+                    accentColor: kCosmicAccent,
                   ),
                 ),
               ),
               const SizedBox(width: 8),
               Expanded(
-                child: StatCard(label: 'MOVES', value: '∞', accentColor: kLyraAccent),
+                child: StatCard(label: 'MOVES', value: '∞', accentColor: kCosmicAccent),
               ),
             ],
           ),

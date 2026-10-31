@@ -92,9 +92,8 @@ class GridWorld extends World {
     // Compute layout — use canvasSize to prevent cropping on all viewports.
     _applyLayout(_game.canvasSize);
 
-    _backdropRef = BoardBackdrop()
-      ..position = _boardOffset - Vector2(8, 8)
-      ..size = Vector2(tileSize * cols + 16, tileSize * rows + 16);
+    _backdropRef = BoardBackdrop(cols: cols, rows: rows);
+    _layoutBackdrop();
     add(_backdropRef);
 
     tiles = List.generate(cols, (_) => List.generate(rows, (_) => null));
@@ -121,8 +120,7 @@ class GridWorld extends World {
     if (!isLoaded) return;
     _applyLayout(_game.canvasSize);
     _bgRef.size = Vector2(_game.size.x, _game.size.y);
-    _backdropRef.position = _boardOffset - Vector2(8, 8);
-    _backdropRef.size = Vector2(tileSize * cols + 16, tileSize * rows + 16);
+    _layoutBackdrop();
     for (int x = 0; x < cols; x++) {
       for (int y = 0; y < rows; y++) {
         tiles[x][y]?.position = _tilePosition(x, y);
@@ -137,6 +135,13 @@ class GridWorld extends World {
       (gameSize.x - tileSize * cols) / 2,
       headerHeight + (gameSize.y - headerHeight - tileSize * rows) / 2,
     );
+  }
+
+  void _layoutBackdrop() {
+    const pad = BoardBackdrop.padding;
+    _backdropRef
+      ..position = _boardOffset - Vector2.all(pad)
+      ..size = Vector2(tileSize * cols + 2 * pad, tileSize * rows + 2 * pad);
   }
 
   Vector2 _tilePosition(int x, int y) =>

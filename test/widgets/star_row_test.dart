@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:cosmic_match/game/theme/app_theme.dart';
+import 'package:cosmic_match/game/theme/cosmic_theme.dart';
 import 'package:cosmic_match/widgets/star_row.dart';
 
 void main() {
@@ -12,9 +12,9 @@ void main() {
 
     final icons = tester.widgetList<Icon>(find.byType(Icon)).toList();
     expect(icons.length, 3);
-    expect(icons[0].color, kLyraAccent);
-    expect(icons[1].color, kLyraAccent);
-    expect(icons[2].color, kLyraAccent.withValues(alpha: 0.3));
+    expect(icons[0].color, kCosmicAccent);
+    expect(icons[1].color, kCosmicAccent);
+    expect(icons[2].color, kCosmicAccent.withValues(alpha: 0.3));
   });
 
   testWidgets('total: 5 yields five icons', (tester) async {

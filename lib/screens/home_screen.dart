@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import '../game/theme/app_theme.dart';
+import '../game/theme/cosmic_theme.dart';
 import '../widgets/frosted_card.dart';
 import '../widgets/star_row.dart';
 
@@ -22,11 +22,11 @@ class HomeScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: kLyraInk,
+        color: kCosmicInk,
         gradient: RadialGradient(
           center: const Alignment(0.0, -0.6),
           radius: 1.2,
-          colors: [kLyraNebulaA.withValues(alpha: 0.6), Colors.transparent],
+          colors: [kCosmicNebulaA.withValues(alpha: 0.6), Colors.transparent],
         ),
       ),
       child: Stack(
@@ -37,7 +37,7 @@ class HomeScreen extends StatelessWidget {
               gradient: RadialGradient(
                 center: const Alignment(0.6, 0.6),
                 radius: 1.2,
-                colors: [kLyraNebulaB.withValues(alpha: 0.5), Colors.transparent],
+                colors: [kCosmicNebulaB.withValues(alpha: 0.5), Colors.transparent],
               ),
             ),
           ),
@@ -56,7 +56,7 @@ class HomeScreen extends StatelessWidget {
                     style: GoogleFonts.ibmPlexMono(
                       fontSize: 11,
                       letterSpacing: 2,
-                      color: kLyraAccent.withValues(alpha: 0.85),
+                      color: kCosmicAccent.withValues(alpha: 0.85),
                     ),
                   ),
                   // Hero section
@@ -86,8 +86,8 @@ class HomeScreen extends StatelessWidget {
                         width: 6, height: 6,
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
-                          color: kLyraAccent,
-                          boxShadow: [BoxShadow(color: kLyraAccent, blurRadius: 8)],
+                          color: kCosmicAccent,
+                          boxShadow: [BoxShadow(color: kCosmicAccent, blurRadius: 8)],
                         ),
                       ),
                       const SizedBox(width: 8),
@@ -111,8 +111,8 @@ class HomeScreen extends StatelessWidget {
                     child: ElevatedButton(
                       onPressed: onPlay,
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: kLyraAccent,
-                        foregroundColor: kLyraInk,
+                        backgroundColor: kCosmicAccent,
+                        foregroundColor: kCosmicInk,
                         padding: const EdgeInsets.symmetric(vertical: 18),
                         shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(100)),

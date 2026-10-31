@@ -6,9 +6,9 @@
     66x66dp circle — all critical shapes stay within it.
 
     Composition:
-      - A soft radial nebula wash (kLyraNebulaA violet fading to transparent)
+      - A soft radial nebula wash (kCosmicNebulaA violet fading to transparent)
         centred slightly off-centre, evoking the home-screen nebula gradient.
-      - A main 5-point star in kLyraAccent (#C070E8), centred at (54,54),
+      - A main 5-point star in kCosmicAccent (#C87FE0), centred at (54,54),
         outer radius 30dp, inner radius 12dp.
       - Three small sparkle dots to nod to the starfield motif.
 -->
@@ -27,12 +27,12 @@
                 android:centerX="54"
                 android:centerY="54"
                 android:gradientRadius="40"
-                android:startColor="#664A1F85"
-                android:endColor="#004A1F85" />
+                android:startColor="#664B2870"
+                android:endColor="#004B2870" />
         </aapt:attr>
     </path>
 
-    <!-- Small cobalt nebula bloom, off-centre for depth. -->
+    <!-- Small cobalt nebula bloom (kCosmicNebulaB), off-centre for depth. -->
     <path android:pathData="M0,0 L108,0 L108,108 L0,108 Z">
         <aapt:attr name="android:fillColor">
             <gradient
@@ -40,15 +40,15 @@
                 android:centerX="72"
                 android:centerY="70"
                 android:gradientRadius="22"
-                android:startColor="#4D1A4880"
-                android:endColor="#001A4880" />
+                android:startColor="#4D244E7A"
+                android:endColor="#00244E7A" />
         </aapt:attr>
     </path>
 
-    <!-- Main 5-point star, kLyraAccent. Centre (54,54), R=30, r=12. -->
+    <!-- Main 5-point star, kCosmicAccent. Centre (54,54), R=30, r=12. -->
     <path
         android:pathData="M54,24 L61.05,44.29 L82.53,44.73 L65.41,57.71 L71.63,78.27 L54,66 L36.37,78.27 L42.59,57.71 L25.47,44.73 L46.95,44.29 Z"
-        android:fillColor="#C070E8" />
+        android:fillColor="#C87FE0" />
 
     <!-- Star inner glow highlight (lighter lavender overlay, smaller). -->
     <path

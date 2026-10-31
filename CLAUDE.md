@@ -48,7 +48,7 @@ lib/
     theme/        # Tile color palette constants (kTilePalette — derived from TileType.colorValue;
                   #   kTileGlowPalette — derived from TileType.glowValue, used for selection border;
                   #   kTileSelectedOverlay — transparent, selection drawn by _GlowBorder stroke;
-                  #   cosmic_theme.dart — Lyra galaxy tokens: kCosmicInk, kCosmicNebulaA/B, kCosmicAccent, kBoardBackdrop, kGridLine)
+                  #   cosmic_theme.dart — Lyra galaxy tokens: kCosmicInk, kCosmicNebulaA/B, kCosmicAccent, kCosmicWarning, kBoardBackdrop, kGridLine)
   models/         # Pure data: Score, TileType, LevelProgress, PendingFeedback (offline queue item),
                   #   FeedbackResult (submit outcome)
   screens/        # Flutter screens: HomeScreen, MapScreen, GameScreen, modals

@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../game/theme/app_theme.dart';
+import '../game/theme/cosmic_theme.dart';
 
 class StarRow extends StatelessWidget {
   final int total;
@@ -28,7 +28,7 @@ class StarRow extends StatelessWidget {
           child: Icon(
             Icons.star,
             size: size,
-            color: isFilled ? kLyraAccent : kLyraAccent.withValues(alpha: 0.3),
+            color: isFilled ? kCosmicAccent : kCosmicAccent.withValues(alpha: 0.3),
           ),
         );
       }),
