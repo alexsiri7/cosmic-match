@@ -24,6 +24,16 @@ jobs:
         with:
           persist-credentials: false
 
+      # The Android emulator's disk-space check has started failing
+      # intermittently ("does not have enough disk space to run avd") on
+      # ubuntu-latest runners; free space taken by preinstalled toolchains
+      # this job never uses (.NET, Haskell) before starting the emulator.
+      - name: Free disk space for the emulator
+        run: |
+          sudo rm -rf /usr/share/dotnet
+          sudo rm -rf /opt/ghc
+          sudo rm -rf /usr/local/.ghcup
+
       - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
         with:
           distribution: temurin
