@@ -561,7 +561,9 @@ All direct dependencies use caret (`^`) constraints in `pubspec.yaml`, allowing 
 | Hash-pinned Python lock | `store-listing/requirements.txt` compiled from `requirements.in` by `pip-compile --generate-hashes`; `setup-store-listing.yml` installs with `--require-hashes` | Every direct and transitive package in the job holding `PLAY_SERVICE_ACCOUNT_JSON` must match a recorded hash (SEC-18, #321) |
 | Caret constraints | `^` prefix on all direct deps | Allow security patches; block breaking changes |
 | Gradle wrapper checksum | `distributionSha256Sum` in `android/gradle/wrapper/gradle-wrapper.properties` | Wrapper refuses a distribution ZIP whose SHA-256 differs from the official hash for the pinned `distributionUrl`; update both together on a Gradle bump |
-| Automated CVE monitoring | `.github/dependabot.yml` (weekly; `pub`, `github-actions`, `pip` for `store-listing/`, `gradle` for `android/`) | Dependabot opens PRs when vulnerabilities found |
+| SHA-pinned actions | Every `uses:` in `.github/workflows/` names a full commit SHA with a version comment | A moved or compromised action tag cannot change what CI runs |
+| OpenSpec npm lockfile | `.github/openspec/package-lock.json` pins `@fission-ai/openspec` with integrity hashes; `openspec.yml` installs it with `npm ci --ignore-scripts` (guarded by `.github/workflow-tests/test_openspec_pinned.py`) | The spec validator runs a reviewed version instead of whatever was last published (#318) |
+| Automated CVE monitoring | `.github/dependabot.yml` (weekly; `pub`, `github-actions`, `pip` for `store-listing/`, `gradle` for `android/`, `npm` for `.github/openspec/`) | Dependabot opens PRs when vulnerabilities found |
 
 **Note**: `pubspec.lock` must be updated and recommitted whenever a dependency is added, removed, or upgraded. Never run `flutter pub upgrade` without reviewing the resulting lock diff. Likewise, change `store-listing/requirements.in`, never `requirements.txt` by hand, then regenerate the lock from `store-listing/` with `pip-compile --generate-hashes --strip-extras --output-file=requirements.txt requirements.in` under Python 3.12 (the runner's interpreter).
 
