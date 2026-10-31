@@ -563,3 +563,17 @@ requirements:
       - "A rate-limited or not-sent outcome keeps the sheet and the typed description open, shows the reason inline, and refreshes the cooldown countdown"
       - "A rate-limited or not-sent outcome that resolves after the sheet was dismissed is still reported to the player via snackbar"
     notes: "Refines CM-021/CM-022. Outcomes come from FeedbackService.submit (FeedbackOutcome/FeedbackResult); the cooldown is CM-027."
+
+  - id: CM-045
+    title: Published privacy policy and disclosure sync
+    statement: "The system shall publish a privacy policy page from the repository and display its URL with a copy-to-clipboard action in the feedback sheet; when any network endpoint or data sent changes, the policy page and the SECURITY.md endpoint table shall be updated to match."
+    category: constraint
+    priority: must
+    status: active
+    source: "Issue #376 (requirements-gap orphan)"
+    acceptance:
+      - "docs/privacy.html is served by GitHub Pages (main branch, /docs) at kPrivacyPolicyUrl"
+      - "The feedback sheet shows \"Privacy policy: <kPrivacyPolicyUrl>\" and its \"Copy privacy policy link\" button copies kPrivacyPolicyUrl to the clipboard"
+      - "Every endpoint in the SECURITY.md §1 network-endpoint table (Sentry, feedback worker, Google Fonts, Google Play) is disclosed in docs/privacy.html with the same data sent and retention"
+      - "A change that adds or removes a network endpoint, or changes what is sent to one, updates docs/privacy.html and the SECURITY.md table in the same change"
+    notes: "Complements CM-022 (consent text) and CM-035 (endpoint configuration). The sync obligation is enforced by review; no automated check compares the two documents."
