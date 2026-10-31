@@ -223,8 +223,10 @@ void main() {
   group('swap/cascade pipeline crash recovery', () {
     // The escaping assert must name the original failure, not an FSM-guard
     // assertion raised by the recovery reset itself.
-    final pipelineAssertion = isA<AssertionError>().having((e) => e.message,
-        'message', startsWith('runSwap() threw unexpectedly: RangeError'));
+    Matcher pipelineAssertion(String cause) => isA<AssertionError>().having(
+        (e) => e.message,
+        'message',
+        startsWith('runSwap() threw unexpectedly: $cause'));
     testWidgets('exception in runSwap resets the phase to idle', (tester) async {
       final game = await _loadGame(tester);
       final a = game.world.tiles[0][0]!;
@@ -235,7 +237,7 @@ void main() {
       game.world.runSwap(a, b).catchError((Object e) => error = e);
       await tester.pump(settledPump());
 
-      expect(error, pipelineAssertion);
+      expect(error, pipelineAssertion('RangeError'));
       expect(game.phase, GamePhase.idle);
 
       await tester.pump(const Duration(seconds: 2));
@@ -255,7 +257,29 @@ void main() {
       game.world.runSwap(a, b).catchError((Object e) => error = e);
       await tester.pump(settledPump());
 
-      expect(error, pipelineAssertion);
+      expect(error, pipelineAssertion('RangeError'));
+      expect(game.phase, GamePhase.idle);
+
+      await tester.pump(const Duration(seconds: 2));
+    });
+
+    // matching has no direct edge to idle, so only a reset that bypasses the
+    // FSM edge table keeps this from asserting "Illegal FSM transition".
+    testWidgets('exception while matching resets the phase to idle',
+        (tester) async {
+      final game = await _loadGame(tester, forcedMatch: true);
+      final a = game.world.tiles[2][7]!;
+      final b = game.world.tiles[3][7]!;
+
+      // The swap completes row 7's match across columns 0-2; column 0 is
+      // untouched by the swap, so clearing it is the first write to fail.
+      game.world.tiles[0] = List.unmodifiable(game.world.tiles[0]);
+
+      Object? error;
+      game.world.runSwap(a, b).catchError((Object e) => error = e);
+      await tester.pump(settledPump());
+
+      expect(error, pipelineAssertion('Unsupported operation'));
       expect(game.phase, GamePhase.idle);
 
       await tester.pump(const Duration(seconds: 2));
