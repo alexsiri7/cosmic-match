@@ -521,3 +521,16 @@ requirements:
       - "When the dominant axis changes mid-drag, the previously previewed neighbor returns to its canonical position"
       - "On drag end both tiles are back at their canonical positions when the swap starts; on drag cancel both tiles are restored and no swap starts"
     notes: "Refines the gesture side of CM-004 swipe-to-swap."
+
+  - id: CM-042
+    title: Swap and cascade pipeline crash recovery
+    statement: "When the swap or cascade pipeline throws an unexpected exception, the system shall log the error, fail the assertion in debug builds, and reset the game phase to idle in release builds so input is never permanently blocked."
+    category: functional
+    priority: must
+    status: active
+    source: "Issue #372 (requirements-gap orphan)"
+    acceptance:
+      - "An exception thrown inside GridWorld.runSwap is logged and leaves the game phase idle"
+      - "An exception thrown inside the cascade (GridWorld._runCascade) is logged and leaves the game phase idle"
+      - "The phase is reset to idle before the debug assertion fires, so a release build (no asserts) ends in idle"
+    notes: "Complements CM-013: that guards illegal FSM edges, this guards any other failure inside the pipeline."

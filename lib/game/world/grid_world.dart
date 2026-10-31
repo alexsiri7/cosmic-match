@@ -188,10 +188,10 @@ class GridWorld extends World {
       cascade.reset();
       await _runCascade(matches);
     } catch (e, stack) {
-      // Debug: crash immediately; release: reset to idle so the game is not bricked.
+      // Reset to idle first so the game is not bricked; the assert then crashes debug builds.
       gameLogger.e('GridWorld.runSwap() failed — resetting FSM to idle', error: e, stackTrace: stack);
-      assert(false, 'runSwap() threw unexpectedly: $e');
       _game.transitionTo(GamePhase.idle);
+      assert(false, 'runSwap() threw unexpectedly: $e');
     }
   }
 
@@ -237,10 +237,10 @@ class GridWorld extends World {
       _game.transitionTo(GamePhase.matching);
       await _runCascade(newMatches);
     } catch (e, stack) {
-      // Debug: crash immediately; release: reset to idle so the game is not bricked.
+      // Reset to idle first so the game is not bricked; the assert then crashes debug builds.
       gameLogger.e('GridWorld._runCascade() failed — resetting FSM to idle', error: e, stackTrace: stack);
-      assert(false, '_runCascade() threw unexpectedly: $e');
       _game.transitionTo(GamePhase.idle);
+      assert(false, '_runCascade() threw unexpectedly: $e');
     }
   }
 
