@@ -759,3 +759,16 @@ requirements:
       - ".github/dependabot.yml schedules weekly updates for pub (/), github-actions (/), pip (/store-listing), gradle (/android) and npm (/.github/openspec)"
       - "The Workflow tests job in ci.yml runs .github/workflow-tests on every pull request, failing when a Flutter job's first flutter command is not flutter pub get --enforce-lockfile (test_lockfile_enforced.py), a store-listing pip install lacks --require-hashes (test_store_listing_hashes.py), or the OpenSpec install, exact pin, lockfile integrity or its Dependabot entry regresses (test_openspec_pinned.py)"
     notes: "Extends CM-039, which covers committing pubspec.lock. The Flutter SDK itself is pinned by flutter-version in each subosito/flutter-action step. No test asserts the action SHA pins, the Gradle wrapper checksum, or the pub, github-actions, pip and gradle Dependabot entries; those are enforced by review."
+
+  - id: CM-059
+    title: OpenSpec strict validation gate
+    statement: "When a pull request is opened or updated, or a commit is pushed to main, the system shall validate every OpenSpec capability spec under openspec/specs in strict mode with the pinned OpenSpec CLI, and shall fail the check if validation fails."
+    category: constraint
+    priority: should
+    status: active
+    source: "Issue #389 (requirements-gap orphan)"
+    acceptance:
+      - ".github/workflows/openspec.yml runs on every pull_request and on push to main only, with contents: read and a checkout that does not persist credentials"
+      - "The Validate specs job installs the CLI with npm ci --ignore-scripts from .github/openspec, then runs .github/openspec/node_modules/.bin/openspec validate --specs --strict from the repository root"
+      - "Every capability spec in openspec/specs/*/spec.md is validated, and any strict-mode error or warning makes the command, and so the job, exit non-zero"
+    notes: "How the CLI is pinned and kept current is CM-058. If a Dependabot bump of the CLI fails --strict, the specs are fixed in that pull request rather than holding the pin back (#270). test_runs_installed_cli_in_strict_mode in .github/workflow-tests/test_openspec_pinned.py asserts the install and the --specs --strict invocation; no test asserts the workflow's triggers or permissions. Whether a failing job blocks merging is a branch-protection setting, not part of the workflow file."
