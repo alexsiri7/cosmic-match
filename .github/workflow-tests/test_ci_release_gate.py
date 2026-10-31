@@ -89,6 +89,21 @@ class ReleaseGate(unittest.TestCase):
         ]
         self.assertEqual(homes, ["publish-production"])
 
+    def test_publish_uploads(self):
+        def step(job_id, name):
+            [found] = [s for s in ci_jobs()[job_id]["steps"] if s.get("name") == name]
+            return found["with"]
+
+        internal = step("publish-internal", "Publish to Play Store internal track (non-tag)")
+        self.assertEqual((internal["track"], internal["status"]), ("internal", "draft"))
+        production = step("publish-production", "Publish to Play Store production (tag release)")
+        self.assertEqual(production["track"], "production")
+        self.assertEqual(production["mappingFile"], "dist/mapping.txt")
+        release = step("publish-production", "Create GitHub Release (tag pushes only)")
+        self.assertEqual(
+            release["files"].split(), ["dist/app-release.aab", "dist/app-release.apk"]
+        )
+
     def test_release_job_has_no_environment(self):
         self.assertNotIn("environment", ci_jobs()["release"])
 
