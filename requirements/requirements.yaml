@@ -574,6 +574,6 @@ requirements:
     acceptance:
       - "docs/privacy.html is served by GitHub Pages (main branch, /docs) at kPrivacyPolicyUrl"
       - "The feedback sheet shows \"Privacy policy: <kPrivacyPolicyUrl>\" and its \"Copy privacy policy link\" button copies kPrivacyPolicyUrl to the clipboard"
-      - "Every endpoint in the SECURITY.md §1 network-endpoint table (Sentry, feedback worker, Google Fonts, Google Play) is disclosed in docs/privacy.html with the same data sent and retention"
+      - "Every endpoint in the SECURITY.md §1 network-endpoint table (Sentry, feedback worker, Google Fonts, Google Play) is named in docs/privacy.html, and wherever the page states the data sent or retention for an endpoint it matches the table"
       - "A change that adds or removes a network endpoint, or changes what is sent to one, updates docs/privacy.html and the SECURITY.md table in the same change"
     notes: "Complements CM-022 (consent text) and CM-035 (endpoint configuration). The sync obligation is enforced by review; no automated check compares the two documents."
