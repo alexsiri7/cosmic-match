@@ -535,3 +535,16 @@ requirements:
       - "The phase is reset to idle before the debug assertion fires, so a release build (no asserts) ends in idle"
       - "The debug assertion names the original exception; the recovery reset (Match3Game.resetToIdle) bypasses the CM-013 edge table so it cannot raise its own illegal-transition assertion"
     notes: "Complements CM-013: that guards illegal FSM edges, this guards any other failure inside the pipeline."
+
+  - id: CM-043
+    title: Screenshot payload size cap
+    statement: "When the base64-encoded annotated screenshot exceeds 2 MB (kMaxScreenshotB64Bytes), the system shall submit the feedback without a screenshot and, when submitted from the feedback sheet, inform the player that the screenshot could not be attached."
+    category: functional
+    priority: must
+    status: active
+    source: "Issue #373 (requirements-gap orphan), SEC-RPT-003"
+    acceptance:
+      - "Submitting an annotated screenshot whose base64 exceeds 2 MB from the feedback sheet passes an empty screenshot to the submit callback and the confirmation reads \"Feedback sent. The screenshot couldn't be attached.\""
+      - "FeedbackService.submit replaces a screenshot one byte over kMaxScreenshotB64Bytes with an empty string and still posts the feedback"
+      - "FeedbackService.submit sends a screenshot of exactly kMaxScreenshotB64Bytes unchanged"
+    notes: "Refines CM-021/CM-023. The service-side cap guards callers that bypass the sheet; those callers get no player-facing notice."

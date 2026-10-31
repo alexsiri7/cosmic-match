@@ -1,4 +1,6 @@
 import 'dart:async';
+import 'dart:math';
+import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -368,6 +370,7 @@ void main() {
         required String screenshotB64,
       }) onSubmit,
       Future<int> Function() checkCooldown = _noCooldown,
+      Uint8List? screenshotBytes,
     }) async {
       tester.view.physicalSize = const Size(1080, 2400);
       tester.view.devicePixelRatio = 1.0;
@@ -380,7 +383,7 @@ void main() {
             builder: (context) => ElevatedButton(
               onPressed: () => showFeedbackSheet(
                 context,
-                screenshotBytes: _decodablePng,
+                screenshotBytes: screenshotBytes ?? _decodablePng,
                 onSubmit: onSubmit,
                 checkCooldown: checkCooldown,
               ),
@@ -569,6 +572,34 @@ void main() {
       });
     }
 
+    testWidgets(
+        'oversized screenshot is dropped and the player is told it was not '
+        'attached', (tester) async {
+      final noisyPng = (await tester.runAsync(() => _noisyPng(1000, 1000)))!;
+      String? sentScreenshot;
+      await openSheet(
+        tester,
+        screenshotBytes: noisyPng,
+        onSubmit: ({
+          required String type,
+          required String message,
+          required String screenshotB64,
+        }) async {
+          sentScreenshot = screenshotB64;
+          return _sentResult;
+        },
+      );
+
+      await fillAndSubmit(tester);
+      await tester.pumpAndSettle();
+
+      expect(sentScreenshot, isEmpty);
+      expect(
+        find.text("Feedback sent. The screenshot couldn't be attached."),
+        findsOneWidget,
+      );
+    });
+
     testWidgets('shows privacy policy URL', (tester) async {
       await openSheet(tester, onSubmit: _noSubmit);
 
@@ -614,6 +645,23 @@ Future<FeedbackResult> _noSubmit({
     _sentResult;
 
 Future<int> _noCooldown() async => 0;
+
+// Opaque random noise barely compresses, so its base64 PNG exceeds
+// kMaxScreenshotB64Bytes once the sheet re-encodes it.
+Future<Uint8List> _noisyPng(int width, int height) async {
+  final random = Random(373);
+  final pixels = Uint8List(width * height * 4);
+  for (var i = 0; i < pixels.length; i++) {
+    pixels[i] = i % 4 == 3 ? 0xFF : random.nextInt(256);
+  }
+  final completer = Completer<ui.Image>();
+  ui.decodeImageFromPixels(
+      pixels, width, height, ui.PixelFormat.rgba8888, completer.complete);
+  final image = await completer.future;
+  final png = await image.toByteData(format: ui.ImageByteFormat.png);
+  image.dispose();
+  return png!.buffer.asUint8List();
+}
 
 // A valid 1×1 transparent PNG, so the sheet's screenshot render succeeds and
 // submit reaches `onSubmit`.
