@@ -7,22 +7,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:cosmic_match/game/components/grid_tile.dart';
 import 'package:cosmic_match/game/match3_game.dart';
-import 'package:cosmic_match/models/tile_type.dart';
 import '../golden/golden_test_helpers.dart';
-
-/// Checkerboard with no 3-runs, so the board loads idle and every swap is
-/// invalid — a swipe starts a swap that later reverts.
-List<List<TileType?>> _checkerboard() => List.generate(
-      8,
-      (x) => List<TileType?>.generate(
-        8,
-        (y) => (x + y).isEven ? TileType.red : TileType.blue,
-      ),
-    );
 
 Future<Match3Game> _loadGame(WidgetTester tester) async {
   suppressFlameRiverpodDisposeError();
-  final game = Match3Game(rng: Random(42), testGrid: _checkerboard());
+  final game = Match3Game(rng: Random(42), testGrid: buildBoard());
   await tester.pumpWidget(
     ProviderScope(
       child: MaterialApp(

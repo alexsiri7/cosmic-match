@@ -1,4 +1,5 @@
 import 'package:cosmic_match/game/match3_game.dart';
+import 'package:cosmic_match/game/pattern_detector.dart';
 import 'package:cosmic_match/game/world/grid_world.dart';
 import 'package:cosmic_match/models/tile_type.dart';
 import 'package:flutter/foundation.dart';
@@ -53,4 +54,25 @@ void suppressFlameRiverpodDisposeError() {
   tileA.tileType = TileType.blue;
   tileB.tileType = TileType.red;
   return (tileA, tileB);
+}
+
+/// 8x8 checkerboard (red where x+y is even, blue otherwise): no 3-runs exist,
+/// so the board loads idle. forcedMatch=true sets (0,7) to red so that
+/// swapping (2,7) with (3,7) produces red,red,red along row 7.
+List<List<TileType?>> buildBoard({bool forcedMatch = false}) {
+  final grid = List.generate(
+    8,
+    (x) => List<TileType?>.generate(
+      8,
+      (y) => (x + y).isEven ? TileType.red : TileType.blue,
+    ),
+  );
+  if (forcedMatch) {
+    grid[0][7] = TileType.red;
+  }
+  assert(
+    PatternDetector().detectAll(grid).isEmpty,
+    'buildBoard fixture must not contain pre-existing matches',
+  );
+  return grid;
 }
