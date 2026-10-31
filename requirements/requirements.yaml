@@ -601,3 +601,17 @@ requirements:
       - "The <application> element in android/app/src/main/AndroidManifest.xml sets android:allowBackup=\"false\""
       - "The manifest declares no android:fullBackupContent or android:dataExtractionRules that would re-enable backup for any app data"
     notes: "Security-adjacent to CM-016/CM-017. For apps targeting Android 12+ (targetSdk is flutter.targetSdkVersion), allowBackup=false disables cloud backup but not device-to-device transfer; a transferred Hive box stays unreadable because its cipher key is held in Keystore-backed secure storage, which does not migrate."
+
+  - id: CM-048
+    title: TLS-only transport
+    statement: "The system shall permit no cleartext network traffic and shall trust only system certificate authorities; when the configured feedback worker URL is not an HTTPS URL with a host, the system shall disable feedback sending rather than fall back to an insecure transport."
+    category: constraint
+    priority: must
+    status: active
+    source: "Issue #377 (requirements-gap orphan), SECURITY.md §4.2"
+    acceptance:
+      - "AndroidManifest.xml sets android:usesCleartextTraffic=\"false\" and references @xml/network_security_config"
+      - "network_security_config.xml sets cleartextTrafficPermitted=\"false\" on base-config with system certificates as the only trust anchor"
+      - "FeedbackService.submit returns notSent without sending or queueing when workerUrl uses the http scheme, has no scheme, or has no host"
+      - "FeedbackService.flushQueue sends nothing while the worker URL is not a valid HTTPS URL"
+    notes: "Security-adjacent to CM-035, which configures FEEDBACK_WORKER_URL but does not state the HTTPS-only constraint. The manifest and network-security-config halves are not asserted by any test."
