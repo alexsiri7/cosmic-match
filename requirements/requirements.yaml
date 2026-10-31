@@ -697,3 +697,18 @@ requirements:
       - "secrets.PLAY_SERVICE_ACCOUNT_JSON appears only in jobs that declare a GitHub environment; the release job, which runs on every pull request, declares none"
       - "Every job- and step-level condition in ci.yml keyed on github.ref also requires github.event_name == 'push', so a workflow_dispatch run never deploys"
     notes: "Complements CM-036 (how releases are signed and obfuscated) and CM-053 (keeping release secrets from pull requests): both publish jobs also require used_real == 'yes'. The production environment's required reviewer and its v*-only deployment-tag rule are repository settings (SECURITY.md §8.7), not part of the workflow file, so no test can assert them; the workflow's own refs/tags/v gate is tested. All other acceptance criteria are asserted in .github/workflow-tests/test_ci_release_gate.py."
+
+  - id: CM-055
+    title: Store listing upload
+    statement: "When the store-listing workflow is dispatched, the system shall replace the en-US Play listing text, phone/7-inch/10-inch screenshots, feature graphic and icon from the store-listing directory in a single committed Play edit."
+    category: constraint
+    priority: may
+    status: active
+    source: "Issue #385 (requirements-gap orphan), SECURITY.md §8.7 (SEC-07)"
+    acceptance:
+      - ".github/workflows/setup-store-listing.yml runs only on workflow_dispatch, in the play-internal environment with contents: read, installs store-listing/requirements.txt with --require-hashes, and runs store-listing/upload_listing.py"
+      - "upload_listing.py opens exactly one edit for net.interstellarai.cosmicmatch, applies every listing and image change to that edit, and commits it exactly once, after all uploads"
+      - "The en-US title, shortDescription and fullDescription are set from store-listing/en-US/title.txt, short_description.txt and full_description.txt"
+      - "phoneScreenshots, sevenInchScreenshots, tenInchScreenshots, featureGraphic and icon are each cleared before any upload, then replaced by phone_1-3, tablet7_1-3, tablet10_1-3, feature_graphic.png and icon.png from store-listing/screenshots"
+      - "A clear that fails with any status other than 404 aborts the run before the edit is committed, so no partial listing is published"
+    notes: "Complements CM-038, which regenerates store-listing/screenshots from goldens. All acceptance criteria are asserted in .github/workflow-tests/test_store_listing_single_edit.py, except the hash-checked install, asserted in test_store_listing_hashes.py. That a non-404 failure does not leak the raw API error into the public log is covered by store-listing/test_upload_listing.py, which needs the Google client libraries and does not run in CI."
