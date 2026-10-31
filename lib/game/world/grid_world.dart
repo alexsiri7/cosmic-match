@@ -188,9 +188,10 @@ class GridWorld extends World {
       cascade.reset();
       await _runCascade(matches);
     } catch (e, stack) {
-      // Reset to idle first so the game is not bricked; the assert then crashes debug builds.
+      // Covers the whole pipeline, including every _runCascade level. Reset to
+      // idle first so the game is not bricked; the assert then crashes debug builds.
       gameLogger.e('GridWorld.runSwap() failed — resetting FSM to idle', error: e, stackTrace: stack);
-      _game.transitionTo(GamePhase.idle);
+      _game.resetToIdle();
       assert(false, 'runSwap() threw unexpectedly: $e');
     }
   }
@@ -211,37 +212,30 @@ class GridWorld extends World {
   }
 
   Future<void> _runCascade(List<MatchResult> matches) async {
-    try {
-      _clearMatches(matches);
+    _clearMatches(matches);
 
-      _game.transitionTo(GamePhase.falling);
+    _game.transitionTo(GamePhase.falling);
 
-      _applyGravityWithAnimation();
-      await Future<void>.delayed(const Duration(milliseconds: gravitySettleMs));
+    _applyGravityWithAnimation();
+    await Future<void>.delayed(const Duration(milliseconds: gravitySettleMs));
 
-      // Fill ALL null cells (not just row 0) so the board is fully packed
-      // before checking for new matches. refillTop() is kept for unit tests.
-      _refillAllWithAnimation();
-      await Future<void>.delayed(const Duration(milliseconds: refillSettleMs));
+    // Fill ALL null cells (not just row 0) so the board is fully packed
+    // before checking for new matches. refillTop() is kept for unit tests.
+    _refillAllWithAnimation();
+    await Future<void>.delayed(const Duration(milliseconds: refillSettleMs));
 
-      final newMatches = detector.detectAll(grid);
-      if (newMatches.isEmpty || !cascade.canContinue) {
-        _game.transitionTo(GamePhase.idle);
-        await _persistScore();
-        return;
-      }
-
-      gameLogger.t('Cascade depth: ${cascade.depth}');
-      cascade.increment();
-      _game.transitionTo(GamePhase.cascading);
-      _game.transitionTo(GamePhase.matching);
-      await _runCascade(newMatches);
-    } catch (e, stack) {
-      // Reset to idle first so the game is not bricked; the assert then crashes debug builds.
-      gameLogger.e('GridWorld._runCascade() failed — resetting FSM to idle', error: e, stackTrace: stack);
+    final newMatches = detector.detectAll(grid);
+    if (newMatches.isEmpty || !cascade.canContinue) {
       _game.transitionTo(GamePhase.idle);
-      assert(false, '_runCascade() threw unexpectedly: $e');
+      await _persistScore();
+      return;
     }
+
+    gameLogger.t('Cascade depth: ${cascade.depth}');
+    cascade.increment();
+    _game.transitionTo(GamePhase.cascading);
+    _game.transitionTo(GamePhase.matching);
+    await _runCascade(newMatches);
   }
 
   void _clearMatches(List<MatchResult> matches) {

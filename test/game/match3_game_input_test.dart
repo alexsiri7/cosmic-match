@@ -221,6 +221,10 @@ void main() {
   // block surfaces an AssertionError; the phase must already be idle by then,
   // which is the state a release build (no assert) is left in.
   group('swap/cascade pipeline crash recovery', () {
+    // The escaping assert must name the original failure, not an FSM-guard
+    // assertion raised by the recovery reset itself.
+    final pipelineAssertion = isA<AssertionError>().having((e) => e.message,
+        'message', startsWith('runSwap() threw unexpectedly: RangeError'));
     testWidgets('exception in runSwap resets the phase to idle', (tester) async {
       final game = await _loadGame(tester);
       final a = game.world.tiles[0][0]!;
@@ -231,7 +235,7 @@ void main() {
       game.world.runSwap(a, b).catchError((Object e) => error = e);
       await tester.pump(settledPump());
 
-      expect(error, isA<AssertionError>());
+      expect(error, pipelineAssertion);
       expect(game.phase, GamePhase.idle);
 
       await tester.pump(const Duration(seconds: 2));
@@ -251,7 +255,7 @@ void main() {
       game.world.runSwap(a, b).catchError((Object e) => error = e);
       await tester.pump(settledPump());
 
-      expect(error, isA<AssertionError>());
+      expect(error, pipelineAssertion);
       expect(game.phase, GamePhase.idle);
 
       await tester.pump(const Duration(seconds: 2));

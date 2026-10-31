@@ -533,4 +533,5 @@ requirements:
       - "An exception thrown inside GridWorld.runSwap is logged and leaves the game phase idle"
       - "An exception thrown inside the cascade (GridWorld._runCascade) is logged and leaves the game phase idle"
       - "The phase is reset to idle before the debug assertion fires, so a release build (no asserts) ends in idle"
+      - "The debug assertion names the original exception; the recovery reset (Match3Game.resetToIdle) bypasses the CM-013 edge table so it cannot raise its own illegal-transition assertion"
     notes: "Complements CM-013: that guards illegal FSM edges, this guards any other failure inside the pipeline."
