@@ -628,3 +628,17 @@ requirements:
       - "enableAutoSessionTracking is left at its SDK default (true), and docs/privacy.html and SECURITY.md §1 both disclose app-start/stop session events and the random per-install identifier"
       - "A change that disables session tracking or enables ANR reporting updates docs/privacy.html and SECURITY.md in the same change (CM-045)"
     notes: "Extends CM-031. ANR reporting is off so the sentry_flutter 9 bump (#329) did not widen what is sent; session tracking was disclosed in #312. Like CM-031, nothing inspects the options at runtime or in tests."
+
+  - id: CM-050
+    title: Runtime IBM Plex Mono font fetch
+    statement: "When text styled in IBM Plex Mono is first rendered, the system shall fetch the font from the Google Fonts CDN and cache it on device; when the fetch fails, the system shall fall back to the platform default font without crashing."
+    category: constraint
+    priority: should
+    status: active
+    source: "Issue #380 (requirements-gap orphan)"
+    acceptance:
+      - "IBM Plex Mono is not bundled as an asset (pubspec.yaml declares no fonts) and is styled only through GoogleFonts.ibmPlexMono in lib/widgets/stat_card.dart, lib/screens/home_screen.dart, lib/screens/game_screen.dart, lib/screens/feedback_sheet.dart and lib/screens/modals.dart"
+      - "GoogleFonts.config.allowRuntimeFetching is left at its package default (true) in the app"
+      - "A failed font download leaves the text rendered in the platform default font, and its Sentry event is dropped by dropGoogleFontsFetchFailure (CM-032)"
+      - "The Google Fonts CDN stays listed in the SECURITY.md §1 network-endpoint table and docs/privacy.html (CM-045)"
+    notes: "Fetching, caching and fallback are provided by package:google_fonts; the app has no font-loading code of its own. On failure the package rethrows as an unhandled async error, which is why CM-032 filters it (issues #140/#141). Tests disable runtime fetching in test/flutter_test_config.dart, so no test exercises the fetch."
