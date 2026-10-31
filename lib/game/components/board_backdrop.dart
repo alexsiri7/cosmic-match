@@ -31,8 +31,16 @@ class CosmicBackground extends PositionComponent {
   }
 }
 
-// Dark rounded-rect panel behind the tile grid.
+// Dark rounded-rect panel behind the tile grid, with faint grid dividers.
 class BoardBackdrop extends PositionComponent {
+  static const double padding = 8;
+
+  final int cols;
+  final int rows;
+  double tileSize = 0;
+
+  BoardBackdrop({required this.cols, required this.rows});
+
   @override
   void render(Canvas canvas) {
     canvas.drawRRect(
@@ -42,5 +50,22 @@ class BoardBackdrop extends PositionComponent {
       ),
       Paint()..color = kBoardBackdrop,
     );
+    if (tileSize <= 0) return;
+
+    // Tiles are tileSize - 2 wide and top-left anchored, so each divider sits
+    // centred in the 2 px gap on a cell's right/bottom edge.
+    final gridPaint = Paint()
+      ..color = kGridLine
+      ..strokeWidth = 1;
+    final right = padding + cols * tileSize;
+    final bottom = padding + rows * tileSize;
+    for (int k = 1; k < cols; k++) {
+      final x = padding + k * tileSize - 1;
+      canvas.drawLine(Offset(x, padding), Offset(x, bottom), gridPaint);
+    }
+    for (int k = 1; k < rows; k++) {
+      final y = padding + k * tileSize - 1;
+      canvas.drawLine(Offset(padding, y), Offset(right, y), gridPaint);
+    }
   }
 }
