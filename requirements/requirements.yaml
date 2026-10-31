@@ -728,3 +728,18 @@ requirements:
       - "Added lines are scanned: a line matching a code_patterns regex for the file's extension fails, and an added line in a migration path fails on a deny_sql match or a schema-qualified name in a foreign or non-app schema, ignoring SQL comments and string literals; a file whose content changed but the API gives no diff for it is fetched from the head and scanned in full"
       - "Fewer listed files than the pull request's changed_files fails; the verdict is printed between ::stop-commands:: markers with non-printable characters escaped, so pull-request-controlled text cannot emit workflow commands"
     notes: "The pull request's code and the checker's policy are never taken from the pull request, so it cannot loosen the check that judges it. The factory's pr-maintenance merges a screened pull request only when this check is green; on failure the owner reviews it (that merge rule lives outside this repository). Factory PRs (same-repo head branch under factory_branch_prefix) follow the same rules and are only named in the verdict (owner's ruling on #308). The checker and policy criteria are asserted in .github/unsafe-change/test_check.py, which the workflow's 'Self-test the checker' step runs on every pull request, except the GraphQL closing-reference lookup, the changed_files count and pubspec dependency_overrides; the workflow's trigger, permissions and base-branch checkout are not asserted by any test either."
+
+  - id: CM-057
+    title: Stale issue triage
+    statement: "When an issue labelled needs-more-info has had no activity for 7 days, the system shall post a warning and label it stale, and shall close it after 7 further idle days; pull requests and issues labelled security, human-needed or pinned shall never be auto-staled."
+    category: constraint
+    priority: should
+    status: active
+    source: "Issue #387 (requirements-gap orphan)"
+    acceptance:
+      - ".github/workflows/stale.yml runs actions/stale daily at 06:00 UTC and on workflow_dispatch, with only issues: write permission"
+      - "Only issues carrying needs-more-info are considered (only-issue-labels); no other issue is ever staled or closed"
+      - "After 7 days without activity (days-before-issue-stale: 7) the issue gets the stale label and the stale-issue-message warning; after 7 further idle days (days-before-issue-close: 7) it is closed with the close-issue-message"
+      - "Pull requests are never staled or closed (days-before-pr-stale: -1, days-before-pr-close: -1)"
+      - "Issues labelled security, human-needed or pinned are exempt (exempt-issue-labels), even when also labelled needs-more-info"
+    notes: "Inactivity is measured by actions/stale from the issue's updated_at, so any new activity resets the clock. Behaviour is configuration of the pinned actions/stale action; no test in this repository asserts the workflow's inputs."
