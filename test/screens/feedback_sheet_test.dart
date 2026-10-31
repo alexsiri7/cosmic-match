@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:math';
 import 'dart:ui' as ui;
 
@@ -639,6 +640,69 @@ void main() {
       );
     });
 
+    testWidgets(
+        'strokes drawn after panning the preview are composited relative to '
+        'the panned image', (tester) async {
+      final blackPng =
+          (await tester.runAsync(() => _solidBlackPng(100, 60)))!;
+      String? sentScreenshot;
+      await openSheet(
+        tester,
+        screenshotBytes: blackPng,
+        onSubmit: ({
+          required String type,
+          required String message,
+          required String screenshotB64,
+        }) async {
+          sentScreenshot = screenshotB64;
+          return _sentResult;
+        },
+      );
+      final preview = tester.getRect(find.byType(Image));
+      final y = preview.center.dy;
+      // A drag delivered in one move is spent entirely on the pan slop, so
+      // move in small steps for every pixel past the slop to register.
+      Future<void> dragRight(Offset from, double distance) async {
+        final gesture = await tester.startGesture(from);
+        for (var moved = 0.0; moved < distance; moved += 10) {
+          await gesture.moveBy(const Offset(10, 0));
+          await tester.pump();
+        }
+        await gesture.up();
+        await tester.pump();
+      }
+
+      await tester.tap(find.byTooltip('Switch to pan mode'));
+      await dragRight(Offset(preview.left + 100, y), 300);
+      final pan = tester.getRect(find.byType(Image)).left - preview.left;
+      expect(pan, greaterThan(200));
+      await tester.tap(find.byTooltip('Switch to draw mode'));
+      await dragRight(Offset(preview.left + 400, y), 200);
+
+      await fillAndSubmit(tester);
+      await tester.pumpAndSettle();
+
+      final pixels = (await tester.runAsync(() async {
+        final codec =
+            await ui.instantiateImageCodec(base64Decode(sentScreenshot!));
+        final image = (await codec.getNextFrame()).image;
+        final bytes = await image.toByteData();
+        image.dispose();
+        return bytes!;
+      }))!;
+      bool isRedAt(double previewX) {
+        final x = (previewX * 100 / preview.width).round();
+        final i = (30 * 100 + x) * 4;
+        return pixels.getUint8(i) > 200 && pixels.getUint8(i + 1) < 100;
+      }
+
+      const strokeX = 540.0;
+      expect(isRedAt(strokeX - pan), isTrue,
+          reason: 'the stroke lands where it was drawn on the panned image');
+      expect(isRedAt(strokeX), isFalse,
+          reason: 'the pan offset must not be ignored when compositing');
+    });
+
     testWidgets('shows privacy policy URL', (tester) async {
       await openSheet(tester, onSubmit: _noSubmit);
 
@@ -693,6 +757,18 @@ Future<Uint8List> _noisyPng(int width, int height) async {
   for (var i = 0; i < pixels.length; i++) {
     pixels[i] = i % 4 == 3 ? 0xFF : random.nextInt(256);
   }
+  return _encodePng(pixels, width, height);
+}
+
+Future<Uint8List> _solidBlackPng(int width, int height) {
+  final pixels = Uint8List(width * height * 4);
+  for (var i = 3; i < pixels.length; i += 4) {
+    pixels[i] = 0xFF;
+  }
+  return _encodePng(pixels, width, height);
+}
+
+Future<Uint8List> _encodePng(Uint8List pixels, int width, int height) async {
   final completer = Completer<ui.Image>();
   ui.decodeImageFromPixels(
       pixels, width, height, ui.PixelFormat.rgba8888, completer.complete);

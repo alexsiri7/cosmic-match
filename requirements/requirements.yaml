@@ -577,3 +577,15 @@ requirements:
       - "Every endpoint in the SECURITY.md §1 network-endpoint table (Sentry, feedback worker, Google Fonts, Google Play) is named in docs/privacy.html, and wherever the page states the data sent or retention for an endpoint it matches the table"
       - "A change that adds or removes a network endpoint, or changes what is sent to one, updates docs/privacy.html and the SECURITY.md table in the same change"
     notes: "Complements CM-022 (consent text) and CM-035 (endpoint configuration). The sync obligation is enforced by review; no automated check compares the two documents."
+
+  - id: CM-046
+    title: Screenshot preview pan mode
+    statement: "While the feedback sheet is open, the system shall let the player toggle the screenshot preview between draw mode and pan mode, where dragging in pan mode moves the screenshot within the preview frame, and shall subtract the pan offset from annotation strokes before scaling them onto the submitted image."
+    category: functional
+    priority: should
+    status: active
+    source: "Issue #375 (requirements-gap orphan)"
+    acceptance:
+      - "The mode toggle switches the preview between draw (edit icon) and pan (pan icon) mode"
+      - "A stroke drawn after panning the preview is composited onto the submitted screenshot at its position on the panned image, not at its raw preview position"
+    notes: "Refines CM-021. Pan drags do not add strokes; draw drags do not move the image."
