@@ -589,3 +589,15 @@ requirements:
       - "The mode toggle switches the preview between draw (edit icon) and pan (pan icon) mode"
       - "A stroke drawn after panning the preview is composited onto the submitted screenshot at its position on the panned image, not at its raw preview position"
     notes: "Refines CM-021. Pan drags do not add strokes; draw drags do not move the image."
+
+  - id: CM-047
+    title: Android backup opt-out
+    statement: "The system shall opt out of Android application backup so that local progress, the feedback queue and rate-limit state are never exported to cloud backup by the platform."
+    category: constraint
+    priority: must
+    status: active
+    source: "Issue #378 (requirements-gap orphan)"
+    acceptance:
+      - "The <application> element in android/app/src/main/AndroidManifest.xml sets android:allowBackup=\"false\""
+      - "The manifest declares no android:fullBackupContent or android:dataExtractionRules that would re-enable backup for any app data"
+    notes: "Security-adjacent to CM-016/CM-017. For apps targeting Android 12+ (targetSdk is flutter.targetSdkVersion), allowBackup=false disables cloud backup but not device-to-device transfer; a transferred Hive box stays unreadable because its cipher key is held in Keystore-backed secure storage, which does not migrate."
