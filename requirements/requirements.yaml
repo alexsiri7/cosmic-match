@@ -548,3 +548,18 @@ requirements:
       - "FeedbackService.submit replaces a screenshot one byte over kMaxScreenshotB64Bytes with an empty string and still posts the feedback"
       - "FeedbackService.submit sends a screenshot of exactly kMaxScreenshotB64Bytes unchanged"
     notes: "Refines CM-021/CM-023. The service-side cap guards callers that bypass the sheet; those callers get no player-facing notice."
+
+  - id: CM-044
+    title: Feedback outcome handling in the sheet
+    statement: "When a feedback submission from the sheet resolves, the system shall dismiss the sheet and confirm via snackbar for sent or queued outcomes (including the filed issue number with a copy-link action when the worker's URL names an issue in the configured repository), and shall keep the sheet and description open with an inline reason, refreshing the cooldown, for rate-limited or not-sent outcomes."
+    category: functional
+    priority: must
+    status: active
+    source: "Issue #374 (requirements-gap orphan)"
+    acceptance:
+      - "A sent outcome with an issue number closes the sheet and shows \"Feedback sent as issue #N.\" for 10 s with a COPY LINK action that copies https://github.com/<kFeedbackIssuesRepo>/issues/N"
+      - "The worker's issue URL yields an issue number only when it names an issue in kFeedbackIssuesRepo; any other URL is sent without one"
+      - "A queued outcome closes the sheet and says the feedback will be sent automatically later"
+      - "A rate-limited or not-sent outcome keeps the sheet and the typed description open, shows the reason inline, and refreshes the cooldown countdown"
+      - "A rate-limited or not-sent outcome that resolves after the sheet was dismissed is still reported to the player via snackbar"
+    notes: "Refines CM-021/CM-022. Outcomes come from FeedbackService.submit (FeedbackOutcome/FeedbackResult); the cooldown is CM-027."

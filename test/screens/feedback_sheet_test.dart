@@ -527,6 +527,45 @@ void main() {
       );
     });
 
+    testWidgets(
+        'sent submit with an issue number closes the sheet and offers to copy '
+        'the issue link', (tester) async {
+      String? copied;
+      tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+        SystemChannels.platform,
+        (call) async {
+          if (call.method == 'Clipboard.setData') {
+            copied = (call.arguments as Map)['text'] as String?;
+          }
+          return null;
+        },
+      );
+      addTearDown(() => tester.binding.defaultBinaryMessenger
+          .setMockMethodCallHandler(SystemChannels.platform, null));
+      await openSheet(
+        tester,
+        onSubmit: ({
+          required String type,
+          required String message,
+          required String screenshotB64,
+        }) async =>
+            (outcome: FeedbackOutcome.sent, issueNumber: 42),
+      );
+
+      await fillAndSubmit(tester);
+      await tester.pumpAndSettle();
+
+      expect(find.text('SEND FEEDBACK'), findsNothing);
+      expect(find.text('Feedback sent as issue #42.'), findsOneWidget);
+      expect(tester.widget<SnackBar>(find.byType(SnackBar)).duration,
+          const Duration(seconds: 10));
+
+      await tester.tap(find.widgetWithText(SnackBarAction, 'COPY LINK'));
+      await tester.pump();
+
+      expect(copied, 'https://github.com/$kFeedbackIssuesRepo/issues/42');
+    });
+
     for (final (label, outcome, text) in [
       (
         'rate-limited',
