@@ -65,9 +65,10 @@ test/             # Unit tests mirror lib/ structure
 
 ### FSM Transitions (`lib/game/match3_game.dart`)
 
-`_validTransitions` is the single source of truth for legal `GamePhase` transitions.
-When adding a new phase, update the map — illegal transitions assert in debug and reset
-to idle in release builds.
+`_validTransitions` is the single source of truth for legal `GamePhase` transitions made
+via `transitionTo`. When adding a new phase, update the map — illegal transitions assert in
+debug and reset to idle in release builds. Recovery paths that must never fail their own
+reset use the non-validating `resetToIdle()` instead (CM-013, CM-042).
 
 ```
 idle → swapping → matching → falling → cascading → matching

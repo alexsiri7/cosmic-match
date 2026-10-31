@@ -66,12 +66,17 @@ class Match3Game extends FlameGame<GridWorld> with RiverpodGameMixin {
     if (allowed == null || !allowed.contains(next)) {
       final msg = 'Illegal FSM transition: $_phase → $next';
       gameLogger.e(msg);
-      _phase = GamePhase.idle;
+      resetToIdle();
       assert(false, msg);
       return;
     }
     _phase = next;
   }
+
+  /// Forces the phase to idle from any phase, bypassing [_validTransitions].
+  /// Only for recovery paths (CM-013, CM-042), which must never assert on
+  /// their own reset and mask the failure they are recovering from.
+  void resetToIdle() => _phase = GamePhase.idle;
 
   void onTileTap(GridTile tile) {
     if (phase != GamePhase.idle) return;
