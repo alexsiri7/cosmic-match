@@ -1,7 +1,7 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import '../game/theme/app_theme.dart';
+import '../game/theme/cosmic_theme.dart';
 import '../widgets/frosted_card.dart';
 import '../widgets/star_row.dart';
 
@@ -24,11 +24,11 @@ class ModalShell extends StatelessWidget {
             constraints: const BoxConstraints(maxWidth: 340),
             padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 28),
             decoration: BoxDecoration(
-              color: kLyraInk,
+              color: kCosmicInk,
               gradient: RadialGradient(
                 center: const Alignment(0.0, -1.0),
                 radius: 1.2,
-                colors: [kLyraNebulaA.withValues(alpha: 0.6), Colors.transparent],
+                colors: [kCosmicNebulaA.withValues(alpha: 0.6), Colors.transparent],
               ),
               border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
               borderRadius: BorderRadius.circular(20),
@@ -118,7 +118,7 @@ class LevelCompleteModal extends StatelessWidget {
                             color: Colors.white.withValues(alpha: 0.6))),
                     Text('+${stars * 100} COSMIC DUST',
                         style: GoogleFonts.ibmPlexMono(
-                            fontSize: 13, color: kLyraAccent)),
+                            fontSize: 13, color: kCosmicAccent)),
                   ],
                 ),
               ],
@@ -131,8 +131,8 @@ class LevelCompleteModal extends StatelessWidget {
             child: ElevatedButton(
               onPressed: onContinue,
               style: ElevatedButton.styleFrom(
-                backgroundColor: kLyraAccent,
-                foregroundColor: kLyraInk,
+                backgroundColor: kCosmicAccent,
+                foregroundColor: kCosmicInk,
                 padding: const EdgeInsets.symmetric(vertical: 16),
                 shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(100)),
@@ -187,7 +187,7 @@ class LevelFailedModal extends StatelessWidget {
             style: GoogleFonts.ibmPlexMono(
               fontSize: 11,
               letterSpacing: 2.5,
-              color: kLyraWarning.withValues(alpha: 0.65),
+              color: kCosmicWarning.withValues(alpha: 0.65),
             ),
           ),
           const SizedBox(height: 12),
@@ -215,8 +215,8 @@ class LevelFailedModal extends StatelessWidget {
             child: ElevatedButton(
               onPressed: onRetry,
               style: ElevatedButton.styleFrom(
-                backgroundColor: kLyraAccent,
-                foregroundColor: kLyraInk,
+                backgroundColor: kCosmicAccent,
+                foregroundColor: kCosmicInk,
                 padding: const EdgeInsets.symmetric(vertical: 16),
                 shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(100)),

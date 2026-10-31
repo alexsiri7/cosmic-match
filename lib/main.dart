@@ -8,6 +8,7 @@ import 'core/constants.dart';
 import 'core/logger.dart';
 import 'core/sentry_filters.dart';
 import 'game/match3_game.dart';
+import 'game/theme/cosmic_theme.dart';
 import 'screens/game_screen.dart';
 import 'screens/home_screen.dart';
 import 'services/feedback_launcher.dart';
@@ -213,7 +214,7 @@ class _CosmicMatchAppState extends State<CosmicMatchApp> {
       scaffoldMessengerKey: _scaffoldMessengerKey,
       title: 'Cosmic Match',
       theme: ThemeData.dark().copyWith(
-        scaffoldBackgroundColor: const Color(0xFF0D0A1A),
+        scaffoldBackgroundColor: kCosmicInk,
       ),
       home: Scaffold(
         backgroundColor: Colors.transparent,

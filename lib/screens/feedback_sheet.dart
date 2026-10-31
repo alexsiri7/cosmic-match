@@ -8,7 +8,7 @@ import 'package:google_fonts/google_fonts.dart';
 
 import '../core/constants.dart';
 import '../core/logger.dart';
-import '../game/theme/app_theme.dart';
+import '../game/theme/cosmic_theme.dart';
 import '../models/feedback_result.dart';
 
 /// Shows the feedback bottom sheet. When the user taps Submit, [onSubmit] is
@@ -270,7 +270,7 @@ class _FeedbackSheetState extends State<_FeedbackSheet> {
         gradient: RadialGradient(
           center: const Alignment(0.0, -1.0),
           radius: 1.2,
-          colors: [kLyraNebulaA.withValues(alpha: 0.6), kLyraInk],
+          colors: [kCosmicNebulaA.withValues(alpha: 0.6), kCosmicInk],
         ),
         border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
         borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
@@ -317,7 +317,7 @@ class _FeedbackSheetState extends State<_FeedbackSheet> {
                           icon: Icon(
                             _drawMode ? Icons.edit : Icons.pan_tool,
                             color: _drawMode
-                                ? kLyraAccent
+                                ? kCosmicAccent
                                 : Colors.white.withValues(alpha: 0.6),
                             size: 18,
                           ),
@@ -413,7 +413,7 @@ class _FeedbackSheetState extends State<_FeedbackSheet> {
                     enabledBorder: _unfocusedBorder,
                     focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide(color: kLyraAccent.withValues(alpha: 0.5)),
+                      borderSide: BorderSide(color: kCosmicAccent.withValues(alpha: 0.5)),
                     ),
                   ),
                   onChanged: (_) => setState(() {}),
@@ -427,8 +427,8 @@ class _FeedbackSheetState extends State<_FeedbackSheet> {
                     children: [
                       Checkbox(
                         value: _privacyAccepted,
-                        activeColor: kLyraAccent,
-                        checkColor: kLyraInk,
+                        activeColor: kCosmicAccent,
+                        checkColor: kCosmicInk,
                         onChanged: (value) =>
                             setState(() => _privacyAccepted = value!),
                       ),
@@ -517,10 +517,10 @@ class _FeedbackSheetState extends State<_FeedbackSheet> {
                   child: ElevatedButton(
                     onPressed: _canSubmit ? _handleSubmit : null,
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: kLyraAccent,
-                      foregroundColor: kLyraInk,
-                      disabledBackgroundColor: kLyraAccent.withValues(alpha: 0.3),
-                      disabledForegroundColor: kLyraInk.withValues(alpha: 0.5),
+                      backgroundColor: kCosmicAccent,
+                      foregroundColor: kCosmicInk,
+                      disabledBackgroundColor: kCosmicAccent.withValues(alpha: 0.3),
+                      disabledForegroundColor: kCosmicInk.withValues(alpha: 0.5),
                       padding: const EdgeInsets.symmetric(vertical: 16),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(100),
@@ -535,7 +535,7 @@ class _FeedbackSheetState extends State<_FeedbackSheet> {
                         ? const SizedBox(
                             width: 20,
                             height: 20,
-                            child: CircularProgressIndicator(strokeWidth: 2, color: kLyraInk),
+                            child: CircularProgressIndicator(strokeWidth: 2, color: kCosmicInk),
                           )
                         : const Text('Submit'),
                   ),
@@ -568,9 +568,9 @@ class _TypeButton extends StatelessWidget {
         child: Container(
           padding: const EdgeInsets.symmetric(vertical: 10),
           decoration: BoxDecoration(
-            color: selected ? kLyraAccent.withValues(alpha: 0.2) : Colors.white.withValues(alpha: 0.06),
+            color: selected ? kCosmicAccent.withValues(alpha: 0.2) : Colors.white.withValues(alpha: 0.06),
             border: Border.all(
-              color: selected ? kLyraAccent : Colors.white.withValues(alpha: 0.1),
+              color: selected ? kCosmicAccent : Colors.white.withValues(alpha: 0.1),
             ),
             borderRadius: BorderRadius.circular(10),
           ),
@@ -580,7 +580,7 @@ class _TypeButton extends StatelessWidget {
             style: GoogleFonts.ibmPlexMono(
               fontSize: 12,
               letterSpacing: 1,
-              color: selected ? kLyraAccent : Colors.white.withValues(alpha: 0.6),
+              color: selected ? kCosmicAccent : Colors.white.withValues(alpha: 0.6),
             ),
           ),
         ),
