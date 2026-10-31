@@ -656,3 +656,16 @@ requirements:
       - "1,000,000 renders as \"1.0M\" and 1,500,000 as \"1.5M\""
       - "The CM-012 clamp ceiling 999,999,999 renders as \"1000.0M\" (there is no larger suffix)"
     notes: "Display only; complements CM-012, which bounds the value. All acceptance values are asserted in test/screens/game_screen_format_test.dart."
+
+  - id: CM-052
+    title: Release version numbering
+    statement: "When CI builds a release, the system shall derive the build name from the pushed v* tag (else from pubspec.yaml) and the build number as the workflow run number plus 1000, so that Play Store version codes increase monotonically across all releases."
+    category: constraint
+    priority: must
+    status: active
+    source: "Issue #382 (requirements-gap orphan)"
+    acceptance:
+      - "The 'Resolve version' step in .github/workflows/ci.yml sets BUILD_NAME to the tag with its leading v stripped on refs/tags/v* runs, and otherwise to the pubspec.yaml version without its +build suffix"
+      - "BUILD_NUMBER is github.run_number + 1000 on every run, tag or not, and is never read from pubspec.yaml"
+      - "Both the release AAB and APK builds pass --build-name=$BUILD_NAME --build-number=$BUILD_NUMBER"
+    notes: "Complements CM-036. The +1000 offset skips version codes already consumed in Play Console under the earlier git rev-list --count scheme (issue #134). run_number is scoped to the workflow file's path, so renaming or moving ci.yml resets it and breaks monotonicity. No test exercises the derivation."
