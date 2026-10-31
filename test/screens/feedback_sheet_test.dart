@@ -8,6 +8,7 @@ import 'package:google_fonts/google_fonts.dart';
 
 import 'package:cosmic_match/core/constants.dart';
 import 'package:cosmic_match/game/match3_game.dart';
+import 'package:cosmic_match/game/theme/cosmic_theme.dart';
 import 'package:cosmic_match/main.dart';
 import 'package:cosmic_match/models/feedback_result.dart';
 import 'package:cosmic_match/screens/feedback_sheet.dart';
@@ -54,7 +55,13 @@ void main() {
       await tester.tap(find.text('Send feedback'));
       await tester.pumpAndSettle();
 
-      expect(find.text('SEND FEEDBACK'), findsOneWidget);
+      final sheet = tester.widget<Container>(find.ancestor(
+        of: find.text('SEND FEEDBACK'),
+        matching: find.byWidgetPredicate(
+            (w) => w is Container && (w.decoration as BoxDecoration?)?.gradient != null),
+      ).last);
+      expect((sheet.decoration! as BoxDecoration).gradient!.colors,
+          [kCosmicNebulaA.withValues(alpha: 0.6), kCosmicInk]);
     },
   );
 

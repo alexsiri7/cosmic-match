@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import 'package:cosmic_match/game/theme/cosmic_theme.dart';
 import 'package:cosmic_match/screens/modals.dart';
 
 void main() {
@@ -113,5 +114,15 @@ void main() {
       expect(quitCalled, isTrue);
       expect(retryCalled, isFalse);
     });
+  });
+
+  testWidgets('ModalShell card is painted from the kCosmic tokens', (tester) async {
+    await tester.pumpWidget(const MaterialApp(home: ModalShell(child: SizedBox())));
+
+    final card = tester.widget<Container>(
+        find.descendant(of: find.byType(ModalShell), matching: find.byType(Container)).at(1));
+    final decoration = card.decoration! as BoxDecoration;
+    expect(decoration.color, kCosmicInk);
+    expect(decoration.gradient!.colors.first, kCosmicNebulaA.withValues(alpha: 0.6));
   });
 }

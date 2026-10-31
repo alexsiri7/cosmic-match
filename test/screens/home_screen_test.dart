@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import 'package:cosmic_match/game/theme/cosmic_theme.dart';
 import 'package:cosmic_match/screens/home_screen.dart';
 
 void main() {
@@ -145,5 +146,19 @@ void main() {
     expect(first, hasLength(80));
     expect(second, first);
     expect(first.map((s) => (s.$1, s.$2)).toSet().length, greaterThan(1));
+  });
+
+  testWidgets('HomeScreen backdrop is painted from the kCosmic tokens', (tester) async {
+    await tester.pumpWidget(MaterialApp(
+      home: HomeScreen(onPlay: () {}, onMap: () {}, onFeedback: () {}, onClearFeedbackQueue: () {}),
+    ));
+
+    final containers = find.descendant(of: find.byType(HomeScreen), matching: find.byType(Container));
+    final backdrop = tester.widget<Container>(containers.at(0)).decoration! as BoxDecoration;
+    final secondaryNebula = tester.widget<Container>(containers.at(1)).decoration! as BoxDecoration;
+
+    expect(backdrop.color, kCosmicInk);
+    expect(backdrop.gradient!.colors.first, kCosmicNebulaA.withValues(alpha: 0.6));
+    expect(secondaryNebula.gradient!.colors.first, kCosmicNebulaB.withValues(alpha: 0.5));
   });
 }

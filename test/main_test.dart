@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import 'package:cosmic_match/game/match3_game.dart';
+import 'package:cosmic_match/game/theme/cosmic_theme.dart';
 import 'package:cosmic_match/main.dart';
 import 'package:cosmic_match/screens/game_screen.dart';
 import 'package:cosmic_match/screens/home_screen.dart';
@@ -79,6 +80,13 @@ void main() {
 
     expect(find.text('Could not clear queue'), findsOneWidget);
     expect(find.text('Feedback queue cleared'), findsNothing);
+  });
+
+  testWidgets('app scaffold background is kCosmicInk', (tester) async {
+    await pumpApp(tester);
+
+    final app = tester.widget<MaterialApp>(find.byType(MaterialApp));
+    expect(app.theme!.scaffoldBackgroundColor, kCosmicInk);
   });
 
   testWidgets('Send feedback does nothing when feedbackService is null', (tester) async {

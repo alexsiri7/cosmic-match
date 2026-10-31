@@ -6,6 +6,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import 'package:cosmic_match/game/match3_game.dart';
+import 'package:cosmic_match/game/theme/cosmic_theme.dart';
 import 'package:cosmic_match/models/level_progress.dart';
 import 'package:cosmic_match/screens/game_screen.dart';
 import 'package:cosmic_match/services/progress_service.dart';
@@ -89,5 +90,19 @@ void main() {
 
     expect(find.text('BEST'), findsOneWidget);
     expect(find.text('1,200'), findsOneWidget);
+  });
+
+  testWidgets('GameScreen background is kCosmicInk', (tester) async {
+    await tester.pumpWidget(ProviderScope(
+      child: MaterialApp(
+        home: GameScreen(game: Match3Game(rng: Random(42)), onBack: () {}, onFeedback: () {}),
+      ),
+    ));
+    await tester.pump(const Duration(seconds: 1));
+    await tester.pump();
+
+    final background = tester.widget<Container>(
+        find.descendant(of: find.byType(GameScreen), matching: find.byType(Container)).first);
+    expect(background.color, kCosmicInk);
   });
 }
