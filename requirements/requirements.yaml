@@ -615,3 +615,16 @@ requirements:
       - "FeedbackService.submit returns notSent without sending or queueing when workerUrl uses the http scheme, has no scheme, or has no host"
       - "FeedbackService.flushQueue sends nothing while the worker URL is not a valid HTTPS URL"
     notes: "Security-adjacent to CM-035, which configures FEEDBACK_WORKER_URL but does not state the HTTPS-only constraint. The manifest and network-security-config halves are not asserted by any test."
+
+  - id: CM-049
+    title: Crash-reporting event scope
+    statement: "While crash reporting is enabled, the system shall not report ANR events, and shall send Sentry session start/stop events carrying a random per-install identifier only as disclosed in the privacy policy."
+    category: constraint
+    priority: must
+    status: active
+    source: "Issue #379 (requirements-gap orphan)"
+    acceptance:
+      - "anrEnabled=false in Sentry options"
+      - "enableAutoSessionTracking is left at its SDK default (true), and docs/privacy.html and SECURITY.md §1 both disclose app-start/stop session events and the random per-install identifier"
+      - "A change that disables session tracking or enables ANR reporting updates docs/privacy.html and SECURITY.md in the same change (CM-045)"
+    notes: "Extends CM-031. ANR reporting is off so the sentry_flutter 9 bump (#329) did not widen what is sent; session tracking was disclosed in #312. Like CM-031, nothing inspects the options at runtime or in tests."
