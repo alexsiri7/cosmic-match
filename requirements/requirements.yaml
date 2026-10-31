@@ -669,3 +669,17 @@ requirements:
       - "BUILD_NUMBER is github.run_number + 1000 on every run, tag or not, and is never read from pubspec.yaml"
       - "Both the release AAB and APK builds pass --build-name=$BUILD_NAME --build-number=$BUILD_NUMBER"
     notes: "Complements CM-036. The +1000 offset skips version codes already consumed in Play Console under the earlier git rev-list --count scheme (issue #134). run_number is scoped to the workflow file's path, so renaming or moving ci.yml resets it and breaks monotonicity. No test exercises the derivation."
+
+  - id: CM-053
+    title: Pull-request isolation from release secrets
+    statement: "When CI runs for a pull request, the system shall withhold all release secrets, sign with a freshly generated throwaway keystore so the release build path is still exercised, label the artifacts as not publishable, and delete signing credentials when the job ends."
+    category: constraint
+    priority: must
+    status: active
+    source: "Issue #383 (requirements-gap orphan), SECURITY.md SEC-01"
+    acceptance:
+      - "On pull_request events, .github/workflows/ci.yml resolves KEYSTORE_BASE64, KEYSTORE_STORE_PASSWORD, KEYSTORE_KEY_PASSWORD, KEYSTORE_KEY_ALIAS, SENTRY_DSN, FEEDBACK_HMAC_SECRET and SENTRY_AUTH_TOKEN to empty strings in every step that reads them"
+      - "With no readable real keystore, the 'Resolve signing keystore' step generates a throwaway PKCS12 keystore valid for one day, writes android/key.properties for it, and reports used_real=no; the release AAB and APK builds still run"
+      - "Artifacts built with the throwaway keystore are uploaded only as release-aab-ci-throwaway and release-apk-ci-throwaway (7-day retention); release-aab, release-apk and release-mapping, and the publish jobs that consume them, require used_real == 'yes'"
+      - "The 'Clean up signing credentials' step runs with if: always() and deletes android/cosmic-match-release.jks and android/key.properties"
+    notes: "Complements CM-036, which covers how real releases are signed and obfuscated; this entry covers keeping release secrets away from PR-controlled build code. A push or workflow_dispatch run whose KEYSTORE_BASE64 is missing or unreadable takes the same throwaway path. All acceptance criteria are asserted against the workflow file in test/ci/pull_request_secret_isolation_test.dart."
