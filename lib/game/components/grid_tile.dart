@@ -206,8 +206,9 @@ class GridTile extends RectangleComponent
 
   @override
   void onDragCancel(DragCancelEvent event) {
+    // Flame's default forwards a cancel to onDragEnd, which would commit the
+    // swap; clearing drag state first makes that forwarded end a no-op.
+    if (_dragging) _resetDragState();
     super.onDragCancel(event);
-    if (!_dragging) return;
-    _resetDragState();
   }
 }
