@@ -494,3 +494,16 @@ requirements:
     source: "PR #199 / SECURITY.md §11.1"
     acceptance:
       - "pubspec.lock is tracked in git and consistent with pubspec.yaml on every commit"
+
+  - id: CM-040
+    title: Save-data semantic validation on load
+    statement: "When loading a level-progress record whose signature is valid, the system shall reject it and reset that level to initial values if starsEarned is outside 0-3, bestScore is outside 0-999,999,999, or the record's level field differs from the level key it was stored under."
+    category: functional
+    priority: must
+    status: active
+    source: "Issue #370 (requirements-gap orphan), SEC-008"
+    acceptance:
+      - "LevelProgress.fromMap throws FormatException for starsEarned of -1 or 4 and for bestScore of -1 or 1,000,000,000"
+      - "ProgressService.load returns LevelProgress.initial for a validly signed record with out-of-range starsEarned or bestScore"
+      - "ProgressService.load returns LevelProgress.initial for a validly signed record whose level field differs from the requested level key"
+    notes: "Complements CM-016: an attacker holding the device-local HMAC key can still sign a forged record, so semantic checks bound what a forged save can claim."
