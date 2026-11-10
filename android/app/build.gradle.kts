@@ -6,7 +6,7 @@ plugins {
     id("kotlin-android")
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
-    id("io.sentry.android.gradle") version "6.25.0"
+    id("io.sentry.android.gradle") version "6.26.0"
 }
 
 val keyPropertiesFile = rootProject.file("key.properties")
