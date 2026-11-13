@@ -20,7 +20,7 @@ dependencies:
   connectivity_plus: ^7.3.2
   flutter_secure_storage: ^11.2.0
   http: ^1.2.2
-  sentry_flutter: ^10.2.0
+  sentry_flutter: ^10.3.0
   package_info_plus: ^10.2.2
   device_info_plus: ^13.3.0
   google_fonts: ^9.0.0
