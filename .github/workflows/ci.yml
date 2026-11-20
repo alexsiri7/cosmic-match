@@ -263,6 +263,12 @@ jobs:
     if: needs.release.outputs.used_real == 'yes' && github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     environment: play-internal
+    # The Play API allows one open edit per app: overlapping uploads delete
+    # each other's edit (#453). A newer pending run replaces an older one,
+    # which is fine here since the newest build supersedes it.
+    concurrency:
+      group: play-publish-net.interstellarai.cosmicmatch-internal
+      cancel-in-progress: false
     steps:
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
@@ -313,6 +319,11 @@ jobs:
     # Required-reviewer gate: the `production` environment holds the Play
     # secret, requires approval, and only admits v* tags.
     environment: production
+    # Separate group from internal so a newer main push can never replace a
+    # pending (awaiting approval) production release.
+    concurrency:
+      group: play-publish-net.interstellarai.cosmicmatch-production
+      cancel-in-progress: false
     permissions:
       contents: write
     steps:
